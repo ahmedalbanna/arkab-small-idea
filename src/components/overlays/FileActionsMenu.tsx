@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Download, Upload, FileText, Code, Save } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { exportToPDF, exportToHTML, exportToMarkdown, exportToDOCX } from '../../services/exportService';
+import { exportToPDF, exportToHTML, exportToMarkdown, exportToDOCX, exportToRTF } from '../../services/exportService';
 
 import { useEditorStore } from '../../stores/editorStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -126,6 +126,18 @@ export const FileActionsMenu: React.FC<FileActionsMenuProps> = ({
                 <FileText className="w-4 h-4" />
               </div>
               <span className="text-xs font-bold text-minimal-text">Word Document (DOCX)</span>
+            </button>
+            <button
+              onClick={() => {
+                const doc = editorRef.current?.getDoc();
+                if (doc) exportToRTF(doc, 'Ink-Quill-Doc');
+              }}
+              className="w-full text-left p-2.5 hover:bg-minimal-accent/5 rounded-xl transition-all flex items-center gap-3 group/item"
+            >
+              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 group-hover/item:bg-amber-600 group-hover/item:text-white transition-colors">
+                <FileText className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold text-minimal-text">Rich Text (RTF)</span>
             </button>
           </div>
         </div>

@@ -611,6 +611,7 @@ export const chatWithAI = async (
     onChunk?: (chunk: string) => void;
     cursorContext?: string;
     embeddingOptions?: { provider?: string; apiKey?: string; model?: string };
+    signal?: AbortSignal;
   },
 ): Promise<string> => {
   const {
@@ -622,6 +623,7 @@ export const chatWithAI = async (
     onChunk,
     cursorContext = "",
     embeddingOptions,
+    signal,
   } = options;
 
   let systemInstruction =
@@ -735,7 +737,7 @@ export const chatWithAI = async (
   ];
 
   const aiProvider = getProvider(provider, { apiKeys, providerConfigs });
-  return await aiProvider.chat(formattedMessages, model, onChunk);
+  return await aiProvider.chat(formattedMessages, model, onChunk, signal);
 };
 
 export const checkOllamaConnection = async (
