@@ -784,7 +784,7 @@ export default function App() {
     <div
       dir={direction}
       className={cn(
-        "min-h-screen bg-minimal-bg text-minimal-text font-sans flex flex-col selection:bg-minimal-accent/20 transition-colors duration-500",
+        "h-screen overflow-hidden bg-minimal-bg text-minimal-text font-sans flex flex-col selection:bg-minimal-accent/20 transition-colors duration-500",
         "",
       )}
     >

@@ -99,11 +99,11 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
   return (
     <main
       className={cn(
-        "flex-1 flex relative overflow-hidden bg-minimal-sidebar transition-all duration-1000",
+        "flex-1 flex relative overflow-hidden bg-minimal-sidebar transition-all duration-1000 h-full",
         "pt-0",
       )}
     >
-      <div className="flex-1 flex overflow-x-auto snap-x snap-mandatory flex gap-4 md:gap-8 p-4 md:p-12 custom-scrollbar bg-minimal-sidebar/50 scroll-smooth">
+      <div className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory flex gap-4 md:gap-8 p-4 md:p-12 custom-scrollbar bg-minimal-sidebar/50 scroll-smooth h-full">
         <AnimatePresence mode="popLayout" initial={false}>
           {activePageIds.map((id) => {
             const page = pages.find((p) => p.id === id);
@@ -118,7 +118,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                 transition={{ duration: 0.4, ease: "circOut" }}
                 onClick={() => setActiveFocusedPageId(id)}
                 className={cn(
-                  "flex-shrink-0 w-[calc(100vw-4rem)] md:w-full max-w-[850px] h-full bg-minimal-bg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] rounded-xl border flex flex-col snap-center relative group mx-2 md:mx-4 first:ml-auto last:mr-auto transition-all duration-300",
+                  "flex-shrink-0 w-[calc(100vw-4rem)] md:w-full max-w-[850px] h-full bg-minimal-bg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] rounded-xl border flex flex-col snap-center relative group mx-2 md:mx-4 first:ml-auto last:mr-auto transition-all duration-300 overflow-hidden",
                   activeFocusedPageId === id
                     ? "border-minimal-accent ring-2 ring-minimal-accent/10 shadow-[0_40px_80px_-15px_rgba(var(--minimal-accent-rgb),0.15)]"
                     : "border-minimal-border",
@@ -423,7 +423,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                     </button>
                   </div>
                 </div>
-                <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   <ProseMirrorEditor
                     ref={(el) => {
                       editorRefs.current[id] = el;

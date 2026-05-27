@@ -1491,7 +1491,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         <ErrorBoundary>
           <div
             ref={editorRef}
-            className="flex-1 overflow-y-auto outline-none prose-first-child-no-margin"
+            className="flex-1 overflow-y-auto outline-none prose-first-child-no-margin custom-scrollbar"
           />
         </ErrorBoundary>
 
