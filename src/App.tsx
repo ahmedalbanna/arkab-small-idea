@@ -100,8 +100,20 @@ export default function App() {
     setOllamaHost,
   } = useAIStore();
 
-  const { theme, fontSize, lineHeight, maxWidth, fontFamily } =
-    useSettingsStore();
+  const {
+    theme,
+    fontSize,
+    lineHeight,
+    maxWidth,
+    fontFamily,
+    headingColor,
+    enableHeadingNumbering,
+  } = useSettingsStore();
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--heading-color", headingColor);
+    document.documentElement.style.setProperty("--minimal-accent", headingColor);
+  }, [headingColor]);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 

@@ -11,6 +11,7 @@
   --minimal-accent: #3498db;
   --minimal-accent-rgb: 52, 152, 219;
   --minimal-font: "Inter", sans-serif;
+  --heading-color: #000000;
   
   /* Dynamic Editor Variables */
   --editor-font-size: 16px;
@@ -26,6 +27,7 @@
   --minimal-muted: #71717a;
   --minimal-accent: #4a9eff;
   --minimal-accent-rgb: 74, 158, 255;
+  --heading-color: #ffffff;
 }
 
 @theme {
@@ -40,6 +42,34 @@
   --color-minimal-accent: var(--minimal-accent);
 }
 
+/* Heading Numbering Logic */
+.headings-numbered {
+  counter-reset: h1;
+}
+.headings-numbered h1 { counter-reset: h2; }
+.headings-numbered h1::before {
+  counter-increment: h1;
+  content: counter(h1) ". ";
+  @apply mr-2 opacity-50 font-mono text-[0.8em];
+}
+.headings-numbered h2 { counter-reset: h3; }
+.headings-numbered h2::before {
+  counter-increment: h2;
+  content: counter(h1) "." counter(h2) " ";
+  @apply mr-2 opacity-50 font-mono text-[0.8em];
+}
+.headings-numbered h3 { counter-reset: h4; }
+.headings-numbered h3::before {
+  counter-increment: h3;
+  content: counter(h1) "." counter(h2) "." counter(h3) " ";
+  @apply mr-2 opacity-50 font-mono text-[0.8em];
+}
+.headings-numbered h4::before {
+  counter-increment: h4;
+  content: counter(h1) "." counter(h2) "." counter(h3) "." counter(h4) " ";
+  @apply mr-2 opacity-50 font-mono text-[0.8em];
+}
+
 /* Base styles for markdown content in preview - Clean Minimalism Enhanced */
 .markdown-body {
   @apply max-w-none text-minimal-text leading-relaxed;
@@ -47,17 +77,25 @@
   font-size: 18px; /* Increased base font size for better readability */
 }
 
-.markdown-body h1 { 
-  @apply text-minimal-text mt-12 mb-8 font-extrabold tracking-tight border-b-2 border-minimal-border pb-4; 
-  font-size: 42px;
+.markdown-body h1, .ProseMirror h1 { 
+  @apply mt-12 mb-8 font-black tracking-tighter border-b-2 border-minimal-border pb-4; 
+  font-size: 48px;
+  color: var(--heading-color);
 }
-.markdown-body h2 { 
-  @apply text-minimal-text mt-16 mb-6 font-bold tracking-tight border-b border-minimal-border/50 pb-2; 
-  font-size: 30px;
+.markdown-body h2, .ProseMirror h2 { 
+  @apply mt-16 mb-6 font-extrabold tracking-tight border-b border-minimal-border/50 pb-2; 
+  font-size: 32px;
+  color: var(--heading-color);
 }
-.markdown-body h3 { 
-  @apply text-minimal-text mt-10 mb-4 font-bold; 
+.markdown-body h3, .ProseMirror h3 { 
+  @apply mt-10 mb-4 font-bold; 
   font-size: 24px;
+  color: var(--heading-color);
+}
+.markdown-body h4, .ProseMirror h4 { 
+  @apply mt-8 mb-3 font-bold; 
+  font-size: 20px;
+  color: var(--heading-color);
 }
 .markdown-body p { 
   @apply mb-6 leading-loose; 
@@ -128,9 +166,6 @@
   line-height: var(--editor-line-height);
   color: var(--minimal-text); 
 }
-.ProseMirror h1 { @apply text-minimal-accent mt-12 mb-8 font-extrabold tracking-tight border-b-2 border-minimal-accent/20 pb-4; font-size: 42px; }
-.ProseMirror h2 { @apply text-blue-500 mt-16 mb-6 font-bold tracking-tight border-b border-blue-500/10 pb-2; font-size: 30px; }
-.ProseMirror h3 { @apply text-indigo-500 mt-10 mb-4 font-bold; font-size: 24px; }
 .ProseMirror strong { @apply text-minimal-text font-bold; color: #1a567e; }
 .ProseMirror em { @apply italic text-minimal-muted/80; }
 .ProseMirror ul { @apply list-disc ps-8 mb-6 space-y-2; }

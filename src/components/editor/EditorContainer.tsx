@@ -78,6 +78,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     providerConfigs,
   } = useAIStore();
   const { setAIAssistant } = useUIStore();
+  const { enableHeadingNumbering } = useSettingsStore();
 
   const [visibleSnapshots, setVisibleSnapshots] = useState<
     Record<string, boolean>
@@ -121,6 +122,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                   activeFocusedPageId === id
                     ? "border-minimal-accent ring-2 ring-minimal-accent/10 shadow-[0_40px_80px_-15px_rgba(var(--minimal-accent-rgb),0.15)]"
                     : "border-minimal-border",
+                  enableHeadingNumbering && "headings-numbered",
                 )}
               >
                 <div

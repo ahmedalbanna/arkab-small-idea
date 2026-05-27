@@ -7,12 +7,16 @@ interface SettingsState {
   lineHeight: number;
   maxWidth: string;
   fontFamily: string;
+  headingColor: string;
+  enableHeadingNumbering: boolean;
   
   setTheme: (theme: SettingsState['theme'] | ((prev: SettingsState['theme']) => SettingsState['theme'])) => void;
   setFontSize: (size: number | ((prev: number) => number)) => void;
   setLineHeight: (height: number | ((prev: number) => number)) => void;
   setMaxWidth: (width: string | ((prev: string) => string)) => void;
   setFontFamily: (font: string | ((prev: string) => string)) => void;
+  setHeadingColor: (color: string) => void;
+  setEnableHeadingNumbering: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -23,6 +27,8 @@ export const useSettingsStore = create<SettingsState>()(
       lineHeight: 1.6,
       maxWidth: '800px',
       fontFamily: 'Inter, sans-serif',
+      headingColor: '#000000',
+      enableHeadingNumbering: false,
 
       setTheme: (theme) => set((state) => ({ 
         theme: typeof theme === 'function' ? theme(state.theme) : theme 
@@ -39,6 +45,8 @@ export const useSettingsStore = create<SettingsState>()(
       setFontFamily: (fontFamily) => set((state) => ({ 
         fontFamily: typeof fontFamily === 'function' ? fontFamily(state.fontFamily) : fontFamily 
       })),
+      setHeadingColor: (headingColor) => set({ headingColor }),
+      setEnableHeadingNumbering: (enableHeadingNumbering) => set({ enableHeadingNumbering }),
     }),
     {
       name: 'ink-quill-settings',

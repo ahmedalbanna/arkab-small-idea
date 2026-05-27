@@ -12,7 +12,9 @@ export const SettingsModal: React.FC = () => {
     fontFamily, setFontFamily,
     fontSize, setFontSize,
     lineHeight, setLineHeight,
-    maxWidth, setMaxWidth
+    maxWidth, setMaxWidth,
+    headingColor, setHeadingColor,
+    enableHeadingNumbering, setEnableHeadingNumbering
   } = useSettingsStore();
 
   return (
@@ -133,6 +135,45 @@ export const SettingsModal: React.FC = () => {
                         {w === '100%' ? 'Full' : w}
                       </button>
                     ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* Headings Section */}
+              <section className="space-y-4">
+                <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Editor Headings</h4>
+                
+                <div className="flex items-center justify-between p-3 bg-minimal-sidebar/50 border border-minimal-border rounded-xl">
+                  <div className="space-y-0.5">
+                    <label className="text-[10px] font-bold text-minimal-text uppercase">Automatic Numbering</label>
+                    <p className="text-[8px] text-minimal-muted uppercase">1.1, 1.2, 2.1 formatting</p>
+                  </div>
+                  <button
+                    onClick={() => setEnableHeadingNumbering(!enableHeadingNumbering)}
+                    className={cn(
+                      "w-10 h-5 rounded-full transition-all relative",
+                      enableHeadingNumbering ? "bg-minimal-accent" : "bg-minimal-border"
+                    )}
+                  >
+                    <motion.div
+                      animate={{ x: enableHeadingNumbering ? 20 : 2 }}
+                      className="absolute top-1 left-0 w-3 h-3 rounded-full bg-white shadow-sm"
+                    />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] font-bold text-minimal-muted uppercase">Primary Theme Color</label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={headingColor}
+                      onChange={(e) => setHeadingColor(e.target.value)}
+                      className="w-10 h-10 rounded-lg overflow-hidden border-none cursor-pointer bg-transparent"
+                    />
+                    <div className="flex-1 px-3 py-2 bg-minimal-sidebar/50 border border-minimal-border rounded-xl font-mono text-[10px] text-minimal-text uppercase">
+                      {headingColor}
+                    </div>
                   </div>
                 </div>
               </section>
