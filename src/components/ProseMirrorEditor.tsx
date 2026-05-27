@@ -295,6 +295,7 @@ interface Props {
   onImageUploadRequest?: () => void;
   onSearchMetadata?: (count: number, current: number) => void;
   onSelectionChange?: (selection: { from: number; to: number }) => void;
+  onScroll?: () => void;
   initialCursor?: { from: number; to: number };
   searchQuery?: string;
   searchOptions?: {
@@ -417,6 +418,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       onImageUploadRequest,
       onSearchMetadata,
       onSelectionChange,
+      onScroll,
       initialCursor,
       searchQuery = "",
       searchOptions = {
@@ -441,6 +443,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       onKeyDown,
       onSearchMetadata,
       onSelectionChange,
+      onScroll,
       onAiResult,
       onAiStream,
       isTypewriter,
@@ -460,6 +463,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         onKeyDown,
         onSearchMetadata,
         onSelectionChange,
+        onScroll,
         onAiResult,
         onAiStream,
         isTypewriter,
@@ -532,6 +536,22 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       };
       window.addEventListener("click", handleClick);
       return () => window.removeEventListener("click", handleClick);
+    }, []);
+
+    useEffect(() => {
+      if (!editorRef.current) return;
+
+      const scrollContainer = editorRef.current.parentElement;
+      if (!scrollContainer) return;
+
+      const handleScroll = () => {
+        if (latestProps.current.onScroll) {
+          latestProps.current.onScroll();
+        }
+      };
+
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+      return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }, []);
 
     useEffect(() => {

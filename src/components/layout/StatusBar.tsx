@@ -26,7 +26,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   embeddingProgress
 }) => {
   const { ollamaStatus, provider } = useAIStore();
-  const { isIndexing, indexedChunks, indexedEpisodes } = useUIStore();
+  const { isIndexing, indexedChunks, indexedEpisodes, isAutoSaving } = useUIStore();
 
   return (
     <AnimatePresence mode="wait">
@@ -41,7 +41,18 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       >
         {/* Left Side: Stats */}
         <div className="flex gap-4 md:gap-8 items-center h-full">
-          <div className="flex gap-4 md:gap-6">
+          {isAutoSaving && (
+            <motion.div 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-2 px-2.5 py-1 bg-green-500/10 rounded-sm border border-green-500/20"
+            >
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+              <span className="text-[9px] font-bold text-green-600 uppercase tracking-widest whitespace-nowrap">Continuous Protection Active</span>
+            </motion.div>
+          )}
+
+          <div className={cn("flex gap-4 md:gap-6", isAutoSaving && "hidden sm:flex")}>
             <div className="flex flex-col justify-center">
               <span className="text-[8px] font-bold opacity-40 leading-none mb-0.5 tracking-tighter">WORDS</span>
               <span className="text-[11px] font-mono font-bold text-minimal-text tabular-nums">{wordCount}</span>

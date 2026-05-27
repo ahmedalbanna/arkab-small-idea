@@ -16,6 +16,7 @@ interface UIState {
   isIndexing: boolean;
   indexedChunks: number;
   indexedEpisodes: number;
+  isAutoSaving: boolean;
   
   toggleSuperZen: () => void;
   toggleAIAssistant: () => void;
@@ -32,6 +33,7 @@ interface UIState {
   setDirection: (direction: 'ltr' | 'rtl' | ((prev: 'ltr' | 'rtl') => 'ltr' | 'rtl')) => void;
   setIndexing: (indexing: boolean) => void;
   setIndexedCounts: (chunks: number, episodes: number) => void;
+  setAutoSaving: (isAutoSaving: boolean) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -51,6 +53,7 @@ export const useUIStore = create<UIState>()(
       isIndexing: false,
       indexedChunks: 0,
       indexedEpisodes: 0,
+      isAutoSaving: false,
 
       toggleSuperZen: () => set((state) => ({ isSuperZen: !state.isSuperZen })),
       toggleAIAssistant: () => set((state) => ({ showAIAssistant: !state.showAIAssistant })),
@@ -89,6 +92,7 @@ export const useUIStore = create<UIState>()(
       })),
       setIndexing: (isIndexing) => set({ isIndexing }),
       setIndexedCounts: (indexedChunks, indexedEpisodes) => set({ indexedChunks, indexedEpisodes }),
+      setAutoSaving: (isAutoSaving: boolean) => set({ isAutoSaving }),
     }),
     {
       name: 'ink-quill-ui-storage',

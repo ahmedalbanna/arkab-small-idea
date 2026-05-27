@@ -2,11 +2,13 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Trash2, X } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
+import { cn, useMediaQuery } from '../../lib/utils';
 
 interface MobileMenuProps {}
 
 export const MobileMenu: React.FC<MobileMenuProps> = () => {
-  const { showMobileMenu, setMobileMenu, setAIAssistant } = useUIStore();
+  const { showMobileMenu, setMobileMenu, setAIAssistant, direction } = useUIStore();
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   return (
     <AnimatePresence>
@@ -17,13 +19,18 @@ export const MobileMenu: React.FC<MobileMenuProps> = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setMobileMenu(false)}
-            className="fixed inset-0 bg-zinc-950/20 backdrop-blur-sm z-[80]"
+            className="fixed inset-0 bg-zinc-950/40 backdrop-blur-md z-[120]"
           />
           <motion.div
-            initial={{ x: -300, opacity: 0 }}
+            initial={{ x: direction === 'rtl' ? 300 : -300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -300, opacity: 0 }}
-            className="fixed top-0 start-0 bottom-0 w-[280px] bg-minimal-bg border-e border-minimal-border z-[90] shadow-2xl flex flex-col"
+            exit={{ x: direction === 'rtl' ? 300 : -300, opacity: 0 }}
+            className={cn(
+              "fixed top-0 bottom-0 bg-minimal-bg z-[130] shadow-2xl flex flex-col transition-all duration-300",
+              direction === 'rtl' ? "right-0 border-s" : "left-0 border-e",
+              isMobile ? "w-full" : "w-[300px]",
+              "border-minimal-border"
+            )}
           >
             <div className="p-4 border-b border-minimal-border flex justify-between items-center bg-minimal-sidebar">
               <span className="text-xs font-bold text-minimal-muted uppercase tracking-widest">Navigation</span>

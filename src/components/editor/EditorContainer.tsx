@@ -77,7 +77,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     apiKeys,
     providerConfigs,
   } = useAIStore();
-  const { setAIAssistant } = useUIStore();
+  const { setAIAssistant, setAutoSaving, isAutoSaving } = useUIStore();
   const { enableHeadingNumbering } = useSettingsStore();
 
   const [visibleSnapshots, setVisibleSnapshots] = useState<
@@ -87,6 +87,15 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     Record<string, boolean>
   >({});
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
+  const autoSaveTimeout = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleScroll = (id: string) => {
+    if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
+    setAutoSaving(true);
+    autoSaveTimeout.current = setTimeout(() => {
+      setAutoSaving(false);
+    }, 1500);
+  };
 
   const toggleSnapshots = (pageId: string) => {
     setVisibleSnapshots((prev) => ({ ...prev, [pageId]: !prev[pageId] }));
@@ -441,6 +450,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                     initialCursor={page.cursor}
                     onSelectionChange={(sel) => setPageCursor(id, sel)}
                     direction={direction}
+                    onScroll={() => handleScroll(id)}
                     personalInstructions={aiPersonalInstructions}
                     selectedModel={serviceConfigs.actions.model}
                     provider={serviceConfigs.actions.provider}

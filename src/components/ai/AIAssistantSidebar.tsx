@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, FolderOpen, Save, X, History, Check, ArrowRightLeft, Trash2, Bold, Italic, List, ImagePlus, Download, ImageIcon, Send, Wand2, FileText, RefreshCw, Maximize2, ListOrdered, PenTool, CheckCheck, FastForward, Heading, Minimize2, Plus } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { cn } from '../../lib/utils';
+import { cn, useMediaQuery } from '../../lib/utils';
 import { useAIStore } from '../../stores/aiStore';
 import { useUIStore } from '../../stores/uiStore';
 import { ChatMessage } from '../../services/aiService';
@@ -43,6 +43,7 @@ export const AIAssistantSidebar: React.FC<AIAssistantSidebarProps> = ({
   const { showAIAssistant, setAIAssistant } = useUIStore();
   const { chatHistory, setChatHistory, isGenerating: isGeneratingAi, ollamaStatus } = useAIStore();
   const [isMinimized, setIsMinimized] = React.useState(false);
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   return (
     <AnimatePresence>
@@ -53,18 +54,26 @@ export const AIAssistantSidebar: React.FC<AIAssistantSidebarProps> = ({
             y: 0, 
             opacity: 1, 
             scale: 1,
-            height: isMinimized ? '80px' : '650px',
-            width: isMinimized ? '240px' : '420px'
+            height: isMinimized ? '80px' : (isMobile ? 'calc(100vh - 100px)' : '650px'),
+            width: isMinimized ? '240px' : (isMobile ? 'calc(100vw - 32px)' : '420px'),
+            right: isMobile ? '16px' : '24px',
+            bottom: isMobile ? '60px' : '24px'
           }}
           exit={{ y: 20, opacity: 0, scale: 0.95 }}
-          drag
+          drag={!isMobile}
           dragConstraints={{ left: -1000, right: 0, top: -1000, bottom: 0 }}
           dragElastic={0.1}
           dragMomentum={false}
-          className="fixed bottom-6 right-6 w-full md:w-[420px] h-[650px] max-h-[90vh] bg-minimal-bg/95 backdrop-blur-xl border border-minimal-border z-[70] shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex flex-col rounded-[2.5rem] overflow-hidden cursor-auto transition-shadow"
+          className={cn(
+            "fixed bg-minimal-bg/95 backdrop-blur-xl border border-minimal-border z-[110] shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex flex-col rounded-[2.5rem] overflow-hidden transition-all duration-300",
+            isMobile && !isMinimized ? "rounded-b-none" : ""
+          )}
           style={{ touchAction: 'none' }}
         >
-          <div className="p-5 border-b border-minimal-border flex justify-between items-center bg-minimal-sidebar/50 cursor-grab active:cursor-grabbing group">
+          <div className={cn(
+            "p-5 border-b border-minimal-border flex justify-between items-center bg-minimal-sidebar/50 group",
+            !isMobile && "cursor-grab active:cursor-grabbing"
+          )}>
             <div className="flex items-center gap-3 pointer-events-none select-none">
               <div className="w-10 h-10 rounded-2xl bg-minimal-accent flex items-center justify-center text-white shadow-lg shadow-minimal-accent/20">
                 <Sparkles className="w-5 h-5" />

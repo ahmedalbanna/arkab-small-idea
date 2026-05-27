@@ -1,13 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X, Trash2 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, useMediaQuery } from '../../lib/utils';
 import { useEditorStore } from '../../stores/editorStore';
 import { useUIStore } from '../../stores/uiStore';
 
 export const PagesManager: React.FC = () => {
   const { showPages, setPagesMenu } = useUIStore();
   const { pages, activePageIds, activeFocusedPageId, addPage, removePage, togglePageOpen, setActiveFocusedPageId } = useEditorStore();
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   return (
     <AnimatePresence>
@@ -16,7 +17,10 @@ export const PagesManager: React.FC = () => {
           initial={{ x: 300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 300, opacity: 0 }}
-          className="absolute right-0 top-0 bottom-0 z-[100] w-[320px] shadow-2xl bg-minimal-sidebar border-l border-minimal-border"
+          className={cn(
+            "fixed inset-y-0 right-0 z-[120] shadow-2xl bg-minimal-sidebar border-l border-minimal-border flex flex-col",
+            isMobile ? "w-full" : "w-[320px]"
+          )}
         >
           <div className="h-full flex flex-col p-6 space-y-6">
             <div className="flex items-center justify-between">
