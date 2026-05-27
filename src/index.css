@@ -1,0 +1,349 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Courier+Prime&family=EB+Garamond:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Merriweather:wght@400;700&display=swap');
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --minimal-bg: #ffffff;
+  --minimal-sidebar: #fafafa;
+  --minimal-border: #e8e8e8;
+  --minimal-text: #2c3e50;
+  --minimal-muted: #95a5a6;
+  --minimal-accent: #3498db;
+  --minimal-accent-rgb: 52, 152, 219;
+  --minimal-font: "Inter", sans-serif;
+  
+  /* Dynamic Editor Variables */
+  --editor-font-size: 16px;
+  --editor-line-height: 1.6;
+  --editor-max-width: 800px;
+}
+
+[data-theme="dark"] {
+  --minimal-bg: #1a1a1a;
+  --minimal-sidebar: #2a2a2a;
+  --minimal-border: #3a3a3a;
+  --minimal-text: #e0e0e0;
+  --minimal-muted: #71717a;
+  --minimal-accent: #4a9eff;
+  --minimal-accent-rgb: 74, 158, 255;
+}
+
+@theme {
+  --font-sans: var(--minimal-font);
+  --font-mono: "Courier Prime", "Courier New", Courier, monospace;
+  
+  --color-minimal-bg: var(--minimal-bg);
+  --color-minimal-sidebar: var(--minimal-sidebar);
+  --color-minimal-border: var(--minimal-border);
+  --color-minimal-text: var(--minimal-text);
+  --color-minimal-muted: var(--minimal-muted);
+  --color-minimal-accent: var(--minimal-accent);
+}
+
+/* Base styles for markdown content in preview - Clean Minimalism Enhanced */
+.markdown-body {
+  @apply max-w-none text-minimal-text leading-relaxed;
+  font-family: var(--minimal-font);
+  font-size: 18px; /* Increased base font size for better readability */
+}
+
+.markdown-body h1 { 
+  @apply text-minimal-text mt-12 mb-8 font-extrabold tracking-tight border-b-2 border-minimal-border pb-4; 
+  font-size: 42px;
+}
+.markdown-body h2 { 
+  @apply text-minimal-text mt-16 mb-6 font-bold tracking-tight border-b border-minimal-border/50 pb-2; 
+  font-size: 30px;
+}
+.markdown-body h3 { 
+  @apply text-minimal-text mt-10 mb-4 font-bold; 
+  font-size: 24px;
+}
+.markdown-body p { 
+  @apply mb-6 leading-loose; 
+  color: var(--minimal-text);
+}
+
+.markdown-body ul { @apply list-disc ps-8 mb-6 space-y-2; }
+.markdown-body ol { @apply list-decimal ps-8 mb-6 space-y-2; }
+.markdown-body li { @apply ps-2 font-medium; }
+
+.markdown-body code { 
+  @apply bg-minimal-accent/5 px-2 py-0.5 rounded border border-minimal-accent/20 font-mono text-sm text-minimal-accent font-semibold transition-colors hover:bg-minimal-accent/10; 
+}
+
+.markdown-body pre { 
+  @apply bg-zinc-900 shadow-2xl text-zinc-100 p-6 rounded-2xl my-10 overflow-x-auto font-mono text-[13px] leading-relaxed border border-zinc-700/50 relative;
+  background-image: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
+}
+
+.markdown-body pre::after {
+  content: "";
+  @apply absolute inset-0 rounded-2xl border border-white/5 pointer-events-none;
+}
+
+.markdown-body blockquote { 
+  @apply border-l-8 border-minimal-accent/30 bg-minimal-sidebar/50 pl-6 py-4 italic text-minimal-muted my-8 rounded-r-lg; 
+}
+
+.markdown-body table { 
+  @apply w-full border-collapse my-10 overflow-hidden rounded-lg border-2 border-minimal-border shadow-sm; 
+}
+.markdown-body th, .markdown-body td { 
+  @apply border border-minimal-border p-4 text-start; 
+}
+.markdown-body th { 
+  @apply bg-minimal-sidebar font-bold text-minimal-text border-b-2 border-minimal-border; 
+}
+.markdown-body tr:nth-child(even) {
+  @apply bg-minimal-sidebar/30;
+}
+
+.markdown-body a { 
+  @apply text-minimal-accent font-semibold underline decoration-minimal-accent/20 underline-offset-4 decoration-2 hover:decoration-minimal-accent hover:text-minimal-accent/80 hover:-translate-y-[1px] inline-block transition-all duration-300; 
+}
+
+.markdown-body img { 
+  @apply max-w-full h-auto rounded-2xl shadow-lg my-10 border border-minimal-border; 
+}
+
+/* ProseMirror Styles */
+.ProseMirror {
+  @apply outline-none min-h-full prose max-w-none;
+  font-family: var(--minimal-font);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  padding: 24px 20px;
+}
+
+@media (min-width: 768px) {
+  .ProseMirror {
+    padding: 40px 60px;
+  }
+}
+
+.ProseMirror p { 
+  @apply mb-6; 
+  font-size: var(--editor-font-size);
+  line-height: var(--editor-line-height);
+  color: var(--minimal-text); 
+}
+.ProseMirror h1 { @apply text-minimal-accent mt-12 mb-8 font-extrabold tracking-tight border-b-2 border-minimal-accent/20 pb-4; font-size: 42px; }
+.ProseMirror h2 { @apply text-blue-500 mt-16 mb-6 font-bold tracking-tight border-b border-blue-500/10 pb-2; font-size: 30px; }
+.ProseMirror h3 { @apply text-indigo-500 mt-10 mb-4 font-bold; font-size: 24px; }
+.ProseMirror strong { @apply text-minimal-text font-bold; color: #1a567e; }
+.ProseMirror em { @apply italic text-minimal-muted/80; }
+.ProseMirror ul { @apply list-disc ps-8 mb-6 space-y-2; }
+.ProseMirror ol { @apply list-decimal ps-8 mb-6 space-y-2; }
+.ProseMirror li { @apply ps-2 font-medium; }
+.ProseMirror img { @apply max-w-full h-auto rounded-xl shadow-md my-8 border border-minimal-border block mx-auto; }
+.ProseMirror blockquote { @apply border-s-8 border-minimal-accent/30 bg-minimal-sidebar/50 ps-6 py-4 italic text-minimal-muted my-8 rounded-e-lg; }
+.ProseMirror a { @apply text-minimal-accent underline decoration-minimal-accent/30 underline-offset-2; }
+.ProseMirror pre { @apply bg-zinc-900 shadow-2xl text-zinc-100 p-8 rounded-2xl my-10 overflow-x-auto font-mono text-[13px] leading-relaxed border border-zinc-700/50 relative; background-image: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent); }
+.ProseMirror .hljs-container::before {
+  content: attr(data-language);
+  @apply absolute top-0 end-6 px-3 py-1 bg-zinc-800 text-[10px] font-bold text-zinc-400 uppercase rounded-b border border-t-0 border-zinc-700/50 tracking-widest z-[10];
+}
+.ProseMirror pre[data-language]::before {
+  display: none;
+}
+.ProseMirror code { @apply bg-minimal-accent/5 px-2 py-0.5 rounded border border-minimal-accent/20 font-mono text-sm text-minimal-accent font-semibold transition-colors hover:bg-minimal-accent/10; }
+
+/* AI Draft Styles */
+.ai-draft-generating {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-bottom: 2px solid #3b82f6;
+  animation: ai-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ai-draft-highlight {
+  background-color: rgba(59, 130, 246, 0.15);
+  transition: background-color 0.3s ease;
+  border-radius: 2px;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 1; border-color: #3b82f6; }
+  50% { opacity: .5; border-color: transparent; }
+}
+
+/* Syntax Highlighting */
+.hljs-comment, .hljs-quote { color: #94a3b8; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-addition { color: #f472b6; font-weight: 600; }
+.hljs-number, .hljs-string, .hljs-meta .hljs-meta-string, .hljs-literal, .hljs-doctag, .hljs-regexp { color: #4ade80; }
+.hljs-attribute, .hljs-attr, .hljs-variable, .hljs-template-variable, .hljs-class .hljs-title, .hljs-type { color: #fbbf24; }
+.hljs-symbol, .hljs-bullet, .hljs-subst, .hljs-meta, .hljs-selector-id, .hljs-selector-class, .hljs-link { color: #38bdf8; }
+.hljs-built_in, .hljs-deletion { color: #fb7185; }
+.hljs-formula { background: #fee2e2; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: bold; }
+.hljs-params { color: #cbd5e1; }
+.hljs-title, .hljs-section { color: #818cf8; }
+
+.ProseMirror-focused {
+  @apply outline-none;
+}
+
+.ProseMirror hr {
+  @apply border-t-2 border-minimal-border my-10;
+}
+.ProseMirror table {
+  @apply w-full border-collapse my-8 border-2 border-minimal-border rounded-lg overflow-hidden;
+}
+.ProseMirror th, .ProseMirror td {
+  @apply border border-minimal-border p-3 text-start min-w-[100px] relative;
+  font-size: 14px;
+}
+.ProseMirror th {
+  @apply bg-minimal-sidebar font-bold text-minimal-text border-b-2 border-minimal-border;
+}
+.ProseMirror .selectedCell:after {
+  @apply absolute inset-0 bg-minimal-accent/10 content-[''] pointer-events-none;
+}
+.ProseMirror .column-resize-handle {
+  @apply absolute right-[-2px] top-0 bottom-0 w-[4px] bg-minimal-accent/40 cursor-col-resize z-[10];
+}
+
+.ProseMirror-placeholder:before {
+  content: attr(data-placeholder);
+  @apply text-minimal-muted/40 absolute pointer-events-none;
+}
+
+/* Focus Mode Styles */
+.focus-mode-active {
+  transition: all 0.5s ease;
+}
+
+.typewriter-mode {
+  padding-bottom: 50vh !important;
+}
+
+.focus-mode-active .ProseMirror > * {
+  opacity: 0.2;
+  filter: blur(1.5px);
+  transition: all 0.5s ease;
+}
+
+.focus-mode-active .ProseMirror > .is-focused-node {
+  opacity: 1;
+  filter: blur(0);
+}
+
+/* UML Rendering Styles */
+.uml-code-block-container {
+  @apply relative my-8 flex flex-col gap-4;
+}
+
+.uml-code-block-editor pre {
+  margin: 0 !important;
+}
+
+.uml-diagram-preview {
+  @apply max-w-full h-auto rounded-xl shadow-2xl border border-minimal-border bg-white p-6 mx-auto transition-all duration-500 hover:scale-[1.02];
+}
+
+.uml-code-block-container.is-rendering .uml-diagram-preview {
+  @apply opacity-50 grayscale scale-[0.98];
+}
+
+.uml-code-block-container::after {
+  content: "Live Diagram Rendering";
+  @apply absolute -top-3 left-6 text-[9px] font-bold text-minimal-accent bg-white px-2 py-0.5 rounded border border-minimal-accent/20 uppercase tracking-widest opacity-0 transition-opacity;
+}
+
+.uml-code-block-container:hover::after {
+  @apply opacity-100;
+}
+
+.prose-first-child-no-margin .ProseMirror > *:first-child {
+  margin-top: 0 !important;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply antialiased text-minimal-text bg-minimal-bg transition-colors duration-500 overflow-x-hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global Transition Utility */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 400ms, transform 400ms;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--minimal-border);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--minimal-muted);
+}
+
+/* Task & Priority Decorations */
+.task-priority {
+  @apply font-bold px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider mx-1 select-none cursor-pointer;
+  border: 1px solid currentColor;
+}
+
+.task-priority-high {
+  @apply bg-red-500/10 text-red-500 border-red-500/30;
+}
+
+.task-priority-medium {
+  @apply bg-amber-500/10 text-amber-500 border-amber-500/30;
+}
+
+.task-priority-low {
+  @apply bg-blue-500/10 text-blue-500 border-blue-500/30;
+}
+
+.task-checkbox {
+  @apply font-mono text-minimal-accent font-bold cursor-pointer hover:bg-minimal-accent/10 rounded px-1 transition-colors;
+}
+
+.task-checkbox-checked {
+  @apply text-emerald-500 line-through opacity-50;
+}
+
+/* Toolbar Refinements */
+.bubble-menu-active {
+  @apply shadow-2xl;
+}
+
+.side-toolbar-btn {
+  @apply opacity-0 pointer-events-none;
+}
+
+.group:hover .side-toolbar-btn {
+  @apply opacity-100 pointer-events-auto;
+}
+
+.search-match-current {
+  position: relative;
+}
+.search-match-current:hover::after {
+  content: "Relevance: " attr(data-relevance);
+  @apply fixed bg-zinc-800 text-white text-[9px] px-2 py-1 rounded shadow-xl border border-zinc-700 -mt-8 left-1/2 -translate-x-1/2 z-[200] pointer-events-none font-bold uppercase tracking-widest whitespace-nowrap;
+}
+.search-match:hover::after {
+  content: "Rel: " attr(data-relevance);
+  @apply absolute bg-zinc-800/90 text-white text-[8px] px-1.5 py-0.5 rounded border border-zinc-700 -mt-6 left-1/2 -translate-x-1/2 z-[200] pointer-events-none font-bold;
+}
+

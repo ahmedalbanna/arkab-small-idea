@@ -1,0 +1,175 @@
+737:    <div
+777:              <div className="p-4 border-b border-minimal-border flex justify-between items-center bg-minimal-sidebar">
+783:              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+792:                <div className="space-y-1">
+825:              <div className="p-4 md:p-6 border-b border-minimal-border flex justify-between items-center bg-minimal-sidebar">
+826:                <div className="flex items-center gap-2">
+827:                  <div className="w-8 h-8 rounded-lg bg-minimal-accent flex items-center justify-center text-white shadow-lg">
+830:                  <div>
+832:                    <div className="flex items-center gap-1.5 mt-1">
+833:                      <div className={cn(
+844:                <div className="flex items-center gap-1">
+869:              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+870:                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8" ref={chatScrollRef}>
+872:                    <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40 py-12">
+873:                      <div className="w-12 h-12 rounded-2xl bg-minimal-border flex items-center justify-center">
+876:                      <div>
+885:                      <div className="flex items-center justify-between sticky top-0 bg-minimal-bg/80 backdrop-blur pb-2 z-10 border-b border-minimal-border/30 mb-4 px-1">
+887:                        <div className="flex gap-2">
+914:                      <div className="space-y-6 pb-4">
+916:                          <div key={idx} className={cn(
+920:                            <div className={cn(
+927:                                <div className="flex flex-wrap gap-2 mb-3">
+939:                              <div className="markdown-body">
+944:                                <div className="absolute top-0 right-0 -mr-2 -mt-2 flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+983:                          <div className="flex flex-col gap-2 items-start mr-auto max-w-[90%]">
+984:                            <div className="px-5 py-3 bg-minimal-sidebar border border-minimal-border rounded-2xl rounded-tl-none flex items-center gap-1.5">
+1001:                <div className="p-4 md:p-6 bg-minimal-sidebar border-t border-minimal-border">
+1004:                      <div className="flex flex-wrap gap-2 mb-3 px-1">
+1006:                          <div key={idx} className="relative group/img">
+1024:                    <div className="flex items-center gap-1 mb-2 px-1">
+1028:                      <div className="w-px h-3 bg-minimal-border mx-1" />
+1039:                        <div className="ml-auto flex items-center gap-1">
+1046:                    <div className="relative group">
+1066:                      <div className="absolute top-2 right-3">
+1072:                      <div className="mt-4 grid grid-cols-2 gap-2">
+1102:              <div className="p-4 border-b border-minimal-border flex justify-between items-center bg-minimal-sidebar px-6">
+1103:                <div>
+1111:              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+1113:                  <div className="h-full flex flex-col items-center justify-center text-center opacity-30 py-12">
+1119:                    <div
+1123:                      <div className="flex justify-between items-start mb-2" onClick={() => loadChat(chat)}>
+1132:                      <div className="flex items-center gap-2 pt-3 border-t border-minimal-border/50">
+1185:              <div className="p-4 md:p-6 border-b border-minimal-border flex justify-between items-center bg-minimal-sidebar">
+1186:                <div className="flex items-center gap-2">
+1187:                  <div className="w-8 h-8 rounded-lg bg-minimal-accent flex items-center justify-center text-white shadow-lg">
+1190:                  <div>
+1203:              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar">
+1205:                <div className="flex bg-minimal-sidebar rounded-xl p-1 gap-1">
+1223:                <div className="space-y-4">
+1224:                  <div className="space-y-2">
+1228:                    <div className="grid grid-cols-3 gap-2">
+1252:                  <div className="space-y-2">
+1256:                    <div className="relative group/model">
+1276:                      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-minimal-muted">
+1283:                  <div className="pt-2">
+1285:                      <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+1298:                      <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+1311:                      <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+1324:                      <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+1338:                <div className="flex items-center justify-between pt-6 border-t border-minimal-border">
+1347:                <div className="bg-minimal-accent/5 border border-minimal-accent/20 rounded-2xl p-4">
+1355:                  <div className="mt-2 flex items-center gap-2 border-t border-minimal-accent/10 pt-2">
+1356:                    <div className="w-2 h-2 rounded-full bg-minimal-accent animate-pulse" />
+1375:            <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/50">
+1376:              <div className="flex items-center gap-2">
+1377:                <div className="w-6 h-6 rounded-lg bg-minimal-accent/10 flex items-center justify-center text-minimal-accent">
+1382:              <div className="flex items-center gap-2">
+1392:            <div className="flex-1 overflow-y-auto p-6 bg-minimal-bg custom-scrollbar">
+1393:              <div className="prose prose-sm max-w-none font-medium text-minimal-text leading-relaxed prose-headings:text-minimal-accent prose-headings:font-bold prose-p:mb-4">
+1398:            <div className="p-4 bg-minimal-sidebar border-t border-minimal-border">
+1399:              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+1439:        <div className="flex-1 flex overflow-x-auto snap-x snap-mandatory flex gap-8 p-8 md:p-12 custom-scrollbar bg-minimal-sidebar/50">
+1444:              <div 
+1448:                <div className="px-6 py-3 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/30 rounded-t-xl">
+1449:                  <div className="flex items-center gap-3">
+1450:                    <div className="w-6 h-6 rounded-lg bg-minimal-accent text-white flex items-center justify-center text-[10px] font-bold">
+1462:                <div className="flex-1 flex flex-col min-h-0">
+1528:            <div className="p-4 bg-minimal-sidebar rounded-full group-hover:rotate-180 transition-transform duration-500">
+1536:          <div className="fixed top-8 right-8 z-50 flex flex-col gap-3">
+1597:            <div className="h-px bg-minimal-border/30 mx-3 my-1" />
+1599:            <div className="h-px bg-minimal-border/30 mx-3 my-1" />
+1682:            <div className="h-px bg-minimal-border/30 mx-3 my-1" />
+1712:            <div className="relative">
+1723:              {showSnapshots && <div className="absolute right-full mr-4 top-0 flex flex-col gap-1 w-48 bg-minimal-bg border border-minimal-border rounded-2xl shadow-2xl p-2 z-[60]">
+1724:                <div className="px-3 py-1.5 border-b border-minimal-border flex items-center justify-between">
+1730:                <div className="max-h-48 overflow-y-auto p-1 py-1.5 space-y-1">
+1735:                      <div
+1746:                        <div className="flex justify-between items-center mb-0.5">
+1767:            <div className="relative">
+1778:              {showFileActions && <div className="absolute right-full mr-4 bottom-0 flex flex-col gap-1 w-56 bg-minimal-bg border border-minimal-border rounded-2xl shadow-2xl p-2 z-[60]">
+1779:                <div className="px-3 py-1.5 border-b border-minimal-border">
+1782:                <div className="p-1 space-y-1">
+1788:                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 group-hover/item:bg-emerald-500 group-hover/item:text-white transition-colors">
+1791:                    <div>
+1797:                  <div className="h-px bg-minimal-border/30 my-1 mx-2" />
+1808:                    <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500 group-hover/item:bg-red-500 group-hover/item:text-white transition-colors">
+1820:                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 group-hover/item:bg-blue-500 group-hover/item:text-white transition-colors">
+1829:                    <div className="w-8 h-8 rounded-lg bg-minimal-border flex items-center justify-center text-minimal-muted group-hover/item:bg-minimal-muted group-hover/item:text-minimal-bg transition-colors">
+1841:                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
+1861:                <div className="flex items-center gap-2">
+1862:                  <div className="flex-1 bg-minimal-sidebar rounded-lg flex items-center px-3 border border-minimal-border focus-within:border-minimal-accent transition-colors">
+1877:                      <div className="text-[10px] font-bold text-minimal-accent px-1.5 py-0.5 bg-minimal-accent/10 rounded mr-1">
+1881:                    <div className="flex items-center gap-1 ml-2">
+1925:                    <div className="flex flex-col gap-1 px-1">
+1926:                      <div className="flex justify-between items-center text-[9px] font-bold text-minimal-muted uppercase tracking-wider">
+1930:                      <div className="h-1 bg-minimal-sidebar rounded-full overflow-hidden">
+1931:                         <div 
+1938:                  <div className="flex gap-1">
+1948:                <div className="flex items-center gap-2">
+1949:                  <div className="flex-1 bg-minimal-sidebar rounded-lg flex items-center px-3 border border-minimal-border focus-within:border-minimal-accent transition-colors">
+1959:                  <div className="flex gap-1">
+1987:                <div className="h-full relative">
+2012:                <div className="h-full flex flex-col p-6 space-y-6">
+2013:                  <div className="flex items-center justify-between">
+2028:                  <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
+2030:                      <div 
+2040:                        <div className="flex items-center gap-3">
+2041:                          <div className={cn(
+2047:                          <div>
+2077:            <div className="flex items-center justify-around p-3 pb-6 md:pb-3">
+2083:              <div className="w-px h-8 bg-minimal-border mx-1" />
+2093:          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+2107:              <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/50">
+2114:              <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+2118:                  <div className="grid grid-cols-3 gap-2">
+2140:                  <div className="space-y-2">
+2142:                    <div className="grid grid-cols-2 gap-2">
+2166:                  <div className="grid grid-cols-2 gap-4">
+2167:                    <div className="space-y-2">
+2176:                    <div className="space-y-2">
+2191:                  <div className="space-y-2">
+2193:                    <div className="flex gap-2">
+2213:              <div className="p-4 bg-minimal-sidebar/30 border-t border-minimal-border text-center">
+2224:          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+2238:              <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/50">
+2239:                <div className="flex items-center gap-2">
+2240:                  <div className="w-7 h-7 rounded-lg bg-minimal-accent/10 flex items-center justify-center text-minimal-accent">
+2250:              <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+2254:                  <div className="space-y-1.5">
+2263:                      <div key={s.keys} className="flex items-center justify-between py-1.5 px-3 rounded-xl hover:bg-minimal-sidebar/50 transition-colors">
+2274:                  <div className="space-y-1.5">
+2281:                      <div key={s.keys + s.desc} className="flex items-center justify-between py-1.5 px-3 rounded-xl hover:bg-minimal-sidebar/50 transition-colors">
+2292:                  <div className="space-y-1.5">
+2297:                      <div key={s.keys + s.desc} className="flex items-center justify-between py-1.5 px-3 rounded-xl hover:bg-minimal-sidebar/50 transition-colors">
+2306:              <div className="p-4 bg-minimal-sidebar/30 border-t border-minimal-border text-center">
+2326:          <div className="flex gap-4 md:gap-8 items-center h-full">
+2327:            <div className="flex gap-4 md:gap-6">
+2328:              <div className="flex flex-col justify-center">
+2332:              <div className="flex flex-col justify-center">
+2338:            <div className="h-6 w-px bg-minimal-border hidden sm:block" />
+2340:            <div className="hidden sm:flex flex-col justify-center">
+2342:              <div className="flex items-center gap-1.5">
+2350:                <div className="h-6 w-px bg-minimal-border hidden md:block" />
+2351:                <div className="flex flex-col justify-center">
+2353:                  <div className="flex items-center gap-3">
+2354:                    <div className="w-16 md:w-32 h-1 bg-minimal-border rounded-full overflow-hidden hidden sm:block">
+2374:          <div className="flex gap-4 md:gap-6 items-center">
+2376:            <div className="flex gap-2 items-center">
+2379:                <div 
+2392:              <div className="flex items-center">
+2404:                  <div className="flex items-center gap-2 px-2 py-1 rounded-sm bg-yellow-500/5 text-yellow-600 border border-yellow-500/10">
+2407:                    <div className="w-10 h-1 bg-yellow-500/10 rounded-full overflow-hidden">
+2408:                      <div className="h-full bg-yellow-500 transition-all duration-300" style={{ width: `${embeddingProgress}%` }} />
+2413:                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-emerald-500/5 text-emerald-600 border border-emerald-500/10 group cursor-help transition-all animate-in fade-in slide-in-from-right-1 duration-500" title="Local Vector Store Active">
+2419:                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-red-500/5 text-red-600 border border-red-500/10 hover:bg-red-500/10 transition-colors cursor-pointer" onClick={() => embeddingService.loadModel()}>
+2428:            <div className="flex items-center gap-4 text-[9px] font-mono font-bold tracking-[0.2em] opacity-40">
+2431:              <div className="flex items-center gap-4">
+2433:                  <div className="flex items-center gap-2 text-minimal-accent animate-pulse opacity-100 bg-minimal-accent/5 px-2 py-0.5 rounded border border-minimal-accent/10">
+2438:                  <div className="flex items-center gap-3">
+2440:                      <div className="flex items-center gap-2 group cursor-help" title={`${indexedChunks} document chunks and ${indexedEpisodes} conversation snapshots stored locally.`}>
+2441:                        <div className="flex items-center gap-1 text-minimal-text opacity-70">
+2446:                          <div className="flex items-center gap-1 text-minimal-accent/60">
+2457:              <div className="flex items-center gap-1 px-1.5 py-0.5 border border-minimal-muted/20 rounded hover:border-minimal-accent/40 transition-colors">
+2464:              <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded bg-minimal-sidebar/50 border border-minimal-border text-[9px] font-bold text-minimal-muted/70 tracking-widest transition-all">
+2465:                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/60 animate-pulse" />
