@@ -180,22 +180,41 @@ export default function App() {
   }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file.");
+    const imageFiles = Array.from(files).filter((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (imageFiles.length === 0) {
+      alert("Please upload image files.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl && activePage) {
-        editorRefs.current[activePage.id]?.insertImage(dataUrl, file.name);
+    const promises = imageFiles.map((file) => {
+      return new Promise<{ src: string; name: string }>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          resolve({ src: event.target?.result as string, name: file.name });
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(promises).then((results) => {
+      if (activePage) {
+        if (results.length > 1) {
+          editorRefs.current[activePage.id]?.insertGallery(
+            results.map((r) => r.src),
+          );
+        } else {
+          editorRefs.current[activePage.id]?.insertImage(
+            results[0].src,
+            results[0].name,
+          );
+        }
       }
-    };
-    reader.readAsDataURL(file);
+    });
 
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -794,6 +813,7 @@ export default function App() {
         className="hidden"
         accept="image/*"
         onChange={handleImageUpload}
+        multiple
       />
 
       <MobileMenu />

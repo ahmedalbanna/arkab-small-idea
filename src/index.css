@@ -245,6 +245,32 @@
 .ProseMirror-selectednode.image-node-view-container .image-node-view-img {
   @apply ring-2 ring-minimal-accent ring-offset-4 ring-offset-minimal-bg;
 }
+
+/* Gallery Styles */
+.image-gallery {
+  @apply my-8 w-full block clear-both;
+}
+
+.gallery-content {
+  @apply grid gap-4 w-full;
+}
+
+.image-gallery-grid .gallery-content {
+  @apply grid-cols-2 md:grid-cols-3 lg:grid-cols-4;
+}
+
+.image-gallery .image-node-view-container {
+  @apply !my-0 !w-full h-full;
+}
+
+.image-gallery .image-node-view-img {
+  @apply w-full h-full object-cover aspect-square;
+}
+
+.image-gallery .image-caption-input {
+  @apply text-[10px] mt-1;
+}
+
 .ProseMirror blockquote { @apply border-s-8 border-minimal-accent/30 bg-minimal-sidebar/50 ps-6 py-4 italic text-minimal-muted my-8 rounded-e-lg; }
 .ProseMirror a { @apply text-minimal-accent underline decoration-minimal-accent/30 underline-offset-2; }
 .ProseMirror pre { @apply bg-zinc-900 shadow-2xl text-zinc-100 p-8 rounded-2xl my-10 overflow-x-auto font-mono text-[13px] leading-relaxed border border-zinc-700/50 relative; background-image: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent); }

@@ -137,6 +137,30 @@ const editorSchema = new Schema({
           },
         ];
       },
+    })
+    .append({
+      gallery: {
+        group: "block",
+        content: "image*",
+        attrs: {
+          layout: { default: "grid" },
+        },
+        parseDOM: [
+          {
+            tag: "div.image-gallery",
+            getAttrs: (dom: any) => ({
+              layout: dom.getAttribute("data-layout") || "grid",
+            }),
+          },
+        ],
+        toDOM(node) {
+          return [
+            "div",
+            { class: "image-gallery", "data-layout": node.attrs.layout },
+            0,
+          ];
+        },
+      },
     }),
   marks: baseSchema.spec.marks.append({
     strike: {
@@ -188,6 +212,11 @@ const editorSerializer = new MarkdownSerializer(
     },
     table_header: (state, node) => {
       state.renderContent(node);
+    },
+    gallery: (state, node) => {
+      state.write("\n");
+      state.renderContent(node);
+      state.write("\n");
     },
   },
   {
@@ -522,6 +551,34 @@ class ImageNodeView {
   }
 }
 
+class GalleryNodeView {
+  dom: HTMLElement;
+  contentDOM: HTMLElement;
+  node: any;
+  view: any;
+  getPos: any;
+
+  constructor(node: any, view: any, getPos: any) {
+    this.node = node;
+    this.view = view;
+    this.getPos = getPos;
+
+    this.dom = document.createElement("div");
+    this.dom.className = `image-gallery image-gallery-${node.attrs.layout}`;
+
+    this.contentDOM = document.createElement("div");
+    this.contentDOM.className = "gallery-content";
+    this.dom.appendChild(this.contentDOM);
+  }
+
+  update(node: any) {
+    if (node.type !== this.node.type) return false;
+    this.node = node;
+    this.dom.className = `image-gallery image-gallery-${node.attrs.layout}`;
+    return true;
+  }
+}
+
 interface Props {
   value: string;
   onChange: (value: string) => void;
@@ -566,6 +623,7 @@ export interface EditorRef {
   focus: () => void;
   insertText: (before: string, after?: string) => void;
   insertImage: (src: string, alt?: string, title?: string) => void;
+  insertGallery: (srcs: string[]) => void;
   appendMarkdown: (markdown: string) => void;
   replaceSelectionWithMarkdown: (markdown: string) => void;
   getSelectedText: () => string;
@@ -1033,6 +1091,9 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           image(node, view, getPos) {
             return new ImageNodeView(node, view, getPos);
           },
+          gallery(node, view, getPos) {
+            return new GalleryNodeView(node, view, getPos);
+          },
         },
         clipboardSerializer: DOMSerializer.fromSchema(editorSchema),
         clipboardTextSerializer(slice) {
@@ -1145,30 +1206,49 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         handleDrop(view, event) {
           const files = event.dataTransfer?.files;
           if (files && files.length > 0) {
-            let handled = false;
-            for (let i = 0; i < files.length; i++) {
-              const file = files[i];
-              if (file.type.startsWith("image/")) {
-                const pos = view.posAtCoords({
-                  left: event.clientX,
-                  top: event.clientY,
+            const imageFiles = Array.from(files).filter((f) =>
+              f.type.startsWith("image/"),
+            );
+            if (imageFiles.length === 0) return false;
+
+            const pos = view.posAtCoords({
+              left: event.clientX,
+              top: event.clientY,
+            });
+            const insertPos = pos ? pos.pos : view.state.selection.from;
+
+            if (imageFiles.length > 1) {
+              // Create a gallery
+              const promises = imageFiles.map((file) => {
+                return new Promise<string>((resolve) => {
+                  const reader = new FileReader();
+                  reader.onload = (e) => resolve(e.target?.result as string);
+                  reader.readAsDataURL(file);
                 });
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                  const src = e.target?.result as string;
-                  const node = editorSchema.nodes.image.create({ src });
-                  const tr = view.state.tr;
-                  const insertPos = pos ? pos.pos : view.state.selection.from;
-                  view.dispatch(tr.insert(insertPos, node));
-                };
-                reader.readAsDataURL(file);
-                handled = true;
-              }
+              });
+
+              Promise.all(promises).then((srcs) => {
+                const imageNodes = srcs.map((src) =>
+                  editorSchema.nodes.image.create({ src }),
+                );
+                const galleryNode = editorSchema.nodes.gallery.create(
+                  { layout: "grid" },
+                  imageNodes,
+                );
+                view.dispatch(view.state.tr.insert(insertPos, galleryNode));
+              });
+            } else {
+              // Single image
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                const src = e.target?.result as string;
+                const node = editorSchema.nodes.image.create({ src });
+                view.dispatch(view.state.tr.insert(insertPos, node));
+              };
+              reader.readAsDataURL(imageFiles[0]);
             }
-            if (handled) {
-              event.preventDefault();
-              return true;
-            }
+            event.preventDefault();
+            return true;
           }
           return false;
         },
@@ -1360,6 +1440,21 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
 
         const node = editorSchema.nodes.image.create({ src, alt, title });
         const tr = state.tr.insert(from, node);
+        dispatch(tr);
+      },
+      insertGallery: (srcs: string[]) => {
+        if (!viewRef.current) return;
+        const { state, dispatch } = viewRef.current;
+        const { from } = state.selection;
+
+        const imageNodes = srcs.map((src) =>
+          editorSchema.nodes.image.create({ src }),
+        );
+        const galleryNode = editorSchema.nodes.gallery.create(
+          { layout: "grid" },
+          imageNodes,
+        );
+        const tr = state.tr.insert(from, galleryNode);
         dispatch(tr);
       },
       appendMarkdown: (content: string) => {
@@ -1712,7 +1807,10 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           viewRef.current.dispatch,
         );
       else if (action === "image") onImageUploadRequest?.();
-      else if (
+      else if (action === "gallery") {
+        // We'll prompt for multiple images or just insert an empty one with a placeholder
+        onImageUploadRequest?.(); // Reuse image upload for now, or we could have a specific gallery creator
+      } else if (
         [
           "improve",
           "outline",

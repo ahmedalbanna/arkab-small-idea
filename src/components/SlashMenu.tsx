@@ -32,6 +32,7 @@ const ITEMS: SlashMenuItem[] = [
   { id: 'todo-l', label: 'Low Priority Task', description: '- [ ] (L) Optional items', icon: CheckCheck, action: 'todo-low' },
   { id: 'code', label: 'Code Block', description: 'Code with syntax highlighting', icon: Code, action: 'code' },
   { id: 'image', label: 'Image', description: 'Insert or upload an image', icon: ImageIcon, action: 'image' },
+  { id: 'gallery', label: 'Gallery', description: 'Create an image gallery', icon: Layout, action: 'gallery' },
   { id: 'ai-improve', label: 'AI Improve', description: 'Rewrite the paragraph', icon: Wand2, action: 'ai-improve' },
   { id: 'ai-outline', label: 'AI Outline', description: 'Generate structure', icon: Layout, action: 'ai-outline' },
   { id: 'ai-summarize', label: 'AI Summarize', description: 'Sum up selection', icon: FileText, action: 'summarize' },
