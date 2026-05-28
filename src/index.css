@@ -329,7 +329,19 @@
   font-size: 14px;
 }
 .ProseMirror th {
-  @apply bg-minimal-sidebar font-bold text-minimal-text border-b-2 border-minimal-border;
+  @apply bg-minimal-sidebar font-bold text-minimal-text border-b-2 border-minimal-border cursor-pointer select-none transition-colors hover:bg-minimal-accent/5 pr-8;
+}
+.ProseMirror th::after {
+  content: "↕";
+  @apply absolute right-2 top-1/2 -translate-y-1/2 opacity-20 text-[10px];
+}
+.ProseMirror th[data-sort="asc"]::after {
+  content: "↑";
+  @apply opacity-100 text-minimal-accent font-bold;
+}
+.ProseMirror th[data-sort="desc"]::after {
+  content: "↓";
+  @apply opacity-100 text-minimal-accent font-bold;
 }
 .ProseMirror .selectedCell:after {
   @apply absolute inset-0 bg-minimal-accent/10 content-[''] pointer-events-none;

@@ -8,11 +8,12 @@ import {
 import {
   EditorState,
   Plugin,
+  PluginKey,
   Selection,
   TextSelection,
 } from "prosemirror-state";
 import { EditorView, Decoration, DecorationSet } from "prosemirror-view";
-import { Schema, DOMParser, DOMSerializer, Slice } from "prosemirror-model";
+import { Schema, DOMParser, DOMSerializer, Slice, Node } from "prosemirror-model";
 import { schema as baseSchema } from "prosemirror-markdown";
 import { keymap } from "prosemirror-keymap";
 import { baseKeymap, setBlockType, toggleMark } from "prosemirror-commands";
@@ -93,6 +94,15 @@ const editorSchema = new Schema({
             setDOMAttr(value, attrs) {
               if (value)
                 attrs.style = (attrs.style || "") + `background-color: ${value};`;
+            },
+          },
+          sort: {
+            default: null,
+            getFromDOM(dom) {
+              return dom.getAttribute("data-sort") || null;
+            },
+            setDOMAttr(value, attrs) {
+              if (value) attrs["data-sort"] = value;
             },
           },
         },
@@ -701,6 +711,104 @@ const linkPreviewPlugin = new Plugin({
   },
 });
 
+const tableSortKey = new PluginKey("tableSort");
+
+const tableSortPlugin = new Plugin({
+  key: tableSortKey,
+  props: {
+    handleDOMEvents: {
+      click(view, event) {
+        const target = event.target as HTMLElement;
+        const th = target.closest("th");
+        if (!th) return false;
+
+        const pos = view.posAtDOM(th, 0);
+        if (pos === null) return false;
+
+        const $pos = view.state.doc.resolve(pos);
+        // Find the parent table node
+        let tableDepth = -1;
+        for (let d = $pos.depth; d > 0; d--) {
+          if ($pos.node(d).type.name === "table") {
+            tableDepth = d;
+            break;
+          }
+        }
+        if (tableDepth === -1) return false;
+
+        const tableNode = $pos.node(tableDepth);
+        const tablePos = $pos.before(tableDepth);
+
+        // Find cell position info
+        const cellNode = $pos.node($pos.depth);
+        if (cellNode.type.name !== "table_header") return false;
+
+        // Determine column index
+        let columnIndex = -1;
+        const headerRow = tableNode.firstChild;
+        if (!headerRow) return false;
+        headerRow.forEach((cell, _, i) => {
+          if (cell === cellNode) columnIndex = i;
+        });
+
+        if (columnIndex === -1) return false;
+
+        // Toggle sort based on current data-sort attribute (if any)
+        const currentSort = th.getAttribute("data-sort");
+        const ascending = currentSort !== "asc";
+
+        // Collect rows
+        const rows: Node[] = [];
+        tableNode.forEach((row) => rows.push(row));
+
+        if (rows.length < 2) return true;
+
+        const bodyRows = rows.slice(1);
+
+        bodyRows.sort((a, b) => {
+          const cellA = a.child(columnIndex).textContent.trim();
+          const cellB = b.child(columnIndex).textContent.trim();
+          
+          const isNumA = !isNaN(Number(cellA)) && cellA !== "";
+          const isNumB = !isNaN(Number(cellB)) && cellB !== "";
+
+          if (isNumA && isNumB) {
+            return ascending ? Number(cellA) - Number(cellB) : Number(cellB) - Number(cellA);
+          }
+          
+          return ascending 
+            ? cellA.localeCompare(cellB, undefined, { numeric: true, sensitivity: 'base' })
+            : cellB.localeCompare(cellA, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        const newTable = tableNode.type.create(tableNode.attrs, [headerRow, ...bodyRows]);
+        const tr = view.state.tr.replaceWith(tablePos, tablePos + tableNode.nodeSize, newTable);
+        
+        // Update data-sort attribute on the new table's header cell if possible
+        // Actually it's easier to just use decoration in NodeView, but let's try to set attribute
+        // Since we are replacing the whole table, we need to make sure the specific cell has the attr
+        const finalTable = tr.doc.nodeAt(tablePos);
+        if (finalTable) {
+          // Re-create the header row with the sort attribute on the target cell
+          const cells: Node[] = [];
+          headerRow.forEach((cell, _, i) => {
+            if (i === columnIndex) {
+              cells.push(cell.type.create({ ...cell.attrs, sort: ascending ? "asc" : "desc" }, cell.content));
+            } else {
+              cells.push(cell.type.create({ ...cell.attrs, sort: null }, cell.content));
+            }
+          });
+          const newHeader = headerRow.type.create(headerRow.attrs, cells);
+          tr.replaceWith(tablePos + 1, tablePos + 1 + headerRow.nodeSize, newHeader);
+        }
+
+        view.dispatch(tr);
+        return true;
+      }
+    }
+  }
+});
+
 const ProseMirrorEditor = forwardRef<EditorRef, Props>(
   (
     {
@@ -973,6 +1081,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           typewriterPlugin,
           focusModePlugin,
           searchPlugin,
+          tableSortPlugin,
           new Plugin({
             props: {
               handleDOMEvents: {
