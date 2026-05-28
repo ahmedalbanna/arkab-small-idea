@@ -178,11 +178,35 @@
 
 /* Image NodeView Styles */
 .image-node-view-container {
-  @apply flex flex-col items-center my-8 relative;
+  @apply flex flex-col my-8 relative transition-all duration-300;
+}
+
+.image-node-view-container.float-left {
+  @apply float-left mr-8 mb-4 max-w-[50%];
+}
+
+.image-node-view-container.float-right {
+  @apply float-right ml-8 mb-4 max-w-[50%];
+}
+
+.image-node-view-container[data-align="left"]:not(.float-left) {
+  @apply items-start;
+}
+
+.image-node-view-container[data-align="center"] {
+  @apply items-center mx-auto;
+}
+
+.image-node-view-container[data-align="right"]:not(.float-right) {
+  @apply items-end;
 }
 
 .image-node-view-img {
-  @apply max-w-full h-auto rounded-xl shadow-md border border-minimal-border transition-all duration-300 !my-0;
+  @apply w-full h-auto rounded-xl shadow-md border border-minimal-border transition-all duration-300 !my-0 cursor-default select-none;
+}
+
+.image-resizer-handle {
+  @apply absolute bottom-1 right-1 w-4 h-4 bg-minimal-accent rounded-full cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity border-2 border-minimal-bg shadow-sm z-30;
 }
 
 .image-node-view-container:hover .image-node-view-img {
@@ -190,11 +214,32 @@
 }
 
 .image-caption-input {
-  @apply mt-3 w-full max-w-[500px] text-center bg-transparent border-none outline-none text-[12px] text-minimal-muted/60 font-medium placeholder:text-minimal-muted/30 italic transition-all;
+  @apply mt-3 w-full max-w-[500px] bg-transparent border-none outline-none text-[12px] text-minimal-muted/60 font-medium placeholder:text-minimal-muted/30 italic transition-all;
 }
+
+.image-node-view-container[data-align="left"] .image-caption-input { @apply text-start; }
+.image-node-view-container[data-align="center"] .image-caption-input { @apply text-center; }
+.image-node-view-container[data-align="right"] .image-caption-input { @apply text-end; }
 
 .image-caption-input:focus {
   @apply text-minimal-text text-minimal-accent/80;
+}
+
+.image-alignment-toolbar {
+  @apply absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-minimal-bg/95 backdrop-blur-md border border-minimal-border rounded-lg shadow-xl opacity-0 translate-y-2 pointer-events-none transition-all duration-200 z-50;
+}
+
+.image-node-view-container:hover .image-alignment-toolbar,
+.ProseMirror-selectednode.image-node-view-container .image-alignment-toolbar {
+  @apply opacity-100 translate-y-0 pointer-events-auto;
+}
+
+.align-btn {
+  @apply w-8 h-8 flex items-center justify-center rounded-md text-minimal-muted/60 hover:bg-minimal-sidebar hover:text-minimal-text transition-all;
+}
+
+.align-btn.active {
+  @apply bg-minimal-accent/10 text-minimal-accent;
 }
 
 .ProseMirror-selectednode.image-node-view-container .image-node-view-img {
