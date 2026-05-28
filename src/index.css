@@ -343,6 +343,28 @@
   content: "↓";
   @apply opacity-100 text-minimal-accent font-bold;
 }
+
+/* Table Row Actions */
+.ProseMirror tr {
+  @apply relative transition-colors duration-200;
+}
+
+.ProseMirror tr:hover {
+  @apply bg-minimal-accent/[0.03];
+}
+
+.table-row-delete-handle {
+  @apply absolute -left-10 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-red-50 text-red-500 opacity-0 transition-all hover:bg-red-500 hover:text-white cursor-pointer z-10 border border-red-100 shadow-sm scale-90 hover:scale-100;
+}
+
+.ProseMirror tr:hover > .table-row-delete-handle {
+  @apply opacity-100;
+}
+
+/* Hide handle for header rows if desired, or keep it to delete the header row too */
+.ProseMirror th .table-row-delete-handle {
+  @apply hidden;
+}
 .ProseMirror .selectedCell:after {
   @apply absolute inset-0 bg-minimal-accent/10 content-[''] pointer-events-none;
 }

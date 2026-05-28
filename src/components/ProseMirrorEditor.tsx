@@ -809,6 +809,75 @@ const tableSortPlugin = new Plugin({
   }
 });
 
+const tableRowActionsKey = new PluginKey("tableRowActions");
+
+const tableRowActionsPlugin = new Plugin({
+  key: tableRowActionsKey,
+  state: {
+    init() { return DecorationSet.empty; },
+    apply(tr, set) {
+      set = set.map(tr.mapping, tr.doc);
+      if (tr.docChanged) {
+        const decorations: Decoration[] = [];
+        tr.doc.descendants((node, pos) => {
+          if (node.type.name === "table_row") {
+            const widget = document.createElement("div");
+            widget.className = "table-row-delete-handle";
+            widget.title = "Delete row";
+            widget.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`;
+            
+            // We use a closure or a data attribute to store the position since it might change
+            // Actually DecorationSet.map handles position mapping
+            widget.setAttribute("data-pos", pos.toString());
+            widget.setAttribute("data-size", node.nodeSize.toString());
+
+            decorations.push(Decoration.widget(pos + 1, widget, { key: `delete-${pos}` }));
+          }
+        });
+        return DecorationSet.create(tr.doc, decorations);
+      }
+      return set;
+    }
+  },
+  props: {
+    decorations(state) {
+      return tableRowActionsKey.getState(state);
+    },
+    handleDOMEvents: {
+      mousedown(view, event) {
+        const target = event.target as HTMLElement;
+        const handle = target.closest(".table-row-delete-handle");
+        if (handle) {
+          event.preventDefault();
+          event.stopPropagation();
+          
+          // Re-find the handle pos using ProseMirror state because it might have shifted
+          const posAtDom = view.posAtDOM(handle, 0);
+          if (posAtDom === null) return false;
+          
+          // Find the row node
+          const $pos = view.state.doc.resolve(posAtDom);
+          const rowNode = $pos.node($pos.depth);
+          if (rowNode.type.name !== "table_row") return false;
+          
+          const rowPos = $pos.before($pos.depth);
+          
+          // Check if it's the only row in the table (maybe we want to delete the whole table then?)
+          const tableNode = $pos.node($pos.depth - 1);
+          if (tableNode.childCount <= 1) {
+            const tablePos = $pos.before($pos.depth - 1);
+            view.dispatch(view.state.tr.delete(tablePos, tablePos + tableNode.nodeSize));
+          } else {
+            view.dispatch(view.state.tr.delete(rowPos, rowPos + rowNode.nodeSize));
+          }
+          return true;
+        }
+        return false;
+      }
+    }
+  }
+});
+
 const ProseMirrorEditor = forwardRef<EditorRef, Props>(
   (
     {
@@ -1082,6 +1151,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           focusModePlugin,
           searchPlugin,
           tableSortPlugin,
+          tableRowActionsPlugin,
           new Plugin({
             props: {
               handleDOMEvents: {
