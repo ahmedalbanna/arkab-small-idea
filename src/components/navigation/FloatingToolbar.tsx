@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, FileText, Cpu, Search, FolderRoot, Type, Target, Settings, Trash2, Languages, Zap, Command } from 'lucide-react';
+import { Sparkles, FileText, Cpu, Search, FolderRoot, Type, Target, Settings, Trash2, Languages, Zap, Command, Headset } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useUIStore } from '../../stores/uiStore';
 
@@ -20,13 +20,15 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     showSearch, setSearch,
     showSemanticFolders, setSemanticFolders,
     showSettings, setSettings,
-    showQuickCommands, setQuickCommands
+    showQuickCommands, setQuickCommands,
+    showTTS, setTTS
   } = useUIStore();
 
   return (
     <div className="fixed top-8 right-8 z-[60] flex flex-col gap-3">
       {[
         { id: 'ai', icon: Sparkles, active: showAIAssistant, action: () => setAIAssistant(!showAIAssistant), title: 'AI Assistant' },
+        { id: 'tts', icon: Headset, active: showTTS, action: () => setTTS(!showTTS), title: 'Text to Speech' },
         { id: 'pages', icon: FileText, active: showPages, action: () => setPagesMenu(!showPages), title: 'Pages Manager' },
         { id: 'cpu', icon: Cpu, active: showAiSettings, action: () => setAiSettings(!showAiSettings), title: 'AI Provider Settings' },
         { id: 'search', icon: Search, active: showSearch, action: () => setSearch(!showSearch), title: 'Find & Replace' },

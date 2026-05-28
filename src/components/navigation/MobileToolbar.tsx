@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 
 interface MobileToolbarProps {
@@ -14,7 +14,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   fileInputRef,
   insertText
 }) => {
-  const { setAIAssistant } = useUIStore();
+  const { setAIAssistant, setTTS, showTTS } = useUIStore();
 
   return (
     <motion.div
@@ -30,6 +30,12 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         <button onClick={() => insertText('[', '](url)')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><LinkIcon className="w-5 h-5" /></button>
         <button onClick={() => fileInputRef.current?.click()} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><ImageIcon className="w-5 h-5" /></button>
         <div className="w-px h-8 bg-minimal-border mx-1" />
+        <button 
+          onClick={() => setTTS(!showTTS)} 
+          className={`p-3 rounded-xl transition-colors ${showTTS ? 'bg-minimal-accent text-white' : 'bg-minimal-sidebar text-minimal-muted hover:text-minimal-text'}`}
+        >
+          <Headset className="w-5 h-5" />
+        </button>
         <button onClick={() => setAIAssistant(true)} className="p-3 bg-minimal-accent/10 rounded-xl text-minimal-accent transition-colors"><Sparkles className="w-5 h-5" /></button>
       </div>
     </motion.div>

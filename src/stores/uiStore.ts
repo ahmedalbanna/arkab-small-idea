@@ -17,6 +17,8 @@ interface UIState {
   indexedChunks: number;
   indexedEpisodes: number;
   isAutoSaving: boolean;
+  showTTS: boolean;
+  ttsRate: number;
   
   toggleSuperZen: () => void;
   toggleAIAssistant: () => void;
@@ -34,6 +36,8 @@ interface UIState {
   setIndexing: (indexing: boolean) => void;
   setIndexedCounts: (chunks: number, episodes: number) => void;
   setAutoSaving: (isAutoSaving: boolean) => void;
+  setTTS: (show: boolean | ((prev: boolean) => boolean)) => void;
+  setTTSRate: (rate: number | ((prev: number) => number)) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -54,6 +58,8 @@ export const useUIStore = create<UIState>()(
       indexedChunks: 0,
       indexedEpisodes: 0,
       isAutoSaving: false,
+      showTTS: false,
+      ttsRate: 1,
 
       toggleSuperZen: () => set((state) => ({ isSuperZen: !state.isSuperZen })),
       toggleAIAssistant: () => set((state) => ({ showAIAssistant: !state.showAIAssistant })),
@@ -93,6 +99,12 @@ export const useUIStore = create<UIState>()(
       setIndexing: (isIndexing) => set({ isIndexing }),
       setIndexedCounts: (indexedChunks, indexedEpisodes) => set({ indexedChunks, indexedEpisodes }),
       setAutoSaving: (isAutoSaving: boolean) => set({ isAutoSaving }),
+      setTTS: (showTTS) => set((state) => ({ 
+        showTTS: typeof showTTS === 'function' ? showTTS(state.showTTS) : showTTS 
+      })),
+      setTTSRate: (ttsRate) => set((state) => ({ 
+        ttsRate: typeof ttsRate === 'function' ? ttsRate(state.ttsRate) : ttsRate 
+      })),
     }),
     {
       name: 'ink-quill-ui-storage',

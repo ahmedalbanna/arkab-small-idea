@@ -34,6 +34,7 @@ import { ImportModal } from "./components/overlays/ImportModal";
 import { StatusBar } from "./components/layout/StatusBar";
 import { MobileToolbar } from "./components/navigation/MobileToolbar";
 import { SemanticFolders } from "./components/SemanticFolders";
+import TTSSpeaker from "./components/TTSSpeaker";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "./lib/utils";
@@ -933,6 +934,8 @@ export default function App() {
           }
         }}
       />
+
+      <TTSSpeaker />
 
       <StatusBar
         wordCount={wordCount}
