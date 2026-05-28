@@ -263,7 +263,10 @@ const editorParser = new MarkdownParser(editorSchema, tokenizer, {
 class UmlNodeView {
   dom: HTMLElement;
   contentDOM: HTMLElement;
+  imgWrapper: HTMLElement;
   img: HTMLImageElement | null = null;
+  errorDOM: HTMLElement | null = null;
+  toolbar: HTMLElement;
   node: any;
   view: any;
   getPos: any;
@@ -275,11 +278,19 @@ class UmlNodeView {
     this.view = view;
     this.getPos = getPos;
     this.dom = document.createElement("div");
-    this.dom.className = "uml-code-block-container";
+    this.dom.className = "uml-code-block-container group";
 
     this.contentDOM = document.createElement("pre");
     this.contentDOM.className = "uml-code-block-editor";
     this.dom.appendChild(this.contentDOM);
+
+    this.imgWrapper = document.createElement("div");
+    this.imgWrapper.className = "uml-diagram-wrapper";
+    this.dom.appendChild(this.imgWrapper);
+
+    this.toolbar = document.createElement("div");
+    this.toolbar.className = "uml-diagram-toolbar";
+    this.dom.appendChild(this.toolbar);
 
     // Add a slight delay to ensure content is available or wait for update
     this.scheduleUpdate();
@@ -298,7 +309,7 @@ class UmlNodeView {
   }
 
   updateImage() {
-    const lang = this.node.attrs.params || "";
+    const lang = (this.node.attrs.params || "").trim().toLowerCase();
     const umlLangs = [
       "mermaid",
       "plantuml",
@@ -319,27 +330,92 @@ class UmlNodeView {
       "nwdiag",
     ];
 
-    if (umlLangs.includes(lang.trim().toLowerCase())) {
-      const url = getKrokiUrl(lang.trim(), this.node.textContent);
+    if (umlLangs.includes(lang)) {
+      const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const url = getKrokiUrl(lang, this.node.textContent, theme as any);
+      
       if (url) {
         if (!this.img) {
           this.img = document.createElement("img");
           this.img.className = "uml-diagram-preview";
-          this.dom.appendChild(this.img);
+          this.imgWrapper.appendChild(this.img);
         }
+        
         this.img.src = url;
-        this.dom.classList.add("is-rendering");
-        this.img.onload = () => this.dom.classList.remove("is-rendering");
-      } else if (this.img) {
-        this.img.remove();
-        this.img = null;
-        this.dom.classList.remove("is-rendering");
+        this.imgWrapper.classList.add("is-rendering");
+        
+        if (this.errorDOM) {
+          this.errorDOM.remove();
+          this.errorDOM = null;
+        }
+
+        this.img.onload = () => {
+          this.imgWrapper.classList.remove("is-rendering");
+          this.updateToolbar(url);
+        };
+        
+        this.img.onerror = () => {
+          this.imgWrapper.classList.remove("is-rendering");
+          this.showError("Failed to render diagram. Check your syntax.");
+        };
+      } else {
+        this.clearPreview();
       }
-    } else if (this.img) {
+    } else {
+      this.clearPreview();
+    }
+  }
+
+  showError(msg: string) {
+    if (!this.errorDOM) {
+      this.errorDOM = document.createElement("div");
+      this.errorDOM.className = "uml-diagram-error flex items-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm italic font-medium";
+      this.errorDOM.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` + msg;
+      this.imgWrapper.appendChild(this.errorDOM);
+    }
+    if (this.img) {
       this.img.remove();
       this.img = null;
-      this.dom.classList.remove("is-rendering");
     }
+    this.toolbar.innerHTML = "";
+  }
+
+  updateToolbar(url: string) {
+    this.toolbar.innerHTML = "";
+    
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "uml-toolbar-btn flex items-center gap-1 px-2 py-1 bg-minimal-sidebar text-minimal-muted hover:text-minimal-accent hover:bg-minimal-accent/10 rounded border border-minimal-border transition-all text-[10px] font-bold uppercase tracking-wider";
+    copyBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+    copyBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      navigator.clipboard.writeText(url);
+      const original = copyBtn.innerHTML;
+      copyBtn.innerHTML = "Copied!";
+      setTimeout(() => {
+        copyBtn.innerHTML = original;
+      }, 2000);
+    };
+    
+    const openBtn = document.createElement("button");
+    openBtn.className = "uml-toolbar-btn flex items-center gap-1 px-2 py-1 bg-minimal-sidebar text-minimal-muted hover:text-minimal-accent hover:bg-minimal-accent/10 rounded border border-minimal-border transition-all text-[10px] font-bold uppercase tracking-wider";
+    openBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Open`;
+    openBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.open(url, "_blank");
+    };
+
+    this.toolbar.appendChild(copyBtn);
+    this.toolbar.appendChild(openBtn);
+  }
+
+  clearPreview() {
+    this.imgWrapper.innerHTML = "";
+    this.img = null;
+    this.errorDOM = null;
+    this.toolbar.innerHTML = "";
+    this.imgWrapper.classList.remove("is-rendering");
   }
 
   destroy() {
@@ -347,12 +423,14 @@ class UmlNodeView {
   }
 
   ignoreSelection() {
-    return true;
+    return false; // Enable selection for text editing
   }
   ignoreMutation() {
     return true;
   }
-  stopEvent() {
+  stopEvent(event: any) {
+    // Don't stop events for the contentDOM
+    if (this.contentDOM.contains(event.target)) return false;
     return true;
   }
 }
