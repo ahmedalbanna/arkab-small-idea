@@ -171,7 +171,35 @@
 .ProseMirror ul { @apply list-disc ps-8 mb-6 space-y-2; }
 .ProseMirror ol { @apply list-decimal ps-8 mb-6 space-y-2; }
 .ProseMirror li { @apply ps-2 font-medium; }
-.ProseMirror img { @apply max-w-full h-auto rounded-xl shadow-md my-8 border border-minimal-border block mx-auto; }
+.ProseMirror img { @apply max-w-full h-auto rounded-xl shadow-md my-8 border border-minimal-border block mx-auto transition-all duration-300; }
+.ProseMirror .ProseMirror-selectednode {
+  @apply ring-2 ring-minimal-accent ring-offset-4 ring-offset-minimal-bg rounded-lg;
+}
+
+/* Image NodeView Styles */
+.image-node-view-container {
+  @apply flex flex-col items-center my-8 relative;
+}
+
+.image-node-view-img {
+  @apply max-w-full h-auto rounded-xl shadow-md border border-minimal-border transition-all duration-300 !my-0;
+}
+
+.image-node-view-container:hover .image-node-view-img {
+  @apply shadow-xl border-minimal-accent/30;
+}
+
+.image-caption-input {
+  @apply mt-3 w-full max-w-[500px] text-center bg-transparent border-none outline-none text-[12px] text-minimal-muted/60 font-medium placeholder:text-minimal-muted/30 italic transition-all;
+}
+
+.image-caption-input:focus {
+  @apply text-minimal-text text-minimal-accent/80;
+}
+
+.ProseMirror-selectednode.image-node-view-container .image-node-view-img {
+  @apply ring-2 ring-minimal-accent ring-offset-4 ring-offset-minimal-bg;
+}
 .ProseMirror blockquote { @apply border-s-8 border-minimal-accent/30 bg-minimal-sidebar/50 ps-6 py-4 italic text-minimal-muted my-8 rounded-e-lg; }
 .ProseMirror a { @apply text-minimal-accent underline decoration-minimal-accent/30 underline-offset-2; }
 .ProseMirror pre { @apply bg-zinc-900 shadow-2xl text-zinc-100 p-8 rounded-2xl my-10 overflow-x-auto font-mono text-[13px] leading-relaxed border border-zinc-700/50 relative; background-image: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent); }

@@ -77,24 +77,50 @@ import { useUIStore } from "../stores/uiStore";
 
 // We'll use a slightly customized schema to support more formatting
 const editorSchema = new Schema({
-  nodes: baseSchema.spec.nodes.append(
-    tableNodes({
-      tableGroup: "block",
-      cellContent: "block+",
-      cellAttributes: {
-        background: {
-          default: null,
-          getFromDOM(dom) {
-            return (dom as HTMLElement).style.backgroundColor || null;
-          },
-          setDOMAttr(value, attrs) {
-            if (value)
-              attrs.style = (attrs.style || "") + `background-color: ${value};`;
+  nodes: baseSchema.spec.nodes
+    .append(
+      tableNodes({
+        tableGroup: "block",
+        cellContent: "block+",
+        cellAttributes: {
+          background: {
+            default: null,
+            getFromDOM(dom) {
+              return (dom as HTMLElement).style.backgroundColor || null;
+            },
+            setDOMAttr(value, attrs) {
+              if (value)
+                attrs.style = (attrs.style || "") + `background-color: ${value};`;
+            },
           },
         },
+      }),
+    )
+    .update("image", {
+      inline: true,
+      group: "inline",
+      attrs: {
+        src: {},
+        alt: { default: null },
+        title: { default: null },
+      },
+      parseDOM: [
+        {
+          tag: "img[src]",
+          getAttrs(dom: any) {
+            return {
+              src: dom.getAttribute("src"),
+              title: dom.getAttribute("title"),
+              alt: dom.getAttribute("alt"),
+            };
+          },
+        },
+      ],
+      toDOM(node) {
+        let { src, alt, title } = node.attrs;
+        return ["img", { src, alt, title }];
       },
     }),
-  ),
   marks: baseSchema.spec.marks.append({
     strike: {
       parseDOM: [
@@ -271,6 +297,75 @@ class UmlNodeView {
     return true;
   }
   stopEvent() {
+    return true;
+  }
+}
+
+class ImageNodeView {
+  dom: HTMLElement;
+  img: HTMLImageElement;
+  caption: HTMLInputElement;
+  node: any;
+  view: any;
+  getPos: any;
+
+  constructor(node: any, view: any, getPos: any) {
+    this.node = node;
+    this.view = view;
+    this.getPos = getPos;
+
+    this.dom = document.createElement("div");
+    this.dom.className = "image-node-view-container group";
+
+    this.img = document.createElement("img");
+    this.img.src = node.attrs.src;
+    if (node.attrs.alt) this.img.alt = node.attrs.alt;
+    this.img.className = "image-node-view-img";
+    this.dom.appendChild(this.img);
+
+    this.caption = document.createElement("input");
+    this.caption.className = "image-caption-input";
+    this.caption.placeholder = "Write a caption...";
+    this.caption.value = node.attrs.title || "";
+    this.dom.appendChild(this.caption);
+
+    this.caption.addEventListener("input", (e) => {
+      const title = (e.target as HTMLInputElement).value;
+      const pos = this.getPos();
+      if (typeof pos === "number") {
+        this.view.dispatch(
+          this.view.state.tr.setNodeMarkup(pos, null, {
+            ...this.node.attrs,
+            title,
+          }),
+        );
+      }
+    });
+
+    this.caption.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+    });
+
+    this.caption.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+    });
+  }
+
+  update(node: any) {
+    if (node.type !== this.node.type) return false;
+    this.node = node;
+    if (this.img.src !== node.attrs.src) this.img.src = node.attrs.src;
+    if (this.caption.value !== (node.attrs.title || "")) {
+      this.caption.value = node.attrs.title || "";
+    }
+    return true;
+  }
+
+  stopEvent(event: Event) {
+    return event.target === this.caption;
+  }
+
+  ignoreMutation() {
     return true;
   }
 }
@@ -782,6 +877,9 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         nodeViews: {
           code_block(node, view, getPos) {
             return new UmlNodeView(node, view, getPos);
+          },
+          image(node, view, getPos) {
+            return new ImageNodeView(node, view, getPos);
           },
         },
         clipboardSerializer: DOMSerializer.fromSchema(editorSchema),
