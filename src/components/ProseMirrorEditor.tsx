@@ -62,6 +62,8 @@ import {
   Square,
   X as XIcon,
 } from "lucide-react";
+import { dropCursor } from "prosemirror-dropcursor";
+import { gapCursor } from "prosemirror-gapcursor";
 import { tableNodes, tableEditing, goToNextCell } from "prosemirror-tables";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
@@ -657,6 +659,8 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           keymap(buildKeymap(editorSchema)),
           keymap(baseKeymap),
           buildInputRules(editorSchema),
+          dropCursor(),
+          gapCursor(),
           highlightPlugin,
           draftHighlightPlugin,
           linkPreviewPlugin,
@@ -886,6 +890,36 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
             setSlashMenu((prev) => ({ ...prev, show: false }));
           }
 
+          return false;
+        },
+        handleDrop(view, event) {
+          const files = event.dataTransfer?.files;
+          if (files && files.length > 0) {
+            let handled = false;
+            for (let i = 0; i < files.length; i++) {
+              const file = files[i];
+              if (file.type.startsWith("image/")) {
+                const pos = view.posAtCoords({
+                  left: event.clientX,
+                  top: event.clientY,
+                });
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const src = e.target?.result as string;
+                  const node = editorSchema.nodes.image.create({ src });
+                  const tr = view.state.tr;
+                  const insertPos = pos ? pos.pos : view.state.selection.from;
+                  view.dispatch(tr.insert(insertPos, node));
+                };
+                reader.readAsDataURL(file);
+                handled = true;
+              }
+            }
+            if (handled) {
+              event.preventDefault();
+              return true;
+            }
+          }
           return false;
         },
         handlePaste(view, event) {
