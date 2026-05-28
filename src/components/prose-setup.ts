@@ -20,7 +20,8 @@ import {
   sinkListItem
 } from "prosemirror-schema-list"
 import {
-  Schema
+  Schema,
+  MarkType
 } from "prosemirror-model"
 import {
   wrappingInputRule,
@@ -109,6 +110,38 @@ export function buildKeymap(schema: Schema) {
 export function buildInputRules(schema: Schema) {
   let rules = smartQuotes.concat(ellipsis, emDash)
   let type
+
+  // Helper for applying marks via input rules
+  function markInputRule(regexp: RegExp, markType: MarkType, getAttrs?: any) {
+    return new InputRule(regexp, (state, match, start, end) => {
+      const { tr } = state;
+      const content = match[match.length - 1];
+      if (content) {
+        const textStart = start + match[0].lastIndexOf(content);
+        const textEnd = textStart + content.length;
+        if (textEnd < end) tr.delete(textEnd, end);
+        if (textStart > start) tr.delete(start, textStart);
+        tr.addMark(start, start + content.length, markType.create(getAttrs));
+        tr.removeStoredMark(markType);
+      }
+      return tr;
+    });
+  }
+
+  if (type = schema.marks.strong) {
+    rules.push(markInputRule(/(?:\*\*|__)([^*_]+)(?:\*\*|__)$/, type))
+  }
+  if (type = schema.marks.em) {
+    rules.push(markInputRule(/(?:^|[^\*])(?:\*)([^*]+)(?:\*)$/, type))
+    rules.push(markInputRule(/(?:^|[^_])(?:_)([^_]+)(?:_)$/, type))
+  }
+  if (type = schema.marks.strike) {
+    rules.push(markInputRule(/(?:~~)([^~]+)(?:~~)$/, type))
+  }
+  if (type = schema.marks.code) {
+    rules.push(markInputRule(/(?:`)([^`]+)(?:`)$/, type))
+  }
+
   if (type = schema.nodes.blockquote) rules.push(wrappingInputRule(/^\s*>\s$/, type))
   if (type = schema.nodes.ordered_list) rules.push(wrappingInputRule(/^(\d+)\.\s$/, type, match => ({order: +match[1]}), (match, node) => node.childCount + node.attrs.order == +match[1]))
   if (type = schema.nodes.bullet_list) rules.push(wrappingInputRule(/^\s*([-+*])\s$/, type))
