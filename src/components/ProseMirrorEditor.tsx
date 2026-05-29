@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useImperativeHandle,
   forwardRef,
@@ -121,6 +122,16 @@ const editorSchema = new Schema({
         tableGroup: "block",
         cellContent: "block+",
         cellAttributes: {
+          align: {
+            default: "left",
+            getFromDOM(dom) {
+              return (dom as HTMLElement).style.textAlign || "left";
+            },
+            setDOMAttr(value, attrs) {
+              if (value && value !== "left")
+                attrs.style = (attrs.style || "") + `text-align: ${value};`;
+            },
+          },
           background: {
             default: null,
             getFromDOM(dom) {
@@ -232,6 +243,27 @@ const editorSchema = new Schema({
 const editorSerializer = new MarkdownSerializer(
   {
     ...defaultMarkdownSerializer.nodes,
+    paragraph: (state, node) => {
+      if (node.attrs.align && node.attrs.align !== "left") {
+        state.write(`<p style="text-align: ${node.attrs.align}">`);
+        state.renderInline(node);
+        state.write("</p>\n\n");
+      } else {
+        state.renderInline(node);
+        state.closeBlock(node);
+      }
+    },
+    heading: (state, node) => {
+      if (node.attrs.align && node.attrs.align !== "left") {
+        state.write(`<h${node.attrs.level} style="text-align: ${node.attrs.align}">`);
+        state.renderInline(node);
+        state.write(`</h${node.attrs.level}>\n\n`);
+      } else {
+        state.write(state.repeat("#", node.attrs.level) + " ");
+        state.renderInline(node);
+        state.closeBlock(node);
+      }
+    },
     table: (state, node) => {
       state.write("\n");
       state.renderContent(node);
@@ -244,11 +276,16 @@ const editorSerializer = new MarkdownSerializer(
         state.renderContent(cell);
       });
       state.write(" |\n");
-      // Only write separator if this is the first row (header)
-      // We check if the row has header cells as a heuristic for the first row
+      
+      // Write separator if this is the first row
       if (node.childCount > 0 && node.child(0).type.name === "table_header") {
         state.write("|");
-        for (let i = 0; i < node.childCount; i++) state.write(" --- |");
+        node.forEach((cell) => {
+          const align = cell.attrs.align || "left";
+          if (align === "center") state.write(" :---: |");
+          else if (align === "right") state.write(" ---: |");
+          else state.write(" --- |");
+        });
         state.write("\n");
       }
     },
@@ -292,6 +329,9 @@ if (tokenizer && tokenizer.enable) {
 
 const editorParser = new MarkdownParser(editorSchema, tokenizer, {
   ...((defaultMarkdownParser as any).tokens || {}),
+  s: { mark: "strike" },
+  strike: { mark: "strike" },
+  u: { mark: "underline" },
   ...tableTokens,
 });
 
@@ -1280,7 +1320,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }, []);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
       if (!editorRef.current) return;
 
       // Typewriter scrolling plugin
@@ -1396,7 +1436,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
 
       const state = EditorState.create({
         schema: editorSchema,
-        doc: editorParser.parse(value),
+        doc: editorParser.parse(value) || editorSchema.nodes.doc.createAndFill()!,
         plugins: [
           ...(collabInstance
             ? collabInstance.plugins
@@ -1890,6 +1930,25 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         headingPath.length > 0 ? `Path: ${headingPath.join(" > ")}` : "";
       return `${pathStr}\n\n${currentPara}`.trim();
     };
+
+    useEffect(() => {
+      if (isUpdatingFromProps.current) {
+        isUpdatingFromProps.current = false;
+        return;
+      }
+      if (viewRef.current) {
+        const currentMarkdown = editorSerializer.serialize(viewRef.current.state.doc);
+        if (value !== currentMarkdown) {
+          const node = editorParser.parse(value);
+          if (node) {
+            viewRef.current.dispatch(
+              viewRef.current.state.tr.replaceWith(0, viewRef.current.state.doc.content.size, node.content)
+                .setMeta("addToHistory", false)
+            );
+          }
+        }
+      }
+    }, [value]);
 
     useImperativeHandle(ref, () => ({
       focus: () => {
