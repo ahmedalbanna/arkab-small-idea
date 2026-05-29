@@ -147,14 +147,44 @@ export function buildInputRules(schema: Schema) {
   if (type = schema.nodes.bullet_list) rules.push(wrappingInputRule(/^\s*([-+*])\s$/, type))
   if (type = schema.nodes.code_block) rules.push(textblockTypeInputRule(/^```(\w+)?\s$/, type, match => ({params: match[1]})))
   if (type = schema.nodes.heading) rules.push(textblockTypeInputRule(/^(#{1,6})\s$/, type, match => ({level: match[1].length})))
+  if (type = schema.nodes.horizontal_rule) {
+    const hr = type
+    rules.push(new InputRule(/^(?:---|___|\*\*\*)\s$/, (state, match, start, end) => {
+      return state.tr.replaceWith(start, end, hr.create())
+    }))
+  }
+  if (type = schema.nodes.table) {
+    rules.push(new InputRule(/^\|\|\s$/, (state, match, start, end) => {
+      const { tr, schema } = state
+      const row = schema.nodes.table_row.create(null, [
+        schema.nodes.table_header.createAndFill()!,
+        schema.nodes.table_header.createAndFill()!
+      ])
+      const table = schema.nodes.table.create(null, [
+        row,
+        schema.nodes.table_row.create(null, [
+          schema.nodes.table_cell.createAndFill()!,
+          schema.nodes.table_cell.createAndFill()!
+        ])
+      ])
+      return tr.replaceWith(start, end, table)
+    }))
+  }
   if (type = schema.nodes.image) rules.push(new InputRule(/!\[(.*)\]\((.*)\)$/, (state, match, start, end) => {
     let alt = match[1], src = match[2]
     return state.tr.replaceWith(start, end, type.create({src, alt}))
   }))
 
-  // Task auto-completion rules
+  // Task auto-completion rules - transforming line starting with [ ] or [x]
   rules.push(new InputRule(/^\s*([-+*])\s\[ \]\s$/, (state, match, start, end) => {
     return state.tr.insertText(match[0], start, end)
+  }))
+  
+  // Rule for [ ] or [x] to enhance interactive formatting
+  rules.push(new InputRule(/^\[( |x)\]\s$/, (state, match, start, end) => {
+    const isChecked = match[1] === 'x'
+    const newText = isChecked ? "- [x] " : "- [ ] "
+    return state.tr.insertText(newText, start, end)
   }))
 
   return inputRules({rules})
