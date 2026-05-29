@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { List, X, ChevronRight, Hash } from 'lucide-react';
+import { List, X, ChevronRight, Hash, Filter } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { type EditorRef } from '../ProseMirrorEditor';
@@ -20,6 +20,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
   const { showTOC, setTOC } = useUIStore();
   const { activeFocusedPageId } = useEditorStore();
   const [headings, setHeadings] = useState<HeadingInfo[]>([]);
+  const [maxLevel, setMaxLevel] = useState(6);
 
   const refreshHeadings = useCallback(() => {
     if (editorRef.current) {
@@ -34,18 +35,11 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
     }
   }, [showTOC, refreshHeadings, activeFocusedPageId]);
 
-  // Optionally, listen to content changes to update TOC in real-time
-  // For simplicity, we just refresh when TOC is opened or page changes
+  const filteredHeadings = headings.filter(h => h.level <= maxLevel);
 
   const scrollToHeading = (pos: number) => {
     if (editorRef.current) {
-      // We can use transform to get the DOM node or just focus and scroll
-      // Actually ProseMirror handles scrolling better if we set selection
-      // But we can implement a custom scroll if needed.
-      // For now, let's just use the scrollToText if available or implement pos-based scroll in ProseMirrorEditor
-      // I'll add a scrollToPos to EditorRef as well for better precision.
       (editorRef.current as any).scrollToPos?.(pos);
-      // If scrollToPos is not there yet, let's add it. 
     }
   };
 
@@ -64,21 +58,33 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
             <List size={18} />
             <span className="text-xs font-bold uppercase tracking-widest">Outline</span>
           </div>
-          <button 
-            onClick={() => setTOC(false)}
-            className="p-1 hover:bg-minimal-border rounded-lg transition-colors text-minimal-muted"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setMaxLevel(maxLevel === 6 ? 3 : 6)}
+              className={cn(
+                "p-1.5 rounded-lg transition-all text-minimal-muted hover:bg-minimal-border/50",
+                maxLevel < 6 && "text-minimal-accent bg-minimal-accent/10"
+              )}
+              title={maxLevel === 6 ? "Show H1-H3 only" : "Show all levels"}
+            >
+              <Filter size={14} className={cn(maxLevel < 6 && "fill-current")} />
+            </button>
+            <button 
+              onClick={() => setTOC(false)}
+              className="p-1.5 hover:bg-minimal-border/50 rounded-lg transition-colors text-minimal-muted"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar">
-          {headings.length === 0 ? (
+          {filteredHeadings.length === 0 ? (
             <div className="p-8 text-center text-xs text-minimal-muted italic">
-              No headings found in this document.
+              {headings.length > 0 ? "No headings match the current filter." : "No headings found in this document."}
             </div>
           ) : (
-            headings.map((heading, idx) => (
+            filteredHeadings.map((heading, idx) => (
               <button
                 key={`${idx}-${heading.pos}`}
                 onClick={() => scrollToHeading(heading.pos)}
