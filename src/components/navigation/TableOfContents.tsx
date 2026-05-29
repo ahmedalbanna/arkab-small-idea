@@ -14,6 +14,7 @@ interface HeadingInfo {
   text: string;
   level: number;
   pos: number;
+  id: string;
 }
 
 const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {

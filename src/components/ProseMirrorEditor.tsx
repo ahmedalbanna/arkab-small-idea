@@ -75,7 +75,7 @@ import { dropCursor } from "prosemirror-dropcursor";
 import { gapCursor } from "prosemirror-gapcursor";
 import { tableNodes, tableEditing, goToNextCell } from "prosemirror-tables";
 import { motion, AnimatePresence } from "motion/react";
-import { cn } from "../lib/utils";
+import { cn, slugify } from "../lib/utils";
 import { processAIAction, type AIAssistantAction } from "../services/aiService";
 import { getKrokiUrl } from "../lib/kroki";
 import { createSearchPlugin, searchPluginKey } from "../lib/searchPlugin";
@@ -105,21 +105,25 @@ const editorSchema = new Schema({
       },
     })
     .update("heading", {
-      attrs: { level: { default: 1 }, align: { default: "left" } },
+      attrs: { level: { default: 1 }, align: { default: "left" }, id: { default: null } },
       content: "inline*",
       group: "block",
       defining: true,
       parseDOM: [
-        { tag: "h1", getAttrs: (dom: any) => ({ level: 1, align: dom.style.textAlign || "left" }) },
-        { tag: "h2", getAttrs: (dom: any) => ({ level: 2, align: dom.style.textAlign || "left" }) },
-        { tag: "h3", getAttrs: (dom: any) => ({ level: 3, align: dom.style.textAlign || "left" }) },
-        { tag: "h4", getAttrs: (dom: any) => ({ level: 4, align: dom.style.textAlign || "left" }) },
-        { tag: "h5", getAttrs: (dom: any) => ({ level: 5, align: dom.style.textAlign || "left" }) },
-        { tag: "h6", getAttrs: (dom: any) => ({ level: 6, align: dom.style.textAlign || "left" }) },
+        { tag: "h1", getAttrs: (dom: any) => ({ level: 1, align: dom.style.textAlign || "left", id: dom.id || null }) },
+        { tag: "h2", getAttrs: (dom: any) => ({ level: 2, align: dom.style.textAlign || "left", id: dom.id || null }) },
+        { tag: "h3", getAttrs: (dom: any) => ({ level: 3, align: dom.style.textAlign || "left", id: dom.id || null }) },
+        { tag: "h4", getAttrs: (dom: any) => ({ level: 4, align: dom.style.textAlign || "left", id: dom.id || null }) },
+        { tag: "h5", getAttrs: (dom: any) => ({ level: 5, align: dom.style.textAlign || "left", id: dom.id || null }) },
+        { tag: "h6", getAttrs: (dom: any) => ({ level: 6, align: dom.style.textAlign || "left", id: dom.id || null }) },
       ],
       toDOM(node) {
-        const { level, align } = node.attrs;
-        return ["h" + level, { style: align && align !== "left" ? `text-align: ${align}` : null }, 0];
+        const { level, align, id } = node.attrs;
+        const autoId = id || (node.textContent ? slugify(node.textContent) : null);
+        return ["h" + level, { 
+          id: autoId,
+          style: align && align !== "left" ? `text-align: ${align}` : null 
+        }, 0];
       },
     })
     .append(
@@ -1078,7 +1082,7 @@ export interface EditorRef {
   getHtml: () => string;
   getDoc: () => any;
   getTextWithPositions: () => { text: string; pos: number }[];
-  getHeadings: () => { text: string; level: number; pos: number }[];
+  getHeadings: () => { text: string; level: number; pos: number; id: string }[];
   setTTSHighlight: (range: { from: number; to: number } | null) => void;
   handleFormat: (type: string) => void;
   getCursorContext: () => string;
@@ -1571,11 +1575,13 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       y: number;
       show: boolean;
       pos: number;
+      nodeName?: string;
     }>({ y: 0, show: false, pos: 0 });
     const isSideMenuEnabled = useUIStore((s) => s.showQuickCommands);
     const isSideMenuEnabledRef = useRef(isSideMenuEnabled);
     useEffect(() => { isSideMenuEnabledRef.current = isSideMenuEnabled; }, [isSideMenuEnabled]);
     const sideMenuHideTimeout = useRef<NodeJS.Timeout | null>(null);
+    const [isCopied, setIsCopied] = useState(false);
 
     const streamStartRef = useRef<number | null>(null);
     const streamEndRef = useRef<number | null>(null);
@@ -1776,6 +1782,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                             y: coords.top - editorRect.top,
                             show: true,
                             pos: blockPos,
+                            nodeName: blockNode.type.name,
                           });
                         }
                       }
@@ -2323,13 +2330,14 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       },
       getHeadings: () => {
         if (!viewRef.current) return [];
-        const headings: { text: string; level: number; pos: number }[] = [];
+        const headings: { text: string; level: number; pos: number; id: string }[] = [];
         viewRef.current.state.doc.descendants((node, pos) => {
           if (node.type.name === "heading") {
             headings.push({
               text: node.textContent,
               level: node.attrs.level,
               pos: pos,
+              id: node.attrs.id || slugify(node.textContent)
             });
           }
         });
@@ -3279,6 +3287,34 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               <div className="p-1.5 text-minimal-muted/20 cursor-grab hover:text-minimal-muted transition-colors">
                 <GripVertical className="w-3.5 h-3.5" />
               </div>
+              {sideMenu.nodeName === "heading" && (
+                <>
+                  <div className="w-px h-4 bg-minimal-border mx-0.5" />
+                  <button
+                    onClick={() => {
+                      if (!viewRef.current) return;
+                      const node = viewRef.current.state.doc.nodeAt(sideMenu.pos);
+                      if (node && node.type.name === "heading") {
+                        const slug = slugify(node.textContent);
+                        const url = new URL(window.location.href);
+                        url.hash = slug;
+                        navigator.clipboard.writeText(url.toString());
+                        setIsCopied(true);
+                        setTimeout(() => setIsCopied(false), 2000);
+                      }
+                    }}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all cursor-pointer bg-minimal-bg/50 backdrop-blur border border-transparent",
+                      isCopied 
+                        ? "text-emerald-500 bg-emerald-500/5 border-emerald-500/20" 
+                        : "text-minimal-muted/40 hover:text-minimal-accent hover:bg-minimal-accent/10"
+                    )}
+                    title={isCopied ? "Copied!" : "Copy Anchor Link"}
+                  >
+                    {isCopied ? <Check className="w-3.5 h-3.5" /> : <Link className="w-3.5 h-3.5" />}
+                  </button>
+                </>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
