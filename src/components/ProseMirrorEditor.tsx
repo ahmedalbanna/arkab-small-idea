@@ -17,7 +17,8 @@ import { EditorView, Decoration, DecorationSet } from "prosemirror-view";
 import { Schema, DOMParser, DOMSerializer, Slice, Node } from "prosemirror-model";
 import { schema as baseSchema } from "prosemirror-markdown";
 import { keymap } from "prosemirror-keymap";
-import { baseKeymap, setBlockType, toggleMark, wrapIn } from "prosemirror-commands";
+import { toggleMark, setBlockType, baseKeymap, wrapIn } from "prosemirror-commands";
+import { wrapInList } from "prosemirror-schema-list";
 import { history, undo, redo } from "prosemirror-history";
 import { buildInputRules, buildKeymap } from "./prose-setup";
 import { highlightPlugin } from "./prose-highlight";
@@ -49,6 +50,7 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  List,
   Minimize2,
   Maximize2,
   Zap,
@@ -1866,6 +1868,12 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                         }
                         return false;
                       })(),
+                      bullet: ((): boolean => {
+                        for (let d = $from.depth; d > 0; d--) {
+                          if ($from.node(d).type.name === "bullet_list") return true;
+                        }
+                        return false;
+                      })(),
                     };
                     setActiveFormats(formats);
 
@@ -2503,6 +2511,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       if (type === "alignCenter") setAlign("center");
       if (type === "alignRight") setAlign("right");
       if (type === "alignJustify") setAlign("justify");
+      if (type === "bullet") wrapInList(editorSchema.nodes.bullet_list)(state, dispatch);
 
       viewRef.current.focus();
     };
@@ -2696,13 +2705,8 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       else if (action === "align-center") handleFormat("alignCenter");
       else if (action === "align-right") handleFormat("alignRight");
       else if (action === "align-justify") handleFormat("alignJustify");
-      else if (action === "bullet") {
-        const node = editorSchema.nodes.bullet_list.createAndFill();
-        if (node)
-          viewRef.current.dispatch(
-            afterDeleteState.tr.replaceSelectionWith(node),
-          );
-      } else if (action.startsWith("todo-")) {
+      else if (action === "bullet") handleFormat("bullet");
+      else if (action.startsWith("todo-")) {
         const priority = action.replace("todo-", "");
         let priorityTag = "";
         switch (priority) {
@@ -2917,6 +2921,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     title="Quote"
                   >
                     <Quote className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleFormat("bullet")}
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.bullet && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
+                    title="Bullet List"
+                  >
+                    <List className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("code")}
