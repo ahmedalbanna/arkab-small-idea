@@ -943,8 +943,12 @@ class HeadingNodeView {
     this.getPos = getPos;
 
     const level = node.attrs.level;
+    const align = node.attrs.align;
     this.dom = document.createElement(`h${level}`);
     this.dom.className = "collapsible-heading";
+    if (align && align !== "left") {
+      this.dom.style.textAlign = align;
+    }
 
     this.chevron = document.createElement("span");
     this.chevron.className = "heading-chevron";
@@ -978,6 +982,10 @@ class HeadingNodeView {
     this.chevron.innerHTML = isCollapsed 
       ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>`
       : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>`;
+    
+    // Update alignment if it changed
+    const align = this.node.attrs.align;
+    this.dom.style.textAlign = align && align !== "left" ? align : "";
   }
 
   update(node: Node) {
