@@ -935,7 +935,11 @@ export default function App() {
         }}
       />
 
-      <TTSSpeaker />
+      <TTSSpeaker 
+        editorRef={{
+          current: activePage ? editorRefs.current[activePage.id] || null : null,
+        } as any} 
+      />
 
       <StatusBar
         wordCount={wordCount}

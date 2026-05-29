@@ -13,39 +13,32 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '../stores/uiStore';
 import { useEditorStore } from '../stores/editorStore';
+import { type EditorRef } from './ProseMirrorEditor';
 
-const TTSSpeaker: React.FC = () => {
-  const { showTTS, setTTS, ttsRate, setTTSRate } = useUIStore();
+interface TTSSpeakerProps {
+  editorRef: React.RefObject<EditorRef>;
+}
+
+const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
+  const { showTTS, setTTS, ttsRate, setTTSRate, setTTSHighlightRange } = useUIStore();
   const { activeFocusedPageId, pages } = useEditorStore();
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [currentText, setCurrentText] = useState('');
   
   const synth = useRef<SpeechSynthesis | null>(typeof window !== 'undefined' ? window.speechSynthesis : null);
   const utterance = useRef<SpeechSynthesisUtterance | null>(null);
-
-  const activePage = pages.find(p => p.id === activeFocusedPageId);
-
-  useEffect(() => {
-    if (activePage) {
-      const cleanText = activePage.content
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url) -> text
-        .replace(/[#*`~>_]/g, '')               // Remove markdown symbols
-        .replace(/!\[[^\]]*\]\([^)]+\)/g, '')   // Remove images
-        .replace(/```[\s\S]*?```/g, '');        // Remove code blocks
-      setCurrentText(cleanText);
-    }
-  }, [activePage]);
+  const segmentsRef = useRef<{ text: string, pos: number, cumulativeIndex: number }[]>([]);
 
   const stopSpeech = useCallback(() => {
     if (synth.current) {
       synth.current.cancel();
       setIsPlaying(false);
       setIsPaused(false);
+      setTTSHighlightRange(null);
     }
-  }, []);
+  }, [setTTSHighlightRange]);
 
   const togglePlay = useCallback(() => {
     if (!synth.current) return;
@@ -59,41 +52,80 @@ const TTSSpeaker: React.FC = () => {
     } else {
       stopSpeech();
       
-      utterance.current = new SpeechSynthesisUtterance(currentText);
+      // Get fresh segments from the editor
+      const rawSegments = editorRef.current?.getTextWithPositions() || [];
+      if (rawSegments.length === 0) {
+        // Fallback to activePage content if editor ref is not available or empty
+        const activePage = pages.find(p => p.id === activeFocusedPageId);
+        if (activePage) {
+           rawSegments.push({ text: activePage.content, pos: 1 });
+        }
+      }
+
+      let cumulative = 0;
+      segmentsRef.current = rawSegments.map(s => {
+        const seg = { ...s, cumulativeIndex: cumulative };
+        cumulative += s.text.length + 1; // +1 for the space we join with
+        return seg;
+      });
+
+      const fullText = rawSegments.map(s => s.text).join(' ');
+      
+      utterance.current = new SpeechSynthesisUtterance(fullText);
       utterance.current.rate = ttsRate;
       utterance.current.volume = isMuted ? 0 : 1;
       
+      utterance.current.onboundary = (event) => {
+        if (event.name === 'word') {
+          const charIndex = event.charIndex;
+          
+          // Find which segment contains this charIndex
+          const segmentIndex = segmentsRef.current.findIndex((s, i) => {
+            const next = segmentsRef.current[i+1];
+            return charIndex >= s.cumulativeIndex && (!next || charIndex < next.cumulativeIndex);
+          });
+
+          if (segmentIndex !== -1) {
+            const segment = segmentsRef.current[segmentIndex];
+            const offsetInSegment = charIndex - segment.cumulativeIndex;
+            
+            // Find end of the word in the segment text
+            const textAfter = segment.text.substring(offsetInSegment);
+            const wordMatch = textAfter.match(/^\w+/);
+            const wordLength = wordMatch ? wordMatch[0].length : 1;
+
+            const from = segment.pos + offsetInSegment;
+            const to = from + wordLength;
+
+            setTTSHighlightRange({ from, to });
+          }
+        }
+      };
+
       utterance.current.onend = () => {
         setIsPlaying(false);
         setIsPaused(false);
+        setTTSHighlightRange(null);
       };
       
       utterance.current.onerror = (e) => {
         console.error("Speech error:", e);
         setIsPlaying(false);
         setIsPaused(false);
+        setTTSHighlightRange(null);
       };
 
       synth.current.speak(utterance.current);
       setIsPlaying(true);
       setIsPaused(false);
     }
-  }, [currentText, ttsRate, isMuted, isPlaying, isPaused, stopSpeech]);
+  }, [isPlaying, isPaused, editorRef, pages, activeFocusedPageId, stopSpeech, ttsRate, isMuted, setTTSHighlightRange]);
 
   useEffect(() => {
-    // Cleanup on unmount
     return () => {
       if (synth.current) synth.current.cancel();
     };
   }, []);
-
-  // Update rate if it changes during playback
-  useEffect(() => {
-    if (isPlaying && synth.current) {
-      // SpeechSynthesis API doesn't support changing rate mid-speech effectively on all browsers
-      // Usually you have to stop and restart, but we'll leave it for now or just handle it on next start
-    }
-  }, [ttsRate, isPlaying]);
 
   if (!showTTS) return null;
 

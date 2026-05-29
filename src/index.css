@@ -528,3 +528,9 @@ body {
   @apply absolute bg-zinc-800/90 text-white text-[8px] px-1.5 py-0.5 rounded border border-zinc-700 -mt-6 left-1/2 -translate-x-1/2 z-[200] pointer-events-none font-bold;
 }
 
+/* TTS Highlight */
+.tts-highlight {
+  @apply bg-minimal-accent/20 border-b-2 border-minimal-accent/40 rounded-sm transition-all duration-150;
+  text-shadow: 0 0 1px rgba(var(--color-minimal-accent), 0.1);
+}
+

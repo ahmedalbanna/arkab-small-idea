@@ -717,6 +717,7 @@ export interface EditorRef {
   getSelectedText: () => string;
   getHtml: () => string;
   getDoc: () => any;
+  getTextWithPositions: () => { text: string; pos: number }[];
   handleFormat: (type: string) => void;
   getCursorContext: () => string;
   scrollToText: (text: string) => void;
@@ -1194,6 +1195,30 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         },
       });
 
+      // TTS Highlight plugin
+      const ttsHighlightPlugin = new Plugin({
+        state: {
+          init() { return DecorationSet.empty; },
+          apply(tr, set, oldState, newState) {
+            const range = useUIStore.getState().ttsHighlightRange;
+            if (!range) return DecorationSet.empty;
+            
+            const from = Math.max(0, Math.min(range.from, newState.doc.content.size));
+            const to = Math.max(from, Math.min(range.to, newState.doc.content.size));
+            
+            if (from === to) return DecorationSet.empty;
+
+            const deco = Decoration.inline(from, to, { class: "tts-highlight" });
+            return DecorationSet.create(newState.doc, [deco]);
+          }
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state);
+          }
+        }
+      });
+
       // Collaboration plugin
       const collabInstance = collab?.enabled
         ? createCollabPlugin({
@@ -1228,6 +1253,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           typewriterPlugin,
           focusModePlugin,
           searchPlugin,
+          ttsHighlightPlugin,
           tableSortPlugin,
           tableRowActionsPlugin,
           new Plugin({
@@ -1748,6 +1774,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       },
       getDoc: () => {
         return viewRef.current?.state.doc;
+      },
+      getTextWithPositions: () => {
+        if (!viewRef.current) return [];
+        const result: { text: string; pos: number }[] = [];
+        viewRef.current.state.doc.descendants((node, pos) => {
+          if (node.isText) {
+            result.push({ text: node.text || "", pos });
+          }
+        });
+        return result;
       },
       handleFormat: (type: string) => {
         handleFormat(type);

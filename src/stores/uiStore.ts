@@ -19,6 +19,7 @@ interface UIState {
   isAutoSaving: boolean;
   showTTS: boolean;
   ttsRate: number;
+  ttsHighlightRange: { from: number; to: number } | null;
   
   toggleSuperZen: () => void;
   toggleAIAssistant: () => void;
@@ -38,6 +39,7 @@ interface UIState {
   setAutoSaving: (isAutoSaving: boolean) => void;
   setTTS: (show: boolean | ((prev: boolean) => boolean)) => void;
   setTTSRate: (rate: number | ((prev: number) => number)) => void;
+  setTTSHighlightRange: (range: { from: number; to: number } | null) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -60,6 +62,7 @@ export const useUIStore = create<UIState>()(
       isAutoSaving: false,
       showTTS: false,
       ttsRate: 1,
+      ttsHighlightRange: null,
 
       toggleSuperZen: () => set((state) => ({ isSuperZen: !state.isSuperZen })),
       toggleAIAssistant: () => set((state) => ({ showAIAssistant: !state.showAIAssistant })),
@@ -105,6 +108,7 @@ export const useUIStore = create<UIState>()(
       setTTSRate: (ttsRate) => set((state) => ({ 
         ttsRate: typeof ttsRate === 'function' ? ttsRate(state.ttsRate) : ttsRate 
       })),
+      setTTSHighlightRange: (ttsHighlightRange) => set({ ttsHighlightRange }),
     }),
     {
       name: 'ink-quill-ui-storage',
