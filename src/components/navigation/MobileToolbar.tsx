@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset } from 'lucide-react';
+import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset, PenTool } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 
 interface MobileToolbarProps {
@@ -29,6 +29,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         <button onClick={() => editorRef.current?.handleFormat('h2')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><Heading2 className="w-5 h-5" /></button>
         <button onClick={() => insertText('[', '](url)')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><LinkIcon className="w-5 h-5" /></button>
         <button onClick={() => fileInputRef.current?.click()} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><ImageIcon className="w-5 h-5" /></button>
+        <button onClick={() => editorRef.current?.insertScribble()} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><PenTool className="w-5 h-5" /></button>
         <div className="w-px h-8 bg-minimal-border mx-1" />
         <button 
           onClick={() => setTTS(!showTTS)} 

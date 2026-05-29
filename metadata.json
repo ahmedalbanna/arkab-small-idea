@@ -1,6 +1,6 @@
 {
   "name": "Remix: Ink \u0026 Quill",
-  "description": "A focused, minimalist Markdown editor with deeply integrated AI writing assistance and real-time formatting.",
+  "description": "A focused, minimalist Markdown editor with deeply integrated AI writing assistance, touch-friendly handwriting scribbles, and real-time formatting.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
