@@ -36,9 +36,9 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
       synth.current.cancel();
       setIsPlaying(false);
       setIsPaused(false);
-      setTTSHighlightRange(null);
+      editorRef.current?.setTTSHighlight(null);
     }
-  }, [setTTSHighlightRange]);
+  }, [editorRef]);
 
   const togglePlay = useCallback(() => {
     if (!synth.current) return;
@@ -97,7 +97,7 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
             const from = segment.pos + offsetInSegment;
             const to = from + wordLength;
 
-            setTTSHighlightRange({ from, to });
+            editorRef.current?.setTTSHighlight({ from, to });
           }
         }
       };
@@ -105,14 +105,14 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
       utterance.current.onend = () => {
         setIsPlaying(false);
         setIsPaused(false);
-        setTTSHighlightRange(null);
+        editorRef.current?.setTTSHighlight(null);
       };
       
       utterance.current.onerror = (e) => {
         console.error("Speech error:", e);
         setIsPlaying(false);
         setIsPaused(false);
-        setTTSHighlightRange(null);
+        editorRef.current?.setTTSHighlight(null);
       };
 
       synth.current.speak(utterance.current);

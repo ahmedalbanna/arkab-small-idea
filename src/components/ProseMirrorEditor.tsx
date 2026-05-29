@@ -718,6 +718,7 @@ export interface EditorRef {
   getHtml: () => string;
   getDoc: () => any;
   getTextWithPositions: () => { text: string; pos: number }[];
+  setTTSHighlight: (range: { from: number; to: number } | null) => void;
   handleFormat: (type: string) => void;
   getCursorContext: () => string;
   scrollToText: (text: string) => void;
@@ -1200,16 +1201,20 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         state: {
           init() { return DecorationSet.empty; },
           apply(tr, set, oldState, newState) {
-            const range = useUIStore.getState().ttsHighlightRange;
+            const range = tr.getMeta("ttsHighlight");
+            if (range === undefined) {
+              return set.map(tr.mapping, tr.doc);
+            }
+            
             if (!range) return DecorationSet.empty;
             
-            const from = Math.max(0, Math.min(range.from, newState.doc.content.size));
-            const to = Math.max(from, Math.min(range.to, newState.doc.content.size));
+            const from = Math.max(0, Math.min(range.from, tr.doc.content.size));
+            const to = Math.max(from, Math.min(range.to, tr.doc.content.size));
             
             if (from === to) return DecorationSet.empty;
 
             const deco = Decoration.inline(from, to, { class: "tts-highlight" });
-            return DecorationSet.create(newState.doc, [deco]);
+            return DecorationSet.create(tr.doc, [deco]);
           }
         },
         props: {
@@ -1784,6 +1789,23 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           }
         });
         return result;
+      },
+      setTTSHighlight: (range: { from: number; to: number } | null) => {
+        const view = viewRef.current;
+        if (!view) return;
+        
+        const tr = view.state.tr;
+        tr.setMeta("ttsHighlight", range);
+        if (range) {
+          // Find if the range is valid
+          const from = Math.max(0, Math.min(range.from, view.state.doc.content.size));
+          // Center the highlight in view if possible
+          tr.setSelection(TextSelection.create(view.state.doc, from));
+          tr.scrollIntoView();
+        }
+        view.dispatch(tr);
+        
+        useUIStore.getState().setTTSHighlightRange(range);
       },
       handleFormat: (type: string) => {
         handleFormat(type);
