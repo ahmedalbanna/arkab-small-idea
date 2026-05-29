@@ -892,6 +892,121 @@ const tableSortPlugin = new Plugin({
 });
 
 const tableRowActionsKey = new PluginKey("tableRowActions");
+const collapsibleKey = new PluginKey("collapsible");
+
+class HeadingNodeView {
+  dom: HTMLElement;
+  contentDOM: HTMLElement;
+  chevron: HTMLElement;
+  node: Node;
+  view: EditorView;
+  getPos: () => number | undefined;
+
+  constructor(node: Node, view: EditorView, getPos: () => number | undefined) {
+    this.node = node;
+    this.view = view;
+    this.getPos = getPos;
+
+    const level = node.attrs.level;
+    this.dom = document.createElement(`h${level}`);
+    this.dom.className = "collapsible-heading";
+
+    this.chevron = document.createElement("span");
+    this.chevron.className = "heading-chevron";
+    this.dom.appendChild(this.chevron);
+
+    this.contentDOM = document.createElement("span");
+    this.contentDOM.className = "heading-content";
+    this.dom.appendChild(this.contentDOM);
+
+    this.updateChevron();
+
+    this.chevron.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const pos = this.getPos();
+      if (typeof pos === "number") {
+        this.view.dispatch(this.view.state.tr.setMeta(collapsibleKey, { type: "toggle", pos }));
+      }
+    });
+  }
+
+  updateChevron() {
+    const pos = this.getPos();
+    if (typeof pos !== "number") return;
+    
+    const state = this.view.state;
+    const collapsedSet = collapsibleKey.getState(state) as DecorationSet;
+    const isCollapsed = collapsedSet ? collapsedSet.find(pos, pos + 1, spec => spec.type === "collapsed-marker").length > 0 : false;
+    
+    this.dom.classList.toggle("is-collapsed", isCollapsed);
+    this.chevron.innerHTML = isCollapsed 
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>`
+      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>`;
+  }
+
+  update(node: Node) {
+    if (node.type !== this.node.type) return false;
+    this.node = node;
+    this.updateChevron();
+    return true;
+  }
+}
+
+const collapsiblePlugin = new Plugin({
+  key: collapsibleKey,
+  state: {
+    init() { return DecorationSet.empty; },
+    apply(tr, set) {
+      set = set.map(tr.mapping, tr.doc);
+      const meta = tr.getMeta(collapsibleKey);
+      if (meta && meta.type === "toggle") {
+        const { pos } = meta;
+        const existing = set.find(pos, pos + 1, spec => spec.type === "collapsed-marker");
+        if (existing.length) {
+          return set.remove(existing);
+        } else {
+          return set.add(tr.doc, [
+            Decoration.node(pos, pos + tr.doc.nodeAt(pos)!.nodeSize, {}, { type: "collapsed-marker" })
+          ]);
+        }
+      }
+      return set;
+    }
+  },
+  props: {
+    decorations(state) {
+      const collapsedSet = collapsibleKey.getState(state) as DecorationSet;
+      if (!collapsedSet || collapsedSet.find().length === 0) return DecorationSet.empty;
+
+      const decorations: Decoration[] = [];
+      const doc = state.doc;
+
+      collapsedSet.find().forEach(collapsedDeco => {
+        const startPos = collapsedDeco.from;
+        const headingNode = doc.nodeAt(startPos);
+        if (!headingNode || headingNode.type.name !== "heading") return;
+
+        const level = headingNode.attrs.level;
+        let endPos = doc.content.size;
+
+        doc.nodesBetween(startPos + headingNode.nodeSize, doc.content.size, (node, pos) => {
+          if (endPos !== doc.content.size) return false;
+          if (node.type.name === "heading" && node.attrs.level <= level) {
+            endPos = pos;
+            return false;
+          }
+        });
+
+        if (endPos > startPos + headingNode.nodeSize) {
+          decorations.push(Decoration.node(startPos + headingNode.nodeSize, endPos, { class: "collapsed-content" }));
+        }
+      });
+
+      return DecorationSet.create(doc, decorations);
+    }
+  }
+});
 
 const tableRowActionsPlugin = new Plugin({
   key: tableRowActionsKey,
@@ -1261,6 +1376,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           focusModePlugin,
           searchPlugin,
           ttsHighlightPlugin,
+          collapsiblePlugin,
           tableSortPlugin,
           tableRowActionsPlugin,
           new Plugin({
@@ -1383,6 +1499,9 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           },
           gallery(node, view, getPos) {
             return new GalleryNodeView(node, view, getPos);
+          },
+          heading(node, view, getPos) {
+            return new HeadingNodeView(node, view, getPos);
           },
         },
         clipboardSerializer: DOMSerializer.fromSchema(editorSchema),
