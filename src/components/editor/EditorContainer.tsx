@@ -31,7 +31,7 @@ interface EditorContainerProps {
     content: string,
     method: "append" | "insert" | "replace" | "suggest",
   ) => void;
-  handleAiAction: (actionId: string) => Promise<void>;
+  handleAiAction: (actionId: string, customInstruction?: string) => Promise<void>;
   isSemantic: boolean;
   setMatchCount: (val: number) => void;
   findText: string;
@@ -87,6 +87,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     Record<string, boolean>
   >({});
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
+  const [customInstruction, setCustomInstruction] = useState("");
   const autoSaveTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleScroll = (id: string) => {
@@ -337,7 +338,10 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                               {AI_ACTIONS.map((action) => (
                                 <button
                                   key={action.id}
-                                  onClick={() => handleAiAction(action.id)}
+                                  onClick={() => {
+                                    handleAiAction(action.id, customInstruction);
+                                    setCustomInstruction("");
+                                  }}
                                   className="flex items-center gap-3 p-2 hover:bg-minimal-sidebar rounded-xl transition-all text-left group/item"
                                 >
                                   <div
@@ -359,6 +363,38 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                                   </div>
                                 </button>
                               ))}
+                            </div>
+
+                            <div className="mt-3 px-2">
+                              <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest mb-2 border-b border-minimal-border/30 pb-1">
+                                Custom Instruction
+                              </p>
+                              <div className="flex flex-col gap-2">
+                                <input
+                                  type="text"
+                                  value={customInstruction}
+                                  onChange={(e) => setCustomInstruction(e.target.value)}
+                                  placeholder="e.g. In 3 bullets, poetic tone..."
+                                  className="w-full bg-minimal-sidebar border border-minimal-border rounded-lg px-2 py-1.5 text-[10px] text-minimal-text placeholder:text-minimal-muted outline-none focus:border-minimal-accent/50 transition-all"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && customInstruction.trim()) {
+                                      handleAiAction("complete-text", customInstruction);
+                                      setCustomInstruction("");
+                                    }
+                                  }}
+                                />
+                                {customInstruction && (
+                                  <button
+                                    onClick={() => {
+                                      handleAiAction("complete-text", customInstruction);
+                                      setCustomInstruction("");
+                                    }}
+                                    className="w-full py-1.5 bg-minimal-accent text-white rounded-lg text-[9px] font-bold uppercase tracking-wider hover:bg-minimal-accent/90 transition-all shadow-lg shadow-minimal-accent/20"
+                                  >
+                                    Run Custom Task
+                                  </button>
+                                )}
+                              </div>
                             </div>
 
                             <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest p-2 mt-2 mb-1 border-b border-minimal-border/30">

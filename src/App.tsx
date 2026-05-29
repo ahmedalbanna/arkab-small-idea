@@ -524,7 +524,7 @@ export default function App() {
     }
   };
 
-  const handleAiAction = async (actionId: string) => {
+  const handleAiAction = async (actionId: string, customInstruction?: string) => {
     if (!activePage) return;
     const activeId = activePage.id;
     const editor = editorRefs.current[activeId];
@@ -571,6 +571,10 @@ export default function App() {
         default:
           return;
       }
+    }
+
+    if (customInstruction) {
+      prompt += `\n\nAdditional Instruction: ${customInstruction}`;
     }
 
     setAiPrompt(prompt);
