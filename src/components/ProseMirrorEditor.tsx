@@ -718,10 +718,12 @@ export interface EditorRef {
   getHtml: () => string;
   getDoc: () => any;
   getTextWithPositions: () => { text: string; pos: number }[];
+  getHeadings: () => { text: string; level: number; pos: number }[];
   setTTSHighlight: (range: { from: number; to: number } | null) => void;
   handleFormat: (type: string) => void;
   getCursorContext: () => string;
   scrollToText: (text: string) => void;
+  scrollToPos: (pos: number) => void;
   streamMarkdown: (content: string, isNew?: boolean) => void;
   setMarkdown: (content: string) => void;
 }
@@ -1780,6 +1782,20 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       getDoc: () => {
         return viewRef.current?.state.doc;
       },
+      getHeadings: () => {
+        if (!viewRef.current) return [];
+        const headings: { text: string; level: number; pos: number }[] = [];
+        viewRef.current.state.doc.descendants((node, pos) => {
+          if (node.type.name === "heading") {
+            headings.push({
+              text: node.textContent,
+              level: node.attrs.level,
+              pos: pos,
+            });
+          }
+        });
+        return headings;
+      },
       getTextWithPositions: () => {
         if (!viewRef.current) return [];
         const result: { text: string; pos: number }[] = [];
@@ -1843,6 +1859,22 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
             dispatch(tr);
             viewRef.current.focus();
           }
+        }
+      },
+      scrollToPos: (pos: number) => {
+        const view = viewRef.current;
+        if (!view) return;
+        
+        try {
+          const { state, dispatch } = view;
+          const resolvedPos = state.doc.resolve(Math.min(pos, state.doc.content.size));
+          // Create a point selection at the start of the heading
+          const selection = TextSelection.create(state.doc, resolvedPos.pos);
+          const tr = state.tr.setSelection(selection).scrollIntoView();
+          dispatch(tr);
+          view.focus();
+        } catch (e) {
+          console.error("Scroll to pos failed", e);
         }
       },
       streamMarkdown: (content: string, isNew: boolean = false) => {

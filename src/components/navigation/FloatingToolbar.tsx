@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, FileText, Cpu, Search, FolderRoot, Type, Target, Settings, Trash2, Languages, Zap, Command, Headset } from 'lucide-react';
+import { Sparkles, FileText, Cpu, Search, FolderRoot, Type, Target, Settings, Trash2, Languages, Zap, Command, Headset, List } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useUIStore } from '../../stores/uiStore';
 
@@ -21,7 +21,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     showSemanticFolders, setSemanticFolders,
     showSettings, setSettings,
     showQuickCommands, setQuickCommands,
-    showTTS, setTTS
+    showTTS, setTTS,
+    showTOC, setTOC
   } = useUIStore();
 
   return (
@@ -29,6 +30,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       {[
         { id: 'ai', icon: Sparkles, active: showAIAssistant, action: () => setAIAssistant(!showAIAssistant), title: 'AI Assistant' },
         { id: 'tts', icon: Headset, active: showTTS, action: () => setTTS(!showTTS), title: 'Text to Speech' },
+        { id: 'toc', icon: List, active: showTOC, action: () => setTOC(!showTOC), title: 'Table of Contents' },
         { id: 'pages', icon: FileText, active: showPages, action: () => setPagesMenu(!showPages), title: 'Pages Manager' },
         { id: 'cpu', icon: Cpu, active: showAiSettings, action: () => setAiSettings(!showAiSettings), title: 'AI Provider Settings' },
         { id: 'search', icon: Search, active: showSearch, action: () => setSearch(!showSearch), title: 'Find & Replace' },

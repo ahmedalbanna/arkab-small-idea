@@ -18,11 +18,13 @@ interface UIState {
   indexedEpisodes: number;
   isAutoSaving: boolean;
   showTTS: boolean;
+  showTOC: boolean;
   ttsRate: number;
   ttsHighlightRange: { from: number; to: number } | null;
   
   toggleSuperZen: () => void;
   toggleAIAssistant: () => void;
+  toggleTOC: () => void;
   setSuperZen: (show: boolean | ((prev: boolean) => boolean)) => void;
   setAIAssistant: (show: boolean | ((prev: boolean) => boolean)) => void;
   setSearch: (show: boolean | ((prev: boolean) => boolean)) => void;
@@ -38,6 +40,7 @@ interface UIState {
   setIndexedCounts: (chunks: number, episodes: number) => void;
   setAutoSaving: (isAutoSaving: boolean) => void;
   setTTS: (show: boolean | ((prev: boolean) => boolean)) => void;
+  setTOC: (show: boolean | ((prev: boolean) => boolean)) => void;
   setTTSRate: (rate: number | ((prev: number) => number)) => void;
   setTTSHighlightRange: (range: { from: number; to: number } | null) => void;
 }
@@ -61,11 +64,13 @@ export const useUIStore = create<UIState>()(
       indexedEpisodes: 0,
       isAutoSaving: false,
       showTTS: false,
+      showTOC: false,
       ttsRate: 1,
       ttsHighlightRange: null,
 
       toggleSuperZen: () => set((state) => ({ isSuperZen: !state.isSuperZen })),
       toggleAIAssistant: () => set((state) => ({ showAIAssistant: !state.showAIAssistant })),
+      toggleTOC: () => set((state) => ({ showTOC: !state.showTOC })),
       setSuperZen: (isSuperZen) => set((state) => ({ 
         isSuperZen: typeof isSuperZen === 'function' ? isSuperZen(state.isSuperZen) : isSuperZen 
       })),
@@ -104,6 +109,9 @@ export const useUIStore = create<UIState>()(
       setAutoSaving: (isAutoSaving: boolean) => set({ isAutoSaving }),
       setTTS: (showTTS) => set((state) => ({ 
         showTTS: typeof showTTS === 'function' ? showTTS(state.showTTS) : showTTS 
+      })),
+      setTOC: (showTOC) => set((state) => ({ 
+        showTOC: typeof showTOC === 'function' ? showTOC(state.showTOC) : showTOC 
       })),
       setTTSRate: (ttsRate) => set((state) => ({ 
         ttsRate: typeof ttsRate === 'function' ? ttsRate(state.ttsRate) : ttsRate 

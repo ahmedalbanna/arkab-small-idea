@@ -35,6 +35,7 @@ import { StatusBar } from "./components/layout/StatusBar";
 import { MobileToolbar } from "./components/navigation/MobileToolbar";
 import { SemanticFolders } from "./components/SemanticFolders";
 import TTSSpeaker from "./components/TTSSpeaker";
+import TableOfContents from "./components/navigation/TableOfContents";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "./lib/utils";
@@ -943,6 +944,12 @@ export default function App() {
         editorRef={{
           current: activePage ? editorRefs.current[activePage.id] || null : null,
         } as any} 
+      />
+
+      <TableOfContents
+        editorRef={{
+          current: activePage ? editorRefs.current[activePage.id] || null : null,
+        } as any}
       />
 
       <StatusBar
