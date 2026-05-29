@@ -17,7 +17,7 @@ import { EditorView, Decoration, DecorationSet } from "prosemirror-view";
 import { Schema, DOMParser, DOMSerializer, Slice, Node } from "prosemirror-model";
 import { schema as baseSchema } from "prosemirror-markdown";
 import { keymap } from "prosemirror-keymap";
-import { baseKeymap, setBlockType, toggleMark } from "prosemirror-commands";
+import { baseKeymap, setBlockType, toggleMark, wrapIn } from "prosemirror-commands";
 import { history, undo, redo } from "prosemirror-history";
 import { buildInputRules, buildKeymap } from "./prose-setup";
 import { highlightPlugin } from "./prose-highlight";
@@ -1860,6 +1860,12 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                       alignCenter: $from.parent.attrs.align === "center",
                       alignRight: $from.parent.attrs.align === "right",
                       alignJustify: $from.parent.attrs.align === "justify",
+                      blockquote: ((): boolean => {
+                        for (let d = $from.depth; d > 0; d--) {
+                          if ($from.node(d).type.name === "blockquote") return true;
+                        }
+                        return false;
+                      })(),
                     };
                     setActiveFormats(formats);
 
@@ -2726,6 +2732,8 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       else if (action === "gallery") {
         // We'll prompt for multiple images or just insert an empty one with a placeholder
         onImageUploadRequest?.(); // Reuse image upload for now, or we could have a specific gallery creator
+      } else if (action === "quote") {
+        handleFormat("quote");
       } else if (
         [
           "improve",
@@ -2765,7 +2773,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     };
 
     const wrapInBlock = (type: any) => (state: EditorState, dispatch: any) => {
-      return setBlockType(type)(state, dispatch);
+      return wrapIn(type)(state, dispatch);
     };
 
     useEffect(() => {
@@ -2899,6 +2907,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     title="Strikethrough (Mod+Shift+X)"
                   >
                     <Strikethrough className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleFormat("quote")}
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.blockquote && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
+                    title="Quote"
+                  >
+                    <Quote className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("code")}

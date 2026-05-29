@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset, PenTool } from 'lucide-react';
+import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset, PenTool, Quote } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 
 interface MobileToolbarProps {
@@ -26,6 +26,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
       <div className="flex items-center justify-around p-3 pb-6 md:pb-3">
         <button onClick={() => editorRef.current?.handleFormat('bold')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><Bold className="w-5 h-5" /></button>
         <button onClick={() => editorRef.current?.handleFormat('italic')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><Italic className="w-5 h-5" /></button>
+        <button onClick={() => editorRef.current?.handleFormat('quote')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><Quote className="w-5 h-5" /></button>
         <button onClick={() => editorRef.current?.handleFormat('h2')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><Heading2 className="w-5 h-5" /></button>
         <button onClick={() => insertText('[', '](url)')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><LinkIcon className="w-5 h-5" /></button>
         <button onClick={() => fileInputRef.current?.click()} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors"><ImageIcon className="w-5 h-5" /></button>
