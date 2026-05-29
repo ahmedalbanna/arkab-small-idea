@@ -81,6 +81,41 @@ import { useUIStore } from "../stores/uiStore";
 // We'll use a slightly customized schema to support more formatting
 const editorSchema = new Schema({
   nodes: baseSchema.spec.nodes
+    .update("paragraph", {
+      content: "inline*",
+      group: "block",
+      attrs: { align: { default: "left" } },
+      parseDOM: [
+        {
+          tag: "p",
+          getAttrs: (dom: any) => ({
+            align: dom.style.textAlign || "left",
+          }),
+        },
+      ],
+      toDOM(node) {
+        const { align } = node.attrs;
+        return ["p", { style: align && align !== "left" ? `text-align: ${align}` : null }, 0];
+      },
+    })
+    .update("heading", {
+      attrs: { level: { default: 1 }, align: { default: "left" } },
+      content: "inline*",
+      group: "block",
+      defining: true,
+      parseDOM: [
+        { tag: "h1", getAttrs: (dom: any) => ({ level: 1, align: dom.style.textAlign || "left" }) },
+        { tag: "h2", getAttrs: (dom: any) => ({ level: 2, align: dom.style.textAlign || "left" }) },
+        { tag: "h3", getAttrs: (dom: any) => ({ level: 3, align: dom.style.textAlign || "left" }) },
+        { tag: "h4", getAttrs: (dom: any) => ({ level: 4, align: dom.style.textAlign || "left" }) },
+        { tag: "h5", getAttrs: (dom: any) => ({ level: 5, align: dom.style.textAlign || "left" }) },
+        { tag: "h6", getAttrs: (dom: any) => ({ level: 6, align: dom.style.textAlign || "left" }) },
+      ],
+      toDOM(node) {
+        const { level, align } = node.attrs;
+        return ["h" + level, { style: align && align !== "left" ? `text-align: ${align}` : null }, 0];
+      },
+    })
     .append(
       tableNodes({
         tableGroup: "block",
@@ -2038,6 +2073,17 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       if (!viewRef.current) return;
       const { state, dispatch } = viewRef.current;
 
+      const setAlign = (alignment: string) => {
+        const { from, to } = state.selection;
+        let tr = state.tr;
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          if (node.type.name === "paragraph" || node.type.name === "heading") {
+            tr.setNodeMarkup(pos, null, { ...node.attrs, align: alignment });
+          }
+        });
+        if (tr.docChanged) dispatch(tr);
+      };
+
       if (type === "bold")
         toggleMark(editorSchema.marks.strong)(state, dispatch);
       if (type === "italic") toggleMark(editorSchema.marks.em)(state, dispatch);
@@ -2054,6 +2100,10 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         setBlockType(editorSchema.nodes.heading, { level: 3 })(state, dispatch);
       if (type === "quote")
         wrapInBlock(editorSchema.nodes.blockquote)(state, dispatch);
+      if (type === "alignLeft") setAlign("left");
+      if (type === "alignCenter") setAlign("center");
+      if (type === "alignRight") setAlign("right");
+      if (type === "alignJustify") setAlign("justify");
 
       viewRef.current.focus();
     };
@@ -2243,6 +2293,10 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
 
       if (action === "h1") handleFormat("h1");
       else if (action === "h2") handleFormat("h2");
+      else if (action === "align-left") handleFormat("alignLeft");
+      else if (action === "align-center") handleFormat("alignCenter");
+      else if (action === "align-right") handleFormat("alignRight");
+      else if (action === "align-justify") handleFormat("alignJustify");
       else if (action === "bullet") {
         const node = editorSchema.nodes.bullet_list.createAndFill();
         if (node)
@@ -2435,6 +2489,35 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     title="Code (Mod+E)"
                   >
                     <Code className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="w-px h-3 bg-white/20 mx-0.5" />
+                  <button
+                    onClick={() => handleFormat("alignLeft")}
+                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    title="Align Left"
+                  >
+                    <AlignLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleFormat("alignCenter")}
+                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    title="Align Center"
+                  >
+                    <AlignCenter className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleFormat("alignRight")}
+                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    title="Align Right"
+                  >
+                    <AlignRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleFormat("alignJustify")}
+                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    title="Justify"
+                  >
+                    <Layout className="w-3.5 h-3.5" />
                   </button>
                   <div className="w-px h-3 bg-white/20 mx-0.5" />
                   <button

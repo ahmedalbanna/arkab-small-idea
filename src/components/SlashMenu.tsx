@@ -11,7 +11,11 @@ import {
   Image as ImageIcon,
   CheckCheck,
   Zap,
-  RotateCcw
+  RotateCcw,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Layout as JustifyIcon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -26,6 +30,10 @@ interface SlashMenuItem {
 const ITEMS: SlashMenuItem[] = [
   { id: 'h1', label: 'Heading 1', description: 'Large section heading', icon: Heading1, action: 'h1' },
   { id: 'h2', label: 'Heading 2', description: 'Medium section heading', icon: Heading2, action: 'h2' },
+  { id: 'align-left', label: 'Align Left', description: 'Left aligned text', icon: AlignLeft, action: 'align-left' },
+  { id: 'align-center', label: 'Align Center', description: 'Centered text', icon: AlignCenter, action: 'align-center' },
+  { id: 'align-right', label: 'Align Right', description: 'Right aligned text', icon: AlignRight, action: 'align-right' },
+  { id: 'align-justify', label: 'Justify', description: 'Full width text', icon: JustifyIcon, action: 'align-justify' },
   { id: 'bullet', label: 'Bullet List', description: 'Simple bulleted list', icon: List, action: 'bullet' },
   { id: 'todo-h', label: 'High Priority Task', description: '- [ ] (H) Urgent items', icon: CheckCheck, action: 'todo-high' },
   { id: 'todo-m', label: 'Medium Priority Task', description: '- [ ] (M) Normal items', icon: CheckCheck, action: 'todo-medium' },
