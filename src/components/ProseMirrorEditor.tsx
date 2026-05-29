@@ -1199,6 +1199,8 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       y: number;
       show: boolean;
     }>({ x: 0, y: 0, show: false });
+
+    const [activeFormats, setActiveFormats] = useState<Record<string, boolean>>({});
     
     // AI Draft State
     const [aiDraft, setAiDraft] = useState<{
@@ -1501,6 +1503,26 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                   const editorRect =
                     containerRef.current?.getBoundingClientRect();
                   if (editorRect) {
+                    const { state } = view;
+                    const { from, $from, to, empty } = state.selection;
+                    
+                    // Update active formats
+                    const formats: Record<string, boolean> = {
+                      bold: state.doc.rangeHasMark(from, to, editorSchema.marks.strong) || (empty && !!editorSchema.marks.strong.isInSet(state.storedMarks || $from.marks())),
+                      italic: state.doc.rangeHasMark(from, to, editorSchema.marks.em) || (empty && !!editorSchema.marks.em.isInSet(state.storedMarks || $from.marks())),
+                      underline: state.doc.rangeHasMark(from, to, editorSchema.marks.underline) || (empty && !!editorSchema.marks.underline.isInSet(state.storedMarks || $from.marks())),
+                      strike: state.doc.rangeHasMark(from, to, editorSchema.marks.strike) || (empty && !!editorSchema.marks.strike.isInSet(state.storedMarks || $from.marks())),
+                      code: state.doc.rangeHasMark(from, to, editorSchema.marks.code) || (empty && !!editorSchema.marks.code.isInSet(state.storedMarks || $from.marks())),
+                      h1: $from.parent.type.name === "heading" && $from.parent.attrs.level === 1,
+                      h2: $from.parent.type.name === "heading" && $from.parent.attrs.level === 2,
+                      h3: $from.parent.type.name === "heading" && $from.parent.attrs.level === 3,
+                      alignLeft: $from.parent.attrs.align === "left" || !$from.parent.attrs.align,
+                      alignCenter: $from.parent.attrs.align === "center",
+                      alignRight: $from.parent.attrs.align === "right",
+                      alignJustify: $from.parent.attrs.align === "justify",
+                    };
+                    setActiveFormats(formats);
+
                     setBubbleMenu({
                       x: left - editorRect.left,
                       y: start.top - editorRect.top - 45,
@@ -2435,21 +2457,30 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                 <>
                   <button
                     onClick={() => handleFormat("h1")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.h1 && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Heading 1 (#)"
                   >
                     <Heading1 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("h2")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.h2 && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Heading 2 (##)"
                   >
                     <Heading2 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("h3")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.h3 && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Heading 3 (###)"
                   >
                     <Heading3 className="w-3.5 h-3.5" />
@@ -2457,35 +2488,50 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                   <div className="w-px h-3 bg-white/20 mx-0.5" />
                   <button
                     onClick={() => handleFormat("bold")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.bold && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Bold (Mod+B)"
                   >
                     <Bold className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("italic")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.italic && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Italic (Mod+I)"
                   >
                     <Italic className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("underline")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.underline && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Underline (Mod+U)"
                   >
                     <Underline className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("strike")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.strike && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Strikethrough (Mod+Shift+X)"
                   >
                     <Strikethrough className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("code")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.code && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Code (Mod+E)"
                   >
                     <Code className="w-3.5 h-3.5" />
@@ -2493,28 +2539,40 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                   <div className="w-px h-3 bg-white/20 mx-0.5" />
                   <button
                     onClick={() => handleFormat("alignLeft")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.alignLeft && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Align Left"
                   >
                     <AlignLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("alignCenter")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.alignCenter && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Align Center"
                   >
                     <AlignCenter className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("alignRight")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.alignRight && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Align Right"
                   >
                     <AlignRight className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleFormat("alignJustify")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className={cn(
+                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
+                      activeFormats.alignJustify && "bg-minimal-accent/20 text-minimal-accent"
+                    )}
                     title="Justify"
                   >
                     <Layout className="w-3.5 h-3.5" />
