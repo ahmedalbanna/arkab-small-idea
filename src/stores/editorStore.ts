@@ -29,6 +29,7 @@ interface EditorState {
   removePage: (id: string) => void;
   togglePageOpen: (id: string) => void;
   setActiveFocusedPageId: (id: string | null) => void;
+  reorderPages: (pages: Page[]) => void;
   setPageCursor: (id: string, cursor: { from: number; to: number } | null) => void;
   setSemanticClusters: (clusters: SemanticCluster[]) => void;
   addSnapshot: (pageId: string, content: string, userNote?: string) => Promise<void>;
@@ -102,6 +103,7 @@ export const useEditorStore = create<EditorState>()(
         };
       }),
       setActiveFocusedPageId: (id) => set({ activeFocusedPageId: id }),
+      reorderPages: (pages) => set({ pages }),
       setPageCursor: (id, cursor) => set((state) => ({
         pages: state.pages.map(p => p.id === id ? { ...p, cursor: cursor || undefined } : p)
       })),

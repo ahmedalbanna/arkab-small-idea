@@ -1,13 +1,13 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
+import { Plus, X, Trash2, GripVertical } from 'lucide-react';
 import { cn, useMediaQuery } from '../../lib/utils';
 import { useEditorStore } from '../../stores/editorStore';
 import { useUIStore } from '../../stores/uiStore';
 
 export const PagesManager: React.FC = () => {
   const { showPages, setPagesMenu } = useUIStore();
-  const { pages, activePageIds, activeFocusedPageId, addPage, removePage, togglePageOpen, setActiveFocusedPageId } = useEditorStore();
+  const { pages, activePageIds, activeFocusedPageId, addPage, removePage, togglePageOpen, setActiveFocusedPageId, reorderPages } = useEditorStore();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   return (
@@ -38,10 +38,18 @@ export const PagesManager: React.FC = () => {
               <span>ADD CHAPTER</span>
             </button>
 
-            <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
-              {pages.map(page => (
-                <div 
+            <Reorder.Group 
+              axis="y" 
+              values={pages} 
+              onReorder={reorderPages}
+              as="div"
+              className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-1"
+            >
+              {pages.map((page, index) => (
+                <Reorder.Item 
                   key={page.id}
+                  value={page}
+                  as="div"
                   className={cn(
                     "group flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer",
                     activeFocusedPageId === page.id
@@ -58,26 +66,29 @@ export const PagesManager: React.FC = () => {
                   }}
                 >
                   <div className="flex items-center gap-3">
+                    <div className="text-minimal-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
                     <div className={cn(
-                      "w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-bold",
+                      "w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0",
                       activePageIds.includes(page.id) ? "bg-minimal-accent text-white" : "bg-minimal-sidebar text-minimal-muted"
                     )}>
-                      {pages.indexOf(page) + 1}
+                      {index + 1}
                     </div>
-                    <div>
-                      <p className="text-[11px] font-bold text-minimal-text">{page.title}</p>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-minimal-text truncate">{page.title}</p>
                       <p className="text-[9px] text-minimal-muted uppercase tracking-tight">{page.content.split(/\s+/).filter(Boolean).length} words</p>
                     </div>
                   </div>
                   <button 
                     onClick={(e) => { e.stopPropagation(); removePage(page.id); }}
-                    className="p-1.5 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="p-1.5 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                </div>
+                </Reorder.Item>
               ))}
-            </div>
+            </Reorder.Group>
           </div>
         </motion.div>
       )}

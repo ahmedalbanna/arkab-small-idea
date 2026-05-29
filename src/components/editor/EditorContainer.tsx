@@ -106,6 +106,12 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     setVisibleFileActions((prev) => ({ ...prev, [pageId]: !prev[pageId] }));
   };
 
+  const sortedActivePageIds = [...activePageIds].sort((a, b) => {
+    const indexA = pages.findIndex((p) => p.id === a);
+    const indexB = pages.findIndex((p) => p.id === b);
+    return indexA - indexB;
+  });
+
   return (
     <main
       className={cn(
@@ -115,7 +121,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     >
       <div className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory flex gap-4 md:gap-8 p-4 md:p-12 custom-scrollbar bg-minimal-sidebar/50 scroll-smooth h-full">
         <AnimatePresence mode="popLayout" initial={false}>
-          {activePageIds.map((id) => {
+          {sortedActivePageIds.map((id) => {
             const page = pages.find((p) => p.id === id);
             if (!page) return null;
             return (
