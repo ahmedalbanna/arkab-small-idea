@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset, PenTool, Quote, List } from 'lucide-react';
+import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset, PenTool, Quote, List, Table } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 
 interface MobileToolbarProps {
@@ -27,6 +27,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         <button onClick={() => editorRef.current?.handleFormat('bold')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><Bold className="w-5 h-5" /></button>
         <button onClick={() => editorRef.current?.handleFormat('italic')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><Italic className="w-5 h-5" /></button>
         <button onClick={() => editorRef.current?.handleFormat('quote')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><Quote className="w-5 h-5" /></button>
+        <button onClick={() => editorRef.current?.handleFormat('tableify')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><Table className="w-5 h-5" /></button>
         <button onClick={() => editorRef.current?.handleFormat('bullet')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><List className="w-5 h-5" /></button>
         <button onClick={() => editorRef.current?.handleFormat('h2')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><Heading2 className="w-5 h-5" /></button>
         <button onClick={() => insertText('[', '](url)')} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><LinkIcon className="w-5 h-5" /></button>

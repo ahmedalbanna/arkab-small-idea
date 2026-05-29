@@ -17,7 +17,8 @@ import {
   AlignCenter,
   AlignRight,
   Layout as JustifyIcon,
-  PenTool
+  PenTool,
+  Table
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -45,6 +46,7 @@ const ITEMS: SlashMenuItem[] = [
   { id: 'image', label: 'Image', description: 'Insert or upload an image', icon: ImageIcon, action: 'image' },
   { id: 'scribble', label: 'Scribble', description: 'Draw with finger or pen', icon: PenTool, action: 'scribble' },
   { id: 'gallery', label: 'Gallery', description: 'Create an image gallery', icon: Layout, action: 'gallery' },
+  { id: 'tableify', label: 'Convert to Table', description: 'Convert paragraphs to table', icon: Table, action: 'tableify' },
   { id: 'ai-improve', label: 'AI Improve', description: 'Rewrite the paragraph', icon: Wand2, action: 'ai-improve' },
   { id: 'ai-outline', label: 'AI Outline', description: 'Generate structure', icon: Layout, action: 'ai-outline' },
   { id: 'ai-summarize', label: 'AI Summarize', description: 'Sum up selection', icon: FileText, action: 'summarize' },

@@ -72,6 +72,7 @@ import {
   Trash2,
   Undo2,
   Redo2,
+  Table
 } from "lucide-react";
 import { dropCursor } from "prosemirror-dropcursor";
 import { gapCursor } from "prosemirror-gapcursor";
@@ -2512,6 +2513,55 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       if (type === "alignRight") setAlign("right");
       if (type === "alignJustify") setAlign("justify");
       if (type === "bullet") wrapInList(editorSchema.nodes.bullet_list)(state, dispatch);
+      if (type === "tableify") {
+        const { from, to } = state.selection;
+        const selectedText = state.doc.textBetween(from, to, "\n");
+        if (selectedText.trim()) {
+          const lines = selectedText.split("\n").filter(l => l.trim().length > 0);
+          if (lines.length > 0) {
+            const delimiters = ["|", "\t", ","];
+            let bestDelimiter = delimiters[0];
+            let maxCols = 0;
+
+            for (const delim of delimiters) {
+              const cols = lines[0].split(delim).length;
+              if (cols > maxCols) {
+                maxCols = cols;
+                bestDelimiter = delim;
+              }
+            }
+
+            const processLine = (line: string) => {
+              let cols = line.split(bestDelimiter);
+              if (bestDelimiter === "|") {
+                cols = cols.filter((c, i) => {
+                  if ((i === 0 || i === cols.length - 1) && c.trim() === "") return false;
+                  return true;
+                });
+              }
+              return cols.map(c => c.trim());
+            };
+
+            const tableData = lines.map(processLine);
+            const colCount = Math.max(...tableData.map(r => r.length));
+
+            let markdownTable = "";
+            const header = [...tableData[0]];
+            while (header.length < colCount) header.push(`Header ${header.length + 1}`);
+            markdownTable += "| " + header.join(" | ") + " |\n";
+            markdownTable += "| " + Array(colCount).fill("---").join(" | ") + " |\n";
+            
+            for (let i = 1; i < tableData.length; i++) {
+              const row = [...tableData[i]];
+              while (row.length < colCount) row.push("");
+              markdownTable += "| " + row.join(" | ") + " |\n";
+            }
+
+            const slice = editorParser.parse(markdownTable);
+            dispatch(state.tr.replaceSelection(new Slice(slice.content, 0, 0)));
+          }
+        }
+      }
 
       viewRef.current.focus();
     };
@@ -2732,6 +2782,8 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       else if (action === "scribble") {
         const node = editorSchema.nodes.scribble.create({ aspectRatio: 0.5 });
         viewRef.current.dispatch(afterDeleteState.tr.replaceSelectionWith(node));
+      } else if (action === "tableify") {
+        handleFormat("tableify");
       } else if (action === "image") onImageUploadRequest?.();
       else if (action === "gallery") {
         // We'll prompt for multiple images or just insert an empty one with a placeholder
@@ -2941,6 +2993,13 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     title="Code (Mod+E)"
                   >
                     <Code className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleFormat("tableify")}
+                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    title="Convert to Table"
+                  >
+                    <Table className="w-3.5 h-3.5" />
                   </button>
                   <div className="w-px h-3 bg-white/20 mx-0.5" />
                   <button
