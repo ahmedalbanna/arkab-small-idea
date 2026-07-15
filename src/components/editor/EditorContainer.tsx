@@ -20,7 +20,9 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { AI_ACTIONS } from "../../constants";
 import { SnapshotsMenu } from "../overlays/SnapshotsMenu";
 import { FileActionsMenu } from "../overlays/FileActionsMenu";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, Reorder } from "motion/react";
+import { ActivePageEditor } from "./ActivePageEditor";
+import { Page } from "../../stores/editorStore";
 
 interface EditorContainerProps {
   editorRefs: React.MutableRefObject<Record<string, EditorRef | null>>;
@@ -67,9 +69,16 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     setPageSettings,
     setPageCursor,
     addSnapshot,
+    reorderPages,
   } = useEditorStore();
-  const { fontSize: globalFontSize, lineHeight: globalLineHeight } =
-    useSettingsStore();
+  const {
+    fontSize: globalFontSize,
+    lineHeight: globalLineHeight,
+    setTheme,
+    setFontFamily,
+    theme: globalTheme,
+    enableHeadingNumbering
+  } = useSettingsStore();
   const { direction, showSearch } = useUIStore();
   const {
     personalInstructions: aiPersonalInstructions,
@@ -78,8 +87,8 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     providerConfigs,
   } = useAIStore();
   const { setAIAssistant, setAutoSaving, isAutoSaving } = useUIStore();
-  const { enableHeadingNumbering } = useSettingsStore();
 
+  const [quoteIndex, setQuoteIndex] = useState(0);
   const [visibleSnapshots, setVisibleSnapshots] = useState<
     Record<string, boolean>
   >({});
@@ -112,6 +121,23 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     return indexA - indexB;
   });
 
+  const activePages = sortedActivePageIds
+    .map((id) => pages.find((p) => p.id === id))
+    .filter(Boolean) as Page[];
+
+  const handleReorderActivePages = (newActivePages: Page[]) => {
+    const activeIndices = pages
+      .map((p, idx) => (activePageIds.includes(p.id) ? idx : -1))
+      .filter((idx) => idx !== -1);
+
+    const newPages = [...pages];
+    activeIndices.forEach((masterIdx, activeIdx) => {
+      newPages[masterIdx] = newActivePages[activeIdx];
+    });
+
+    reorderPages(newPages);
+  };
+
   return (
     <main
       className={cn(
@@ -119,456 +145,308 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
         "pt-0",
       )}
     >
-      <div className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory flex gap-4 md:gap-8 p-4 md:p-12 custom-scrollbar bg-minimal-sidebar/50 scroll-smooth h-full">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {sortedActivePageIds.map((id) => {
-            const page = pages.find((p) => p.id === id);
-            if (!page) return null;
-            return (
-              <motion.div
-                key={id}
-                layout
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                transition={{ duration: 0.4, ease: "circOut" }}
-                onClick={() => setActiveFocusedPageId(id)}
-                className={cn(
-                  "flex-shrink-0 w-[calc(100vw-4rem)] md:w-full max-w-[850px] h-full bg-minimal-bg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] rounded-xl border flex flex-col snap-center relative group mx-2 md:mx-4 first:ml-auto last:mr-auto transition-all duration-300 overflow-hidden",
-                  activeFocusedPageId === id
-                    ? "border-minimal-accent ring-2 ring-minimal-accent/10 shadow-[0_40px_80px_-15px_rgba(var(--minimal-accent-rgb),0.15)]"
-                    : "border-minimal-border",
-                  enableHeadingNumbering && "headings-numbered",
-                )}
+      {sortedActivePageIds.length === 0 ? (
+        <div className="flex-1 overflow-y-auto p-6 md:p-16 flex flex-col items-center justify-center min-h-full custom-scrollbar bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-minimal-accent/5 via-transparent to-transparent select-none">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="w-full max-w-4xl text-center space-y-8 md:space-y-12"
+          >
+            {/* Calligraphic Floating Seal */}
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-minimal-border bg-minimal-sidebar/40 backdrop-blur-md shadow-sm animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-minimal-accent" />
+                <span className="font-mono text-[9px] font-black uppercase tracking-widest text-minimal-muted">
+                  Space Active • {globalTheme.toUpperCase()}
+                </span>
+              </div>
+              <h1 className="text-4xl md:text-6xl font-black tracking-tight text-minimal-text font-serif bg-gradient-to-r from-minimal-text via-minimal-accent to-minimal-text bg-clip-text text-transparent">
+                حبرٌ وريشة <span className="font-sans font-light text-2xl md:text-3xl text-minimal-muted align-middle mx-2">|</span> Ink & Quill
+              </h1>
+              <p className="text-xs md:text-sm text-minimal-muted max-w-lg mx-auto leading-relaxed">
+                صمّم فضاء كتابتك الفاخر، ودع سحر الكلمات يتدفق بلا حدود في واجهتك المخصصة للأدب والتفكير العالي.
+              </p>
+            </div>
+
+            {/* Quote of the Day Section */}
+            <motion.div 
+              key={quoteIndex}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="relative max-w-xl mx-auto p-6 md:p-8 rounded-3xl border border-minimal-border/80 bg-minimal-bg/60 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all group/quote"
+            >
+              {/* Corner Accents represent luxury paper borders */}
+              <div className="absolute top-3 left-3 w-3 h-3 border-t-2 border-l-2 border-minimal-accent/20 rounded-tl" />
+              <div className="absolute top-3 right-3 w-3 h-3 border-t-2 border-r-2 border-minimal-accent/20 rounded-tr" />
+              <div className="absolute bottom-3 left-3 w-3 h-3 border-b-2 border-l-2 border-minimal-accent/20 rounded-bl" />
+              <div className="absolute bottom-3 right-3 w-3 h-3 border-b-2 border-r-2 border-minimal-accent/20 rounded-br" />
+
+              <div className="space-y-4">
+                <p className="text-lg md:text-2xl font-serif text-minimal-text leading-relaxed font-semibold italic text-center px-4" style={{ fontFamily: '"Amiri", serif' }}>
+                  « {POETIC_QUOTES[quoteIndex].ar} »
+                </p>
+                <div className="w-12 h-px bg-minimal-accent/30 mx-auto" />
+                <p className="text-[11px] font-sans text-minimal-muted tracking-tight leading-relaxed max-w-md mx-auto">
+                  "{POETIC_QUOTES[quoteIndex].en}"
+                </p>
+                <p className="text-[9px] font-mono font-bold text-minimal-accent tracking-widest uppercase">
+                  — {POETIC_QUOTES[quoteIndex].author}
+                </p>
+              </div>
+
+              {/* Cycle Quote Trigger */}
+              <button
+                onClick={() => setQuoteIndex((prev) => (prev + 1) % POETIC_QUOTES.length)}
+                className="absolute -bottom-3 right-6 px-3 py-1 bg-minimal-bg border border-minimal-border rounded-full text-[8px] font-bold text-minimal-muted hover:text-minimal-accent hover:border-minimal-accent/30 transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
               >
-                <div
-                  className={cn(
-                    "px-4 md:px-6 py-2 md:py-3 border-b flex items-center justify-between rounded-t-xl transition-all duration-300",
-                    activeFocusedPageId === id
-                      ? "bg-minimal-accent/5 border-minimal-accent/20"
-                      : "bg-minimal-sidebar/30 border-minimal-border",
-                  )}
-                >
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-5 h-5 md:w-6 md:h-6 rounded-lg bg-minimal-accent text-white flex flex-shrink-0 items-center justify-center text-[9px] md:text-[10px] font-bold">
-                      {pages.indexOf(page) + 1}
-                    </div>
-                    <span className="text-[9px] md:text-[10px] font-bold text-minimal-muted uppercase tracking-widest truncate max-w-[100px] md:max-w-none">
-                      {page.title}
-                    </span>
-                    <SnapshotsMenu
-                      pageId={id}
-                      showSnapshots={!!visibleSnapshots[id]}
-                      setShowSnapshots={() => toggleSnapshots(id)}
-                      takeSnapshot={() => addSnapshot(id, page.content)}
-                      setMarkdown={(content) => {
-                        setPageContent(id, content);
-                        editorRefs.current[id]?.setMarkdown(content);
-                      }}
-                    />
-                  </div>
+                <span>مقولة أخرى (Next Quote)</span>
+                <span className="text-[10px]">✨</span>
+              </button>
+            </motion.div>
 
-                  <div className="flex items-center gap-0.5 md:gap-1">
-                    {/* Per-page controls */}
-                    <div className="flex items-center bg-minimal-bg/50 rounded-lg border border-minimal-border/50 p-0.5 mr-1 md:mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 lg:opacity-100">
-                      {/* Word Goal Control */}
-                      <div className="hidden sm:flex items-center gap-1 px-1.5 border-r border-minimal-border/50 mr-1">
-                        {editingGoal === id ? (
-                          <input
-                            autoFocus
-                            type="number"
-                            className="w-12 bg-transparent text-[10px] font-mono font-bold text-minimal-accent outline-none"
-                            defaultValue={page.wordGoal || 0}
-                            onBlur={(e) => {
-                              setPageSettings(id, {
-                                wordGoal: parseInt(e.target.value) || 0,
-                              });
-                              setEditingGoal(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") e.currentTarget.blur();
-                            }}
-                          />
-                        ) : (
-                          <button
-                            onClick={() => setEditingGoal(id)}
-                            className={cn(
-                              "flex items-center gap-1.5 hover:text-minimal-accent transition-colors",
-                              page.wordGoal > 0
-                                ? "text-minimal-accent"
-                                : "text-minimal-muted",
-                            )}
-                            title="Set Word Goal"
-                          >
-                            <Target className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-mono font-bold">
-                              {page.wordGoal || "GOAL"}
-                            </span>
-                          </button>
-                        )}
+            {/* Theme & Page Templates */}
+            <div className="space-y-4">
+              <div className="text-center">
+                <h3 className="text-xs font-bold text-minimal-muted uppercase tracking-widest">
+                  شغّل فضاءً إبداعياً متكاملاً / Select Visual Workspace
+                </h3>
+                <p className="text-[9px] text-minimal-muted mt-1">
+                  سيقوم النظام بإنشاء فصل جديد تلقائياً وتفعيل المظهر والخط المناسبين للنوع المحدد فوراً.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto px-4">
+                {[
+                  {
+                    title: "الأندلس الأثري",
+                    desc: "عراقة الأدب الموشّح والفردوس المفقود",
+                    theme: "andalusia",
+                    font: '"Amiri", serif',
+                    content: ANDALUSIA_CONTENT,
+                    docTitle: "الأندلس والفردوس المفقود",
+                    icon: "🕌",
+                    badge: "مظهر دافئ & خط كلاسيكي",
+                    color: "border-emerald-500/20 hover:border-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-800"
+                  },
+                  {
+                    title: "الكون الساحر",
+                    desc: "أسرار الفضاء السحيق وسديم الجبار",
+                    theme: "cosmos",
+                    font: '"Cairo", sans-serif',
+                    content: COSMOS_CONTENT,
+                    docTitle: "سديم الجبار وحواضن النجوم",
+                    icon: "🌌",
+                    badge: "مظهر داكن & خط هندسي",
+                    color: "border-purple-500/20 hover:border-purple-500 bg-purple-500/5 hover:bg-purple-500/10 text-purple-400"
+                  },
+                  {
+                    title: "الوثيقة العتيقة",
+                    desc: "خواطر كلاسيكية برائحة الحبر القديم",
+                    theme: "parchment",
+                    font: '"EB Garamond", serif',
+                    content: PARCHMENT_CONTENT,
+                    docTitle: "حبر وريشة: فلسفة الكتابة",
+                    icon: "📜",
+                    badge: "ورق معتق & خط أنيق",
+                    color: "border-amber-600/20 hover:border-amber-600 bg-amber-600/5 hover:bg-amber-600/10 text-amber-800"
+                  },
+                  {
+                    title: "طوكيو النيون",
+                    desc: "مستقبل تقني مشحون بطاقة السيبربانك",
+                    theme: "tokyo",
+                    font: '"JetBrains Mono", monospace',
+                    content: TOKYO_CONTENT,
+                    docTitle: "Tokyo Cyber Cores",
+                    icon: "🌆",
+                    badge: "مظهر مستقبلي & خط تقني",
+                    color: "border-pink-500/20 hover:border-pink-500 bg-pink-500/5 hover:bg-pink-500/10 text-pink-400"
+                  }
+                ].map((preset) => (
+                  <button
+                    key={preset.theme}
+                    onClick={() => {
+                      setTheme(preset.theme as any);
+                      setFontFamily(preset.font);
+                      addPage(preset.docTitle, preset.content);
+                    }}
+                    className={cn(
+                      "flex flex-col p-5 rounded-3xl border text-right justify-between transition-all hover:scale-[1.03] active:scale-95 shadow-md hover:shadow-xl cursor-pointer h-52 group relative overflow-hidden bg-minimal-sidebar/60 border-minimal-border"
+                    )}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-minimal-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    <div className="w-full">
+                      <div className="flex justify-between items-start w-full mb-3">
+                        <span className="text-[8px] bg-minimal-accent/10 text-minimal-accent px-2 py-0.5 rounded-full font-black uppercase tracking-tight">
+                          {preset.theme.toUpperCase()}
+                        </span>
+                        <span className="text-2xl group-hover:scale-125 transition-transform duration-300">{preset.icon}</span>
                       </div>
-
-                      <button
-                        onClick={() =>
-                          setPageSettings(id, {
-                            isTypewriter: !page.isTypewriter,
-                          })
-                        }
-                        className={cn(
-                          "p-1.5 rounded-md transition-all",
-                          page.isTypewriter
-                            ? "bg-minimal-accent text-white"
-                            : "text-minimal-muted hover:text-minimal-text hover:bg-minimal-sidebar",
-                        )}
-                        title="Typewriter Mode"
-                      >
-                        <Type className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          setPageSettings(id, {
-                            isFocusMode: !page.isFocusMode,
-                          })
-                        }
-                        className={cn(
-                          "p-1.5 rounded-md transition-all",
-                          page.isFocusMode
-                            ? "bg-minimal-accent text-white"
-                            : "text-minimal-muted hover:text-minimal-text hover:bg-minimal-sidebar",
-                        )}
-                        title="Paragraph Focus Mode"
-                      >
-                        <FocusOn className="w-3.5 h-3.5" />
-                      </button>
-
-                      <div className="w-px h-3.5 bg-minimal-border mx-1" />
-
-                      {/* Font Size Per-Page */}
-                      <div className="flex items-center gap-1 bg-minimal-bg/50 rounded-md border border-minimal-border/30 px-1 py-0.5">
-                        <button
-                          onClick={() => {
-                            const current = page.fontSize ?? globalFontSize;
-                            setPageSettings(id, {
-                              fontSize: Math.max(8, current - 1),
-                            });
-                          }}
-                          className="p-1 text-minimal-muted hover:text-minimal-accent transition-colors"
-                          title="Decrease Font Size"
-                        >
-                          <Minus className="w-2.5 h-2.5" />
-                        </button>
-                        <div className="flex items-center gap-1 text-[9px] font-mono font-bold text-minimal-text min-w-[32px] justify-center">
-                          <ALargeSmall className="w-3 h-3 text-minimal-muted" />
-                          <span>{page.fontSize ?? globalFontSize}</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            const current = page.fontSize ?? globalFontSize;
-                            setPageSettings(id, {
-                              fontSize: Math.min(72, current + 1),
-                            });
-                          }}
-                          className="p-1 text-minimal-muted hover:text-minimal-accent transition-colors"
-                          title="Increase Font Size"
-                        >
-                          <Plus className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-
-                      {/* Line Height Per-Page */}
-                      <div className="flex items-center gap-1 bg-minimal-bg/50 rounded-md border border-minimal-border/30 px-1 py-0.5">
-                        <button
-                          onClick={() => {
-                            const current = page.lineHeight ?? globalLineHeight;
-                            setPageSettings(id, {
-                              lineHeight: Math.max(
-                                1,
-                                parseFloat((current - 0.1).toFixed(1)),
-                              ),
-                            });
-                          }}
-                          className="p-1 text-minimal-muted hover:text-minimal-accent transition-colors"
-                          title="Decrease Line Height"
-                        >
-                          <Minus className="w-2.5 h-2.5" />
-                        </button>
-                        <div className="flex items-center gap-1 text-[9px] font-mono font-bold text-minimal-text min-w-[32px] justify-center">
-                          <ChevronsUpDown className="w-3 h-3 text-minimal-muted" />
-                          <span>
-                            {(page.lineHeight ?? globalLineHeight).toFixed(1)}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            const current = page.lineHeight ?? globalLineHeight;
-                            setPageSettings(id, {
-                              lineHeight: Math.min(
-                                3,
-                                parseFloat((current + 0.1).toFixed(1)),
-                              ),
-                            });
-                          }}
-                          className="p-1 text-minimal-muted hover:text-minimal-accent transition-colors"
-                          title="Increase Line Height"
-                        >
-                          <Plus className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-
-                      <div className="w-px h-3.5 bg-minimal-border mx-1" />
-
-                      {/* Quick AI Actions */}
-                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth max-w-[120px] md:max-w-[200px]">
-                        {AI_ACTIONS.slice(0, 4).map((action) => (
-                          <button
-                            key={action.id}
-                            onClick={() => handleAiAction(action.id)}
-                            className={cn(
-                              "flex-shrink-0 p-1.5 rounded-lg border border-transparent hover:border-minimal-accent/20 hover:bg-minimal-accent/5 transition-all group/ai",
-                              action.color,
-                            )}
-                            title={action.label}
-                          >
-                            <action.icon className="w-3.5 h-3.5 group-hover/ai:scale-110 transition-transform" />
-                          </button>
-                        ))}
-                        <div className="relative group/menu">
-                          <button className="p-1.5 rounded-lg text-minimal-muted hover:text-minimal-accent hover:bg-minimal-sidebar transition-all">
-                            <Sparkles className="w-3.5 h-3.5" />
-                          </button>
-                          <div className="absolute right-0 top-full mt-2 w-48 bg-minimal-bg border border-minimal-border shadow-2xl rounded-2xl p-2 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-[100] scale-95 group-hover/menu:scale-100 origin-top-right">
-                            <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest p-2 mb-1 border-b border-minimal-border/30">
-                              AI Power Tools
-                            </p>
-                            <div className="grid grid-cols-1 gap-1">
-                              {AI_ACTIONS.map((action) => (
-                                <button
-                                  key={action.id}
-                                  onClick={() => {
-                                    handleAiAction(action.id, customInstruction);
-                                    setCustomInstruction("");
-                                  }}
-                                  className="flex items-center gap-3 p-2 hover:bg-minimal-sidebar rounded-xl transition-all text-left group/item"
-                                >
-                                  <div
-                                    className={cn(
-                                      "w-7 h-7 rounded-lg flex items-center justify-center group-hover/item:scale-110 transition-transform",
-                                      action.bg,
-                                      action.color,
-                                    )}
-                                  >
-                                    <action.icon className="w-3.5 h-3.5" />
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] font-bold text-minimal-text leading-none mb-0.5">
-                                      {action.label}
-                                    </p>
-                                    <p className="text-[8px] text-minimal-muted truncate max-w-[100px]">
-                                      {action.description}
-                                    </p>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-
-                            <div className="mt-3 px-2">
-                              <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest mb-2 border-b border-minimal-border/30 pb-1">
-                                Custom Instruction
-                              </p>
-                              <div className="flex flex-col gap-2">
-                                <input
-                                  type="text"
-                                  value={customInstruction}
-                                  onChange={(e) => setCustomInstruction(e.target.value)}
-                                  placeholder="e.g. In 3 bullets, poetic tone..."
-                                  className="w-full bg-minimal-sidebar border border-minimal-border rounded-lg px-2 py-1.5 text-[10px] text-minimal-text placeholder:text-minimal-muted outline-none focus:border-minimal-accent/50 transition-all"
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && customInstruction.trim()) {
-                                      handleAiAction("complete-text", customInstruction);
-                                      setCustomInstruction("");
-                                    }
-                                  }}
-                                />
-                                {customInstruction && (
-                                  <button
-                                    onClick={() => {
-                                      handleAiAction("complete-text", customInstruction);
-                                      setCustomInstruction("");
-                                    }}
-                                    className="w-full py-1.5 bg-minimal-accent text-white rounded-lg text-[9px] font-bold uppercase tracking-wider hover:bg-minimal-accent/90 transition-all shadow-lg shadow-minimal-accent/20"
-                                  >
-                                    Run Custom Task
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest p-2 mt-2 mb-1 border-b border-minimal-border/30">
-                              Brainstorming
-                            </p>
-                            <div className="grid grid-cols-2 gap-2 p-1">
-                              <button
-                                onClick={() => {
-                                  handleAiAction(
-                                    "custom:Brainstorm 5 topics for ",
-                                  );
-                                  setAIAssistant(true);
-                                }}
-                                className="p-2 border border-minimal-border rounded-xl text-[9px] font-bold uppercase tracking-wider text-minimal-muted hover:bg-minimal-sidebar hover:text-minimal-accent transition-all text-center"
-                              >
-                                Brainstorm
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handleAiAction(
-                                    "custom:Draft a professional ",
-                                  );
-                                  setAIAssistant(true);
-                                }}
-                                className="p-2 border border-minimal-border rounded-xl text-[9px] font-bold uppercase tracking-wider text-minimal-muted hover:bg-minimal-sidebar hover:text-minimal-accent transition-all text-center"
-                              >
-                                Draft
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="w-px h-3.5 bg-minimal-border mx-1" />
-
-                      <div className="relative">
-                        <FileActionsMenu
-                          pageId={id}
-                          showFileActions={visibleFileActions[id]}
-                          setShowFileActions={(v) =>
-                            setVisibleFileActions((prev) => ({
-                              ...prev,
-                              [id]: v,
-                            }))
-                          }
-                          editorRef={{ current: editorRefs.current[id] }}
-                          markdown={page.content}
-                          inline={true}
-                        />
-                        <button
-                          onClick={() => toggleFileActions(id)}
-                          className={cn(
-                            "p-1.5 rounded-md transition-all",
-                            visibleFileActions[id]
-                              ? "bg-minimal-accent text-white"
-                              : "text-minimal-muted hover:text-minimal-text hover:bg-minimal-sidebar",
-                          )}
-                          title="File Actions"
-                        >
-                          <FileDown className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <h4 className="text-[13px] font-black text-minimal-text leading-tight mb-1">
+                        {preset.title}
+                      </h4>
+                      <p className="text-[10px] text-minimal-muted leading-snug">
+                        {preset.desc}
+                      </p>
                     </div>
 
-                    <button
-                      onClick={() => togglePageOpen(id)}
-                      className="p-1 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Close page"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <ProseMirrorEditor
-                    ref={(el) => {
-                      editorRefs.current[id] = el;
-                    }}
-                    value={page.content}
-                    onChange={(c) => setPageContent(id, c)}
-                    onKeyDown={handleKeyDown}
-                    isTypewriter={page.isTypewriter}
-                    isFocusMode={page.isFocusMode}
-                    onToggleFocusMode={() =>
-                      setPageSettings(id, { isFocusMode: !page.isFocusMode })
-                    }
-                    fontSize={page.fontSize ?? globalFontSize}
-                    lineHeight={page.lineHeight ?? globalLineHeight}
-                    initialCursor={page.cursor}
-                    onSelectionChange={(sel) => setPageCursor(id, sel)}
-                    direction={direction}
-                    onScroll={() => handleScroll(id)}
-                    personalInstructions={aiPersonalInstructions}
-                    selectedModel={serviceConfigs.actions.model}
-                    provider={serviceConfigs.actions.provider}
-                    apiKeys={apiKeys}
-                    providerConfigs={providerConfigs}
-                    onAiResult={(result) => {
-                      // For internal actions, let's just insert directly if it's already done
-                      // But usually onAiStream would have handled it.
-                      editorRefs.current[id]?.streamMarkdown(result, false);
-                    }}
-                    onAiStream={(chunk, isNew) => {
-                      editorRefs.current[id]?.streamMarkdown(chunk, isNew);
-                      // Also open the sidebar to show the user what's happening in context if needed
-                      // setAIAssistant(true);
-                    }}
-                    onSearchMetadata={(count) => {
-                      if (isSemantic) {
-                        setMatchCount(count);
-                      }
-                    }}
-                    onImageUploadRequest={() => {
-                      const choice = window.confirm(
-                        "Click OK to Upload an image, or Cancel to provide a URL.",
-                      );
-                      if (choice) {
-                        fileInputRef.current?.click();
-                      } else {
-                        const url = window.prompt("Enter Image URL:");
-                        if (url) {
-                          editorRefs.current[id]?.insertImage(
-                            url,
-                            "Image Alternative Text",
-                          );
-                        }
-                      }
-                    }}
-                    searchQuery={showSearch ? findText : ""}
-                    searchOptions={{
-                      isCaseSensitive,
-                      isWholeWord,
-                      isSemantic,
-                      searchIndex,
-                      currentMatchIndex,
-                      embeddingOptions: {
-                        provider: serviceConfigs.embeddings.provider,
-                        apiKey:
-                          apiKeys?.[
-                            serviceConfigs.embeddings
-                              .provider as keyof typeof apiKeys
-                          ],
-                        model: serviceConfigs.embeddings.model,
-                      },
-                    }}
-                    collab={{
-                      enabled: false,
-                      docId: `local-document-${id}`,
-                    }}
-                  />
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                    <div className="w-full mt-4 pt-3 border-t border-minimal-border/40 flex items-center justify-between text-[8px] font-bold text-minimal-muted">
+                      <span className="text-[8px] font-extrabold text-minimal-accent/80">
+                        {preset.badge}
+                      </span>
+                      <span className="text-[11px] group-hover:translate-x-1 transition-transform">←</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <button
-          onClick={() => addPage("New Chapter")}
-          className="flex-shrink-0 w-64 h-full border-2 border-dashed border-minimal-border rounded-xl flex flex-col items-center justify-center gap-3 text-minimal-muted hover:border-minimal-accent/40 hover:text-minimal-accent hover:bg-minimal-sidebar transition-all group"
+            {/* Standard Quick Action buttons */}
+            <div className="flex flex-wrap justify-center gap-3 pt-4">
+              <button
+                onClick={() => addPage("New Chapter", "# New Chapter\n\n")}
+                className="flex items-center gap-2 py-3 px-6 bg-minimal-accent hover:bg-minimal-accent/90 text-white rounded-2xl text-[10px] font-black tracking-widest shadow-lg shadow-minimal-accent/20 hover:scale-105 active:scale-95 transition-all cursor-pointer animate-pulse"
+              >
+                <Plus className="w-4 h-4" />
+                <span>إنشاء مستند فارغ (ADD BLANK CHAPTER)</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      ) : (
+        <Reorder.Group
+          axis="x"
+          values={activePages}
+          onReorder={handleReorderActivePages}
+          className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory gap-4 md:gap-8 p-4 md:p-12 custom-scrollbar bg-minimal-sidebar/50 scroll-smooth h-full"
         >
-          <div className="p-4 bg-minimal-sidebar rounded-full group-hover:rotate-180 transition-transform duration-500">
-            <Plus className="w-6 h-6" />
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-widest">
-            New Chapter
-          </span>
-        </button>
-      </div>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {activePages.map((page) => (
+              <ActivePageEditor
+                key={page.id}
+                page={page}
+                editorRefs={editorRefs}
+                handleKeyDown={handleKeyDown}
+                fileInputRef={fileInputRef}
+                handleAiAction={handleAiAction}
+                isSemantic={isSemantic}
+                setMatchCount={setMatchCount}
+                findText={findText}
+                isCaseSensitive={isCaseSensitive}
+                isWholeWord={isWholeWord}
+                searchIndex={searchIndex}
+                currentMatchIndex={currentMatchIndex}
+              />
+            ))}
+          </AnimatePresence>
+
+          <button
+            onClick={() => addPage("New Chapter")}
+            className="flex-shrink-0 w-64 h-full border-2 border-dashed border-minimal-border rounded-xl flex flex-col items-center justify-center gap-3 text-minimal-muted hover:border-minimal-accent/40 hover:text-minimal-accent hover:bg-minimal-sidebar transition-all group"
+          >
+            <div className="p-4 bg-minimal-sidebar rounded-full group-hover:rotate-180 transition-transform duration-500">
+              <Plus className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-widest">
+              New Chapter
+            </span>
+          </button>
+        </Reorder.Group>
+      )}
     </main>
   );
 };
+
+// ==========================================
+// PRESETS & TEMPLATES FOR LUXURY DESK
+// ==========================================
+
+const POETIC_QUOTES = [
+  {
+    ar: "الخط هندسة روحانية ظهرت بآلة جسدانية",
+    en: "Writing is a spiritual geometry, manifested through a physical tool.",
+    author: "ياقوت المستعصمي"
+  },
+  {
+    ar: "إن حبر القلم حبلٌ سري يربط بين روحين يفصل بينهما الدهر",
+    en: "The ink of the pen is an umbilical cord connecting two souls across epochs.",
+    author: "خليل جبران"
+  },
+  {
+    ar: "الكتابة تنهض من عتمة الفكر لتنير دروب الحقيقة ببريق الكلمات",
+    en: "Writing rises from the darkness of thought to illuminate the paths of truth with the glitter of words.",
+    author: "أنيس منصور"
+  },
+  {
+    ar: "الكلمة الجميلة كشجرة طيبة أصلها ثابت وفرعها في السماء",
+    en: "A beautiful word is like a beautiful tree, its root is firm and its branches reach the sky.",
+    author: "فلسفة الكلمة والأثر"
+  }
+];
+
+const ANDALUSIA_CONTENT = `# الأندلس: الفردوس المفقود وطوق الحمامة
+
+> "يا أهل أندلسٍ لله درّكُمُ.. ماءٌ وظلٌ وأنهارٌ وأشجارُ" - ابن خفاجة
+
+تعدّ الأندلس منارة حضارية جمعت بين جمال الطبيعة، وفخامة العمران، ورِقّة الأدب الموشّح. في هذا الفصل، نستعرض ملامح الإبداع الأدبي والعمراني:
+
+## ١. طوق الحمامة في الأُلفة والأُلَّاف
+ألفه الفقيه الأديب **ابن حزم الأندلسي**، وهو دراسة عميقة في علم النفس العاطفي والاجتماعي. يحلل فيه الحب بأسلوب فلسفي شاعري فريد:
+
+*   **نشأة المودة**: الحب اتصال بين النفوس في جبلتها الرفيعة.
+*   **علامات الهوى**: إدمان النظر، والإقبال بالحديث، والبهتان عند اللقاء المفاجئ.
+
+## ٢. هندسة الجنان والقصور
+امتازت العمارة الأندلسية بالتناغم البصري الفائق:
+- **بهو السباع** في قصر الحمراء: توازن دقيق بين الظل والضوء، وتدفق سلِس للمياه الرقراقة.
+- **الحدائق المعلقة**: شُيّدت على شكل مستويات مدرّجة لتوفير نظام تهوية وتبريد طبيعي متقن.`;
+
+const COSMOS_CONTENT = `# أسرار الكون: سديم الجبار وحواضن النجوم
+
+> "الكون ليس فقط أكثر غرابة مما نتخيل، بل هو أكثر غرابة مما يمكننا تخيله." - آرثر إيدنجتون
+
+في أعماق الفضاء السحيق، تتراقص موجات الغبار الكوني لتصنع سُدماً مذهلة تلتمع بألوان الطيف بفعل تأين الغازات المحيطة بالشموس الوليدة.
+
+## ١. سديم الجبار (Orion Nebula)
+يقع السديم على بُعد **١٣٤٤ سنة ضوئية** من الأرض، وهو أقرب حاضنة للنجوم العملاقة إلينا:
+
+- **الأطياف اللامعة**: ينبعث اللون الأحمر الداكن من هيدروجين الفضاء المتأين، بينما تتألق درجات الأزرق المخضر بفعل ذرات الأكسجين المزدوجة.
+- **الأقراص النجمية الأولية**: أنظمة كوكبية كاملة تبدأ في التشكل داخل هذه الغيمة العملاقة.
+
+## ٢. فيزياء الثقوب السوداء
+تنهار النجوم فائقة الكتلة تحت تأثير جاذبيتها الخاصة، لتشكل ثقوباً سوداء تتحدى نسيج الزمكان:
+1. **أفق الحدث**: النقطة التي لا يمكن لأي شيء، حتى الضوء، الهروب منها.
+2. **التفرد الجاذبي**: النقطة اللانهائية الكثافة في قلب الثقب الأسود حيث تنهار القوانين الفيزيائية المعروفة.`;
+
+const PARCHMENT_CONTENT = `# حبرٌ وريشة: خواطر في فلسفة الكتابة والأثر
+
+> "الخط لسان اليد، وبهجة الضمير، وسفير العقل." - ياقوت المستعصمي
+
+كنا نخط الحروف ببطء وصبر، لنمنح الكلمة هيبتها وجلالها المستحق. إن الكتابة ليست مجرد صفّ للحروف، بل هي حياكة للأرواح وتجسيد للأفكار العابرة.
+
+## ١. ميتالورجيا الحبر القديم
+صُنع الحبر التقليدي قديماً من مواد طبيعية تدوم لقرون:
+- **حبر السناج**: يخلط الهباب الأسود الخفيف مع صمغ عربي نقي وماء الورد المعطر ليعطي سواداً حالكاً وملمساً مخملياً.
+- **حبر العفص الدباغي**: يُغلى كرات نبات العفص مع الزاج الحديدي لإنتاج حبر كيميائي يتغلغل في ألياف الورق لضمان عدم زواله.
+
+## ٢. ريشة الكتابة الأثيرة
+لم تكن كل ريشة صالحة للخط؛ بل اختيرت قصاب القصب والخريز بعناية فائقة:
+- **زاوية قط الريشة**: يحدد ميل القلم سماكة الحرف وتناغم انحناءاته.
+- **الشق الأوسط**: يحبس قطرات الحبر ويسربها بتوازن دقيق أثناء انسياب الكتابة.`;
+
+const TOKYO_CONTENT = `# TOKYO NEON: CYBERPUNK MEMORY CORES
+
+> "The sky above the port was the color of television, tuned to a dead channel." - William Gibson
+
+Connecting to Cyber-Core 0x99F... High-speed fiber channels online. Memory matrix synced.
+
+## 1. NEON LIGHT DISTRICTS
+The glowing light of the city serves as a physical wrapper around digital data lanes:
+*   **Virtual Projections**: Real-time holographic ads layered directly onto the skyline.
+*   **Encrypted Terminals**: Dark alleys hosting physical hardware layers for decentralized nodes.
+
+## 2. METROPOLIS PROTOCOLS
+1.  **Sync Rate**: 99.98% telemetry parity.
+2.  **Quantum Encryption**: Keys rotated every 120ms to safeguard personal memory shards.`;

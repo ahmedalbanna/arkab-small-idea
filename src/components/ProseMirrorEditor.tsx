@@ -83,6 +83,8 @@ import { processAIAction, type AIAssistantAction } from "../services/aiService";
 import { getKrokiUrl } from "../lib/kroki";
 import { createSearchPlugin, searchPluginKey } from "../lib/searchPlugin";
 import { createCollabPlugin } from "../lib/collabPlugin";
+import { createMathPlugin } from "../lib/mathPlugin";
+import "katex/dist/katex.min.css";
 import { SlashMenu } from "./SlashMenu";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useUIStore } from "../stores/uiStore";
@@ -410,16 +412,19 @@ class UmlNodeView {
   getPos: any;
 
   updateImageTimeout: any = null;
+  observer: IntersectionObserver | null = null;
+  isExpanded = false;
+  expandBtn: HTMLElement | null = null;
 
   constructor(node: any, view: any, getPos: any) {
     this.node = node;
     this.view = view;
     this.getPos = getPos;
     this.dom = document.createElement("div");
-    this.dom.className = "uml-code-block-container group";
+    this.dom.className = "uml-code-block-container group relative";
 
     this.contentDOM = document.createElement("pre");
-    this.contentDOM.className = "uml-code-block-editor";
+    this.contentDOM.className = "uml-code-block-editor transition-all duration-300 max-h-[300px] overflow-hidden relative";
     this.dom.appendChild(this.contentDOM);
 
     this.imgWrapper = document.createElement("div");
@@ -430,20 +435,73 @@ class UmlNodeView {
     this.toolbar.className = "uml-diagram-toolbar";
     this.dom.appendChild(this.toolbar);
 
-    // Add a slight delay to ensure content is available or wait for update
-    this.scheduleUpdate();
+    // Setup lazy loading intersection observer
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          this.scheduleUpdate();
+        }
+      });
+    }, { rootMargin: "200px" });
+    this.observer.observe(this.dom);
+
+    // Check if snippet is large to show expand button
+    this.checkExpandable();
   }
 
   update(node: any) {
     if (node.type !== this.node.type) return false;
     this.node = node;
     this.scheduleUpdate();
+    this.checkExpandable();
     return true;
   }
 
   scheduleUpdate() {
     if (this.updateImageTimeout) clearTimeout(this.updateImageTimeout);
     this.updateImageTimeout = setTimeout(() => this.updateImage(), 500);
+  }
+
+  checkExpandable() {
+    const text = this.node.textContent || "";
+    const lines = text.split("\n").length;
+    
+    if (lines > 25 && !this.isExpanded) {
+      this.contentDOM.className = "uml-code-block-editor transition-all duration-300 max-h-[300px] overflow-hidden relative";
+      
+      if (!this.expandBtn) {
+        this.expandBtn = document.createElement("button");
+        this.expandBtn.className = "absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-zinc-900/95 text-zinc-300 hover:text-white rounded-full border border-zinc-700/60 text-[11px] font-bold shadow-xl backdrop-blur-md transition-all flex items-center gap-1.5 z-[10] hover:scale-105 active:scale-95 uppercase tracking-wider";
+        this.expandBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> Show Full Snippet (${lines} lines)`;
+        this.expandBtn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.expand();
+        };
+        this.dom.appendChild(this.expandBtn);
+      } else {
+        this.expandBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> Show Full Snippet (${lines} lines)`;
+      }
+    } else {
+      if (this.isExpanded) {
+        this.expand();
+      } else {
+        this.contentDOM.className = "uml-code-block-editor transition-all duration-300 max-h-none";
+        if (this.expandBtn) {
+          this.expandBtn.remove();
+          this.expandBtn = null;
+        }
+      }
+    }
+  }
+
+  expand() {
+    this.isExpanded = true;
+    this.contentDOM.className = "uml-code-block-editor transition-all duration-300 max-h-none";
+    if (this.expandBtn) {
+      this.expandBtn.remove();
+      this.expandBtn = null;
+    }
   }
 
   updateImage() {
@@ -558,6 +616,10 @@ class UmlNodeView {
 
   destroy() {
     if (this.updateImageTimeout) clearTimeout(this.updateImageTimeout);
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
   }
 
   ignoreSelection() {
@@ -1744,6 +1806,65 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               ]),
           keymap(buildKeymap(editorSchema)),
           keymap(baseKeymap),
+          keymap({
+            "Mod-j": (state, dispatch) => {
+              let { from, to } = state.selection;
+              if (from === to) {
+                const $from = state.selection.$from;
+                const blockFrom = $from.start();
+                const blockTo = $from.end();
+                if (blockFrom !== blockTo) {
+                  if (dispatch) {
+                    dispatch(state.tr.setSelection(TextSelection.create(state.doc, blockFrom, blockTo)));
+                  }
+                }
+              }
+              setShowAiPopover(true);
+              return true;
+            },
+            "Mod-Shift-j": (state, dispatch) => {
+              let { from, to } = state.selection;
+              if (from === to) {
+                const $from = state.selection.$from;
+                const blockFrom = $from.start();
+                const blockTo = $from.end();
+                if (blockFrom !== blockTo) {
+                  if (dispatch) {
+                    dispatch(state.tr.setSelection(TextSelection.create(state.doc, blockFrom, blockTo)));
+                  }
+                }
+              }
+              setShowAiPopover(true);
+              return true;
+            },
+            "Mod-Shift-i": (state) => {
+              const { from, to } = state.selection;
+              const text = state.doc.textBetween(from, to, " ");
+              if (text.trim()) {
+                handleAIAction("improve");
+                return true;
+              }
+              return false;
+            },
+            "Mod-Shift-s": (state) => {
+              const { from, to } = state.selection;
+              const text = state.doc.textBetween(from, to, " ");
+              if (text.trim()) {
+                handleAIAction("summarize");
+                return true;
+              }
+              return false;
+            },
+            "Mod-Shift-g": (state) => {
+              const { from, to } = state.selection;
+              const text = state.doc.textBetween(from, to, " ");
+              if (text.trim()) {
+                handleAIAction("fix-grammar");
+                return true;
+              }
+              return false;
+            }
+          }),
           buildInputRules(editorSchema),
           dropCursor(),
           gapCursor(),
@@ -1758,6 +1879,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           collapsiblePlugin,
           tableSortPlugin,
           tableRowActionsPlugin,
+          createMathPlugin(),
           new Plugin({
             props: {
               handleDOMEvents: {
@@ -1836,6 +1958,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
 
                   if (from === to) {
                     setBubbleMenu((prev) => ({ ...prev, show: false }));
+                    setShowAiPopover(false);
                     return;
                   }
 

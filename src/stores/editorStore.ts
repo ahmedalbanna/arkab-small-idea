@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { snapshotService, type Snapshot } from '../services/snapshotService';
 import type { SemanticCluster } from '../services/semanticService';
 
-interface Page {
+export interface Page {
   id: string;
   title: string;
   content: string;

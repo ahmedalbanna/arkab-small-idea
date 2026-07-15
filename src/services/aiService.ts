@@ -51,12 +51,35 @@ export class GoogleProvider implements AIProvider {
     onChunk?: (chunk: string) => void,
     signal?: AbortSignal,
   ): Promise<string> {
-    const formattedMessages = messages.map((m) => ({
-      role: m.role === "system" ? "user" : m.role, // Google uses user/model
-      parts: Array.isArray(m.parts)
-        ? m.parts
-        : [{ text: m.content || m.parts || "" }],
-    }));
+    const formattedMessages = messages.map((m) => {
+      const parts: any[] = [];
+      if (Array.isArray(m.parts)) {
+        parts.push(...m.parts);
+      } else {
+        parts.push({ text: m.content || m.parts || "" });
+      }
+
+      if (m.images && m.images.length > 0) {
+        m.images.forEach((img: string) => {
+          const match = img.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+          if (match) {
+            const mimeType = match[1];
+            const base64Data = match[2];
+            parts.push({
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Data
+              }
+            });
+          }
+        });
+      }
+
+      return {
+        role: m.role === "system" ? "user" : m.role, // Google uses user/model
+        parts
+      };
+    });
 
     // For genai SDK, we construct config explicitly. However, genai may not easily support standard abort signals.
     // If it doesn't support them officially via requestOptions.signal yet, it will just ignore it.
@@ -274,10 +297,25 @@ export class OpenAIProvider implements AIProvider {
       signal,
       body: JSON.stringify({
         model: model || "gpt-4o",
-        messages: messages.map((m) => ({
-          role: m.role === "assistant" ? "assistant" : m.role,
-          content: m.content,
-        })),
+        messages: messages.map((m) => {
+          if (m.images && m.images.length > 0) {
+            const contentParts: any[] = [{ type: "text", text: m.content || "" }];
+            m.images.forEach((img: string) => {
+              contentParts.push({
+                type: "image_url",
+                image_url: { url: img }
+              });
+            });
+            return {
+              role: m.role === "assistant" ? "assistant" : m.role,
+              content: contentParts,
+            };
+          }
+          return {
+            role: m.role === "assistant" ? "assistant" : m.role,
+            content: m.content,
+          };
+        }),
         stream: !!onChunk,
       }),
     });
@@ -349,10 +387,34 @@ export class AnthropicProvider implements AIProvider {
     const system = messages.find((m) => m.role === "system")?.content || "";
     const chatMessages = messages
       .filter((m) => m.role !== "system")
-      .map((m) => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content,
-      }));
+      .map((m) => {
+        if (m.images && m.images.length > 0) {
+          const contentParts: any[] = [{ type: "text", text: m.content || "" }];
+          m.images.forEach((img: string) => {
+            const match = img.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+            if (match) {
+              const mimeType = match[1];
+              const base64Data = match[2];
+              contentParts.push({
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: mimeType,
+                  data: base64Data
+                }
+              });
+            }
+          });
+          return {
+            role: m.role === "assistant" ? "assistant" : "user",
+            content: contentParts,
+          };
+        }
+        return {
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content,
+        };
+      });
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

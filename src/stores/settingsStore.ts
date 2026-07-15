@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface SettingsState {
-  theme: 'light' | 'dark' | 'system';
+  theme: 'light' | 'dark' | 'system' | 'andalusia' | 'cosmos' | 'parchment' | 'tokyo';
   fontSize: number;
   lineHeight: number;
   maxWidth: string;
@@ -33,12 +33,8 @@ export const useSettingsStore = create<SettingsState>()(
       setTheme: (theme) => set((state) => ({ 
         theme: typeof theme === 'function' ? theme(state.theme) : theme 
       })),
-      setFontSize: (fontSize) => set((state) => ({ 
-        fontSize: typeof fontSize === 'function' ? fontSize(state.fontSize) : fontSize 
-      })),
-      setLineHeight: (lineHeight) => set((state) => ({ 
-        lineHeight: typeof lineHeight === 'function' ? lineHeight(state.lineHeight) : lineHeight 
-      })),
+      setFontSize: () => {},
+      setLineHeight: () => {},
       setMaxWidth: (maxWidth) => set((state) => ({ 
         maxWidth: typeof maxWidth === 'function' ? maxWidth(state.maxWidth) : maxWidth 
       })),

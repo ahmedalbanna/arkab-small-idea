@@ -175,39 +175,59 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           {isSemantic && semanticResults.length > 0 && (
             <div className="mt-1 flex flex-col gap-1 border-t border-minimal-border pt-2 max-h-[200px] overflow-y-auto custom-scrollbar">
               <div className="flex items-center gap-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-wider mb-1">
-                <Zap className="w-2.5 h-2.5 fill-minimal-muted" />
-                Semantic Matches
+                <Zap className="w-2.5 h-2.5 fill-minimal-muted animate-pulse" />
+                Semantic Matches (Score Gradients)
               </div>
               {semanticResults.map((result, idx) => {
-                const intensity = Math.min(1, Math.max(0.1, result.score));
+                const score = result.score;
+                let gradientClass = "bg-gradient-to-r from-zinc-500/10 via-zinc-500/5 to-transparent border-zinc-300/40 dark:border-zinc-700/40";
+                let textClass = "text-zinc-700 dark:text-zinc-300";
+                let badgeClass = "text-zinc-500";
+                let leftBorderBg = "bg-zinc-400";
+
+                if (score >= 0.85) {
+                  // High confidence - emerald gradient
+                  gradientClass = "bg-gradient-to-r from-emerald-500/20 via-emerald-500/5 to-transparent border-emerald-500/30 dark:border-emerald-500/20";
+                  textClass = "text-emerald-950 dark:text-emerald-100 font-medium";
+                  badgeClass = "text-emerald-600 dark:text-emerald-400";
+                  leftBorderBg = "bg-gradient-to-b from-emerald-400 to-emerald-600";
+                } else if (score >= 0.7) {
+                  // Moderate confidence - indigo/blue gradient
+                  gradientClass = "bg-gradient-to-r from-indigo-500/15 via-indigo-500/5 to-transparent border-indigo-500/30 dark:border-indigo-500/20";
+                  textClass = "text-indigo-950 dark:text-indigo-100";
+                  badgeClass = "text-indigo-600 dark:text-indigo-400";
+                  leftBorderBg = "bg-gradient-to-b from-indigo-400 to-indigo-600";
+                } else if (score >= 0.5) {
+                  // Low-moderate confidence - blue gradient
+                  gradientClass = "bg-gradient-to-r from-blue-500/10 via-blue-500/3 to-transparent border-blue-500/20 dark:border-blue-500/15";
+                  textClass = "text-blue-900 dark:text-blue-200";
+                  badgeClass = "text-blue-500 dark:text-blue-400";
+                  leftBorderBg = "bg-blue-400";
+                }
+
                 return (
                   <div
                     key={idx}
-                    className="rounded p-1.5 border transition-all duration-300 group relative overflow-hidden"
-                    style={{
-                      borderColor: `rgba(var(--minimal-accent-rgb), ${intensity * 0.5})`,
-                      backgroundColor: `rgba(var(--minimal-accent-rgb), ${intensity * 0.15})`,
-                    }}
+                    className={cn(
+                      "rounded p-2 border transition-all duration-300 group relative overflow-hidden shadow-xs hover:shadow-md",
+                      gradientClass
+                    )}
                   >
                     <div
-                      className="absolute left-0 top-0 bottom-0 w-1 transition-all duration-300"
-                      style={{
-                        backgroundColor: `rgba(var(--minimal-accent-rgb), ${intensity})`,
-                      }}
+                      className={cn(
+                        "absolute left-0 top-0 bottom-0 w-1 transition-all duration-300",
+                        leftBorderBg
+                      )}
                     />
-                    <p className="text-[11px] leading-relaxed line-clamp-2 text-minimal-text transition-colors pl-2">
+                    <p className={cn("text-[11px] leading-relaxed line-clamp-2 pl-2", textClass)}>
                       {result.text}
                     </p>
-                    <div className="flex justify-between items-center mt-1 pl-2">
-                      <span
-                        className="text-[9px] font-mono font-bold"
-                        style={{
-                          color: `rgba(var(--minimal-accent-rgb), ${Math.max(0.6, intensity + 0.2)})`,
-                        }}
-                      >
-                        {(result.score * 100).toFixed(0)}% Match
+                    <div className="flex justify-between items-center mt-1.5 pl-2">
+                      <span className={cn("text-[9px] font-mono font-bold flex items-center gap-1", badgeClass)}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
+                        {(score * 100).toFixed(0)}% Match
                       </span>
-                      <span className="text-[9px] text-minimal-muted">
+                      <span className="text-[9px] text-minimal-muted font-medium">
                         {result.source === "document"
                           ? "Current Document"
                           : "Knowledge Base"}

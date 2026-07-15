@@ -22,7 +22,6 @@ import { useSettingsStore } from "./stores/settingsStore";
 // Components
 import { MobileMenu } from "./components/navigation/MobileMenu";
 import { AIAssistantSidebar } from "./components/ai/AIAssistantSidebar";
-import { PagesManager } from "./components/navigation/PagesManager";
 
 import { AIProviderSettings } from "./components/ai/AIProviderSettings";
 import { EditorContainer } from "./components/editor/EditorContainer";
@@ -36,6 +35,7 @@ import { MobileToolbar } from "./components/navigation/MobileToolbar";
 import { SemanticFolders } from "./components/SemanticFolders";
 import TTSSpeaker from "./components/TTSSpeaker";
 import TableOfContents from "./components/navigation/TableOfContents";
+import { WorkspacePlacement } from "./components/navigation/WorkspacePlacement";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "./lib/utils";
@@ -322,11 +322,12 @@ export default function App() {
 
   useEffect(() => {
     const root = document.documentElement;
-    const isDark =
-      theme === "dark" ||
-      (theme === "system" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches);
-    root.setAttribute("data-theme", isDark ? "dark" : "light");
+    if (theme === "system") {
+      const isSystemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.setAttribute("data-theme", isSystemDark ? "dark" : "light");
+    } else {
+      root.setAttribute("data-theme", theme);
+    }
     root.style.setProperty("--minimal-font", fontFamily);
     root.style.setProperty("--editor-font-size", `${fontSize}px`);
     root.style.setProperty("--editor-line-height", lineHeight.toString());
@@ -910,9 +911,8 @@ export default function App() {
             </div>
           </motion.div>
         )}
+        {showPages && <WorkspacePlacement />}
       </AnimatePresence>
-
-      <PagesManager />
 
       {isMobile && (
         <MobileToolbar

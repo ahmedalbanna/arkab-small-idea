@@ -2,6 +2,9 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, FolderOpen, Save, X, History, Check, ArrowRightLeft, Trash2, Bold, Italic, List, ImagePlus, Download, ImageIcon, Send, Wand2, FileText, RefreshCw, Maximize2, ListOrdered, PenTool, CheckCheck, FastForward, Heading, Minimize2, Plus } from 'lucide-react';
 import Markdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { cn, useMediaQuery } from '../../lib/utils';
 import { useAIStore } from '../../stores/aiStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -134,13 +137,15 @@ export const AIAssistantSidebar: React.FC<AIAssistantSidebarProps> = ({
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            if (window.confirm("Clear this conversation history?")) {
+                            if (window.confirm("Are you sure you want to clear your entire chat history? This cannot be undone.")) {
                               setChatHistory([]);
                             }
                           }}
-                          className="text-[10px] font-bold text-red-500 hover:bg-red-500/10 px-2 py-1 rounded transition-colors uppercase"
+                          className="flex items-center gap-1 text-[10px] font-bold text-red-500 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-all uppercase tracking-wider"
+                          title="Clear Chat History"
                         >
-                          Clear Thread
+                          <Trash2 className="w-3 h-3" />
+                          <span>Clear Chat History</span>
                         </button>
                       </div>
                     </div>
@@ -175,7 +180,7 @@ export const AIAssistantSidebar: React.FC<AIAssistantSidebarProps> = ({
                                 ? "prose-p:text-white prose-headings:text-white prose-strong:text-white prose-a:text-white prose-code:text-white/80 prose-li:text-white prose-ul:text-white prose-ol:text-white" 
                                 : ""
                             )}>
-                              <Markdown>{msg.parts[0].text}</Markdown>
+                              <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{msg.parts[0].text}</Markdown>
                             </div>
 
                             {msg.role === 'model' && (
@@ -336,12 +341,74 @@ export const AIAssistantSidebar: React.FC<AIAssistantSidebarProps> = ({
                   {chatHistory.length === 0 && (
                     <div className="mt-6 space-y-4">
                       <div className="flex items-center gap-2 px-1">
-                        <Wand2 className="w-3 h-3 text-minimal-muted" />
-                        <h3 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Editor Integration</h3>
+                        <Wand2 className="w-3 h-3 text-minimal-accent" />
+                        <h3 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Quick Actions</h3>
                       </div>
-                      <div className="p-4 bg-minimal-sidebar border border-minimal-border rounded-[1.5rem] text-center">
-                        <p className="text-[11px] font-bold text-minimal-text mb-1">Quick Actions Moved</p>
-                        <p className="text-[9px] text-minimal-muted leading-relaxed">AI Power Tools are now directly available in your editor header for faster access.</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        <button
+                          onClick={() => onAction?.('improve')}
+                          className="flex items-center gap-3 w-full p-3 bg-minimal-sidebar hover:bg-minimal-border/40 border border-minimal-border/60 rounded-xl transition-all text-left text-xs font-bold text-minimal-text hover:text-minimal-accent group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[11px] font-black tracking-tight uppercase">Improve Writing</p>
+                            <p className="text-[9px] text-minimal-muted font-normal">Enhance style, flow, and prose structure</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => onAction?.('summarize')}
+                          className="flex items-center gap-3 w-full p-3 bg-minimal-sidebar hover:bg-minimal-border/40 border border-minimal-border/60 rounded-xl transition-all text-left text-xs font-bold text-minimal-text hover:text-minimal-accent group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <FileText className="w-3.5 h-3.5 text-amber-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[11px] font-black tracking-tight uppercase">Summarize</p>
+                            <p className="text-[9px] text-minimal-muted font-normal">Extract a concise, high-level overview</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => onAction?.('fix-grammar')}
+                          className="flex items-center gap-3 w-full p-3 bg-minimal-sidebar hover:bg-minimal-border/40 border border-minimal-border/60 rounded-xl transition-all text-left text-xs font-bold text-minimal-text hover:text-minimal-accent group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[11px] font-black tracking-tight uppercase">Fix Grammar</p>
+                            <p className="text-[9px] text-minimal-muted font-normal">Correct spelling, syntax, and punctuation</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => onAction?.('expand')}
+                          className="flex items-center gap-3 w-full p-3 bg-minimal-sidebar hover:bg-minimal-border/40 border border-minimal-border/60 rounded-xl transition-all text-left text-xs font-bold text-minimal-text hover:text-minimal-accent group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Plus className="w-3.5 h-3.5 text-blue-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[11px] font-black tracking-tight uppercase">Expand Text</p>
+                            <p className="text-[9px] text-minimal-muted font-normal">Elaborate on concepts with more detail</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => onAction?.('generate-outline')}
+                          className="flex items-center gap-3 w-full p-3 bg-minimal-sidebar hover:bg-minimal-border/40 border border-minimal-border/60 rounded-xl transition-all text-left text-xs font-bold text-minimal-text hover:text-minimal-accent group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-rose-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <ListOrdered className="w-3.5 h-3.5 text-rose-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[11px] font-black tracking-tight uppercase">Generate Outline</p>
+                            <p className="text-[9px] text-minimal-muted font-normal">Create structured hierarchy of headers</p>
+                          </div>
+                        </button>
                       </div>
 
                       <div className="flex items-center gap-2 px-1 mt-6">

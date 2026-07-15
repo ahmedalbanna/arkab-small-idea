@@ -34,12 +34,6 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         <button onClick={() => fileInputRef.current?.click()} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><ImageIcon className="w-5 h-5" /></button>
         <button onClick={() => editorRef.current?.insertScribble()} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><PenTool className="w-5 h-5" /></button>
         <div className="w-px h-8 bg-minimal-border mx-1 shrink-0" />
-        <button 
-          onClick={() => setTTS(!showTTS)} 
-          className={`p-3 rounded-xl transition-colors shrink-0 ${showTTS ? 'bg-minimal-accent text-white' : 'bg-minimal-sidebar text-minimal-muted hover:text-minimal-text'}`}
-        >
-          <Headset className="w-5 h-5" />
-        </button>
         <button onClick={() => setAIAssistant(true)} className="p-3 bg-minimal-accent/10 rounded-xl text-minimal-accent transition-colors shrink-0"><Sparkles className="w-5 h-5" /></button>
       </div>
     </motion.div>

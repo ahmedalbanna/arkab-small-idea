@@ -10,8 +10,6 @@ export const SettingsModal: React.FC = () => {
   const {
     theme, setTheme,
     fontFamily, setFontFamily,
-    fontSize, setFontSize,
-    lineHeight, setLineHeight,
     maxWidth, setMaxWidth,
     headingColor, setHeadingColor,
     enableHeadingNumbering, setEnableHeadingNumbering
@@ -42,22 +40,47 @@ export const SettingsModal: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              {/* Theme Section */}
+              {/* Theme Gallery Section */}
               <section className="space-y-3">
-                <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Appearance</h4>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['light', 'dark', 'system'] as const).map(t => (
+                <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest flex items-center justify-between">
+                  <span>Appearance & Style</span>
+                  <span className="text-[8px] bg-minimal-accent/10 text-minimal-accent px-2 py-0.5 rounded-full font-black">PREMIUM</span>
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'light', label: 'Classic Bright', desc: 'مشرق كلاسيكي', bg: '#ffffff', accent: '#3498db', text: 'text-zinc-800' },
+                    { id: 'dark', label: 'Onyx Charcoal', desc: 'فحم الأونيكس', bg: '#111115', accent: '#6366f1', text: 'text-zinc-100' },
+                    { id: 'system', label: 'System Match', desc: 'مزامنة النظام', bg: '#27272a', accent: '#a1a1aa', text: 'text-zinc-300' },
+                    { id: 'andalusia', label: 'Andalusia Gold', desc: 'الأندلس الذهبي', bg: '#fdfaf2', accent: '#2e7d32', text: 'text-emerald-900' },
+                    { id: 'cosmos', label: 'Deep Cosmos', desc: 'الكون الساحر', bg: '#0a0a14', accent: '#a855f7', text: 'text-purple-200' },
+                    { id: 'parchment', label: 'Vintage Parchment', desc: 'الوثيقة العتيقة', bg: '#f4ece1', accent: '#d84315', text: 'text-amber-950' },
+                    { id: 'tokyo', label: 'Neon Tokyo', desc: 'طوكيو النيون', bg: '#0d0e15', accent: '#ec4899', text: 'text-cyan-400' },
+                  ].map(t => (
                     <button
-                      key={t}
-                      onClick={() => setTheme(t)}
+                      key={t.id}
+                      onClick={() => setTheme(t.id as any)}
                       className={cn(
-                        "py-2 px-3 rounded-xl border text-[10px] font-bold uppercase transition-all",
-                        theme === t
-                          ? "bg-minimal-accent border-minimal-accent text-white shadow-lg shadow-minimal-accent/20"
-                          : "bg-minimal-sidebar/50 border-minimal-border text-minimal-muted hover:border-minimal-accent/30"
+                        "relative flex flex-col justify-between p-3.5 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-95 group cursor-pointer",
+                        theme === t.id
+                          ? "border-minimal-accent ring-2 ring-minimal-accent/20 bg-minimal-sidebar shadow-md"
+                          : "bg-minimal-sidebar/40 border-minimal-border hover:border-minimal-accent/30"
                       )}
                     >
-                      {t}
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-tight text-minimal-text truncate">
+                          {t.label}
+                        </span>
+                        <div className="flex gap-1">
+                          <div className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: t.bg }} />
+                          <div className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: t.accent }} />
+                        </div>
+                      </div>
+                      <span className="text-[9px] text-minimal-muted leading-tight font-medium">
+                        {t.desc}
+                      </span>
+                      {theme === t.id && (
+                        <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-minimal-accent rounded-full" />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -68,49 +91,31 @@ export const SettingsModal: React.FC = () => {
                 <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Typography</h4>
 
                 <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-minimal-muted uppercase">Font Family</label>
+                  <label className="text-[9px] font-bold text-minimal-muted uppercase">Font Family / عائلة الخط</label>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { label: 'Sans Serif', value: 'Inter, sans-serif' },
-                      { label: 'Serif', value: '"Merriweather", serif' },
-                      { label: 'Mono', value: '"JetBrains Mono", monospace' },
-                      { label: 'Elegant', value: '"EB Garamond", serif' },
+                      { label: 'Cairo (حديث هندسي)', value: '"Cairo", sans-serif' },
+                      { label: 'Amiri (أصيل كلاسيكي)', value: '"Amiri", serif' },
+                      { label: 'Sans Serif (Inter)', value: 'Inter, sans-serif' },
+                      { label: 'Serif (Garamond)', value: '"EB Garamond", serif' },
+                      { label: 'JetBrains Mono', value: '"JetBrains Mono", monospace' },
+                      { label: 'Courier Typewriter', value: '"Courier Prime", monospace' },
                     ].map(f => (
                       <button
                         key={f.value}
                         onClick={() => setFontFamily(f.value)}
                         className={cn(
-                          "py-2 px-3 rounded-xl border text-[10px] font-bold transition-all text-left",
+                          "py-2 px-3 rounded-xl border text-[10px] font-bold transition-all text-left flex flex-col gap-0.5 cursor-pointer",
                           fontFamily === f.value
                             ? "bg-minimal-accent/10 border-minimal-accent text-minimal-accent"
                             : "bg-minimal-sidebar/50 border-minimal-border text-minimal-muted hover:border-minimal-accent/30"
                         )}
                         style={{ fontFamily: f.value }}
                       >
-                        {f.label}
+                        <span className="truncate leading-tight">{f.label.split(' ')[0]}</span>
+                        <span className="text-[8px] opacity-70 truncate font-normal leading-tight">{f.label.includes(' ') ? f.label.substring(f.label.indexOf(' ') + 1) : ''}</span>
                       </button>
                     ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-bold text-minimal-muted uppercase">Size: {fontSize}px</label>
-                    <input
-                      type="range" min="12" max="24" step="1"
-                      value={fontSize}
-                      onChange={(e) => setFontSize(parseInt(e.target.value))}
-                      className="w-full accent-minimal-accent"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-bold text-minimal-muted uppercase">Spacing: {lineHeight}</label>
-                    <input
-                      type="range" min="1.2" max="2.4" step="0.1"
-                      value={lineHeight}
-                      onChange={(e) => setLineHeight(parseFloat(e.target.value))}
-                      className="w-full accent-minimal-accent"
-                    />
                   </div>
                 </div>
               </section>

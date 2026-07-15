@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Courier+Prime&family=EB+Garamond:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Merriweather:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Courier+Prime&family=EB+Garamond:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Merriweather:wght@400;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@400;600;700;900&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -89,14 +89,62 @@
 }
 
 [data-theme="dark"] {
-  --minimal-bg: #1a1a1a;
-  --minimal-sidebar: #2a2a2a;
-  --minimal-border: #3a3a3a;
+  --minimal-bg: #111115;
+  --minimal-sidebar: #171821;
+  --minimal-border: #232530;
   --minimal-text: #e0e0e0;
   --minimal-muted: #71717a;
-  --minimal-accent: #4a9eff;
-  --minimal-accent-rgb: 74, 158, 255;
+  --minimal-accent: #6366f1;
+  --minimal-accent-rgb: 99, 102, 241;
   --heading-color: #ffffff;
+}
+
+[data-theme="andalusia"] {
+  --minimal-bg: #fdfaf2;
+  --minimal-sidebar: #f3edd7;
+  --minimal-border: #e6dfc3;
+  --minimal-text: #2f2a1e;
+  --minimal-muted: #857b65;
+  --minimal-accent: #2e7d32;
+  --minimal-accent-rgb: 46, 125, 50;
+  --heading-color: #1a4221;
+  --minimal-font: "Amiri", serif;
+}
+
+[data-theme="cosmos"] {
+  --minimal-bg: #0a0a14;
+  --minimal-sidebar: #101026;
+  --minimal-border: #1a1b3a;
+  --minimal-text: #e0e0f2;
+  --minimal-muted: #6f729e;
+  --minimal-accent: #a855f7;
+  --minimal-accent-rgb: 168, 85, 247;
+  --heading-color: #f3e8ff;
+  --minimal-font: "Cairo", sans-serif;
+}
+
+[data-theme="parchment"] {
+  --minimal-bg: #f4ece1;
+  --minimal-sidebar: #eae0cf;
+  --minimal-border: #d9ccb6;
+  --minimal-text: #3e2723;
+  --minimal-muted: #795548;
+  --minimal-accent: #d84315;
+  --minimal-accent-rgb: 216, 67, 21;
+  --heading-color: #2e1c16;
+  --minimal-font: "EB Garamond", serif;
+}
+
+[data-theme="tokyo"] {
+  --minimal-bg: #0d0e15;
+  --minimal-sidebar: #131422;
+  --minimal-border: #222538;
+  --minimal-text: #22d3ee;
+  --minimal-muted: #e879f9;
+  --minimal-accent: #ec4899;
+  --minimal-accent-rgb: 236, 72, 153;
+  --heading-color: #ffffff;
+  --minimal-font: "JetBrains Mono", monospace;
 }
 
 @theme {
