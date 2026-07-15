@@ -35,8 +35,15 @@ describe("loadPlugins (phase 1 wiring)", () => {
       expect(loaded.schema.nodes[name], `schema should have "${name}"`).toBeTruthy();
     }
 
-    // No overlays/toolbar/commands registered yet (UI plugins come later).
-    expect(loaded.collectors.overlays).toHaveLength(0);
+    // UI plugins (status bar + table of contents) register overlays.
+    const overlayIds = loaded.collectors.overlays.map((o) => o.id).sort();
+    expect(overlayIds).toContain("status-bar");
+    expect(overlayIds).toContain("toc");
+
+    // The tables plugin contributes its ProseMirror plugins (sort + row actions).
+    expect(pmPlugins.length).toBeGreaterThanOrEqual(7);
+
+    // No toolbar items registered yet.
     expect(loaded.collectors.toolbarItems).toHaveLength(0);
   });
 });

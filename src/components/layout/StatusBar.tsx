@@ -1,32 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clock, Cpu, Upload, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAIStore } from '../../stores/aiStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useEditorStore } from '../../stores/editorStore';
 import { embeddingService, EmbeddingStatus } from '../../services/embeddingService';
 
-interface StatusBarProps {
-  wordCount: number;
-  charCount: number;
-  readingTime: number;
-  wordGoal: number;
-  goalProgress: number;
-  embeddingStatus: EmbeddingStatus;
-  embeddingProgress: number;
-}
-
-export const StatusBar: React.FC<StatusBarProps> = ({
-  wordCount,
-  charCount,
-  readingTime,
-  wordGoal,
-  goalProgress,
-  embeddingStatus,
-  embeddingProgress
-}) => {
+/**
+ * Bottom status bar. Self-contained: it derives its stats from the active
+ * page in the editor store and subscribes to the embedding service directly,
+ * so it can be mounted by the plugin overlay host without external props.
+ */
+export const StatusBar: React.FC = () => {
   const { ollamaStatus, provider } = useAIStore();
   const { isIndexing, indexedChunks, indexedEpisodes, isAutoSaving } = useUIStore();
+  const { pages, activeFocusedPageId } = useEditorStore();
+
+  const activePage =
+    pages.find((p) => p.id === activeFocusedPageId) || pages[0];
+  const markdown = activePage?.content || "";
+  const wordCount = markdown.split(/\s+/).filter(Boolean).length;
+  const charCount = markdown.length;
+  const wordGoal = activePage?.wordGoal ?? 0;
+  const goalProgress =
+    wordGoal > 0 ? Math.min((wordCount / wordGoal) * 100, 100) : 0;
+
+  const [embeddingStatus, setEmbeddingStatus] =
+    useState<EmbeddingStatus>("idle");
+  const [embeddingProgress, setEmbeddingProgress] = useState(0);
+
+  useEffect(() => {
+    return embeddingService.subscribe((status, progress) => {
+      setEmbeddingStatus(status);
+      setEmbeddingProgress(progress);
+    });
+  }, []);
 
   return (
     <AnimatePresence mode="wait">
@@ -42,7 +51,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         {/* Left Side: Stats */}
         <div className="flex gap-4 md:gap-8 items-center h-full">
           {isAutoSaving && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2 px-2.5 py-1 bg-green-500/10 rounded-sm border border-green-500/20"
@@ -112,7 +121,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <div className="flex gap-2 items-center">
             {/* Main Model Connection */}
             {ollamaStatus.connected && (
-              <div 
+              <div
                 className={cn(
                   "flex items-center gap-1.5 px-2 py-1 rounded-sm border transition-all",
                   "bg-green-500/5 text-green-600 border-green-500/10"
@@ -127,7 +136,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             {/* Embedding Model Status */}
             <div className="flex items-center">
               {embeddingStatus === 'idle' && (
-                <button 
+                <button
                   onClick={() => embeddingService.loadModel()}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-minimal-accent/10 text-minimal-accent border border-minimal-accent/20 hover:bg-minimal-accent text-[9px] hover:text-white font-bold tracking-widest transition-all group scale-100 hover:scale-105 active:scale-95"
                   title="Start Downloading Vector Embedding Model (@xenova/transformers)"
@@ -139,7 +148,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
               {embeddingStatus === 'loading' && (
                 <div className="flex items-center gap-3 px-3 py-1 rounded-sm bg-minimal-sidebar border border-minimal-border">
                   <div className="w-16 h-1 bg-minimal-border rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       className="h-full bg-minimal-accent"
                       initial={{ width: 0 }}
                       animate={{ width: `${embeddingProgress}%` }}
@@ -163,16 +172,16 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 };
 
 const Sparkles = ({ className }: { className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     className={className}
   >
     <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>

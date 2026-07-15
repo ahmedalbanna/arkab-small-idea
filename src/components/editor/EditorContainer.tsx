@@ -18,6 +18,7 @@ import { useUIStore } from "../../stores/uiStore";
 import { useAIStore } from "../../stores/aiStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { AI_ACTIONS } from "../../constants";
+import type { LoadedPlugins } from "../../plugins";
 import { SnapshotsMenu } from "../overlays/SnapshotsMenu";
 import { FileActionsMenu } from "../overlays/FileActionsMenu";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -41,6 +42,7 @@ interface EditorContainerProps {
   isWholeWord: boolean;
   searchIndex: number;
   currentMatchIndex: number;
+  onLoaded?: (loaded: LoadedPlugins) => void;
 }
 
 export const EditorContainer: React.FC<EditorContainerProps> = ({
@@ -57,6 +59,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
   isWholeWord,
   searchIndex,
   currentMatchIndex,
+  onLoaded,
 }) => {
   const {
     pages,
@@ -332,13 +335,14 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                 fileInputRef={fileInputRef}
                 handleAiAction={handleAiAction}
                 isSemantic={isSemantic}
-                setMatchCount={setMatchCount}
-                findText={findText}
-                isCaseSensitive={isCaseSensitive}
-                isWholeWord={isWholeWord}
-                searchIndex={searchIndex}
-                currentMatchIndex={currentMatchIndex}
-              />
+        setMatchCount={setMatchCount}
+        findText={findText}
+        isCaseSensitive={isCaseSensitive}
+        isWholeWord={isWholeWord}
+        searchIndex={searchIndex}
+        currentMatchIndex={currentMatchIndex}
+        onLoaded={onLoaded}
+      />
             ))}
           </AnimatePresence>
 

@@ -18,6 +18,7 @@ import { Page, useEditorStore } from "../../stores/editorStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useAIStore } from "../../stores/aiStore";
+import type { LoadedPlugins } from "../../plugins";
 
 interface ActivePageEditorProps {
   page: Page;
@@ -32,6 +33,7 @@ interface ActivePageEditorProps {
   isWholeWord: boolean;
   searchIndex: number;
   currentMatchIndex: number;
+  onLoaded?: (loaded: LoadedPlugins) => void;
 }
 
 export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
@@ -47,6 +49,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
   isWholeWord,
   searchIndex,
   currentMatchIndex,
+  onLoaded,
 }) => {
   const { id } = page;
   const dragControls = useDragControls();
@@ -445,6 +448,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
             enabled: false,
             docId: `local-document-${id}`,
           }}
+          onLoaded={onLoaded}
         />
       </div>
     </Reorder.Item>

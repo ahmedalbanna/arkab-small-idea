@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useMediaQuery } from "./lib/utils";
 import { EditorRef } from "./components/ProseMirrorEditor";
 import {
@@ -13,11 +13,14 @@ import {
 } from "./services/aiService";
 import { ragService } from "./services/ragService";
 import { importFile } from "./services/importService";
-import { embeddingService, EmbeddingStatus } from "./services/embeddingService";
+import { embeddingService } from "./services/embeddingService";
 import { useEditorStore } from "./stores/editorStore";
 import { useUIStore } from "./stores/uiStore";
 import { useAIStore } from "./stores/aiStore";
 import { useSettingsStore } from "./stores/settingsStore";
+import type { LoadedPlugins } from "./plugins";
+import { AppApiContext, type AppApi } from "./plugins/appContext";
+import { RegisteredOverlays } from "./components/overlays/RegisteredOverlays";
 
 // Components
 import { MobileMenu } from "./components/navigation/MobileMenu";
@@ -30,11 +33,9 @@ import { SearchBar } from "./components/overlays/SearchBar";
 import { SettingsModal } from "./components/overlays/SettingsModal";
 import { ShortcutsHelp } from "./components/overlays/ShortcutsHelp";
 import { ImportModal } from "./components/overlays/ImportModal";
-import { StatusBar } from "./components/layout/StatusBar";
 import { MobileToolbar } from "./components/navigation/MobileToolbar";
 import { SemanticFolders } from "./components/SemanticFolders";
 import TTSSpeaker from "./components/TTSSpeaker";
-import TableOfContents from "./components/navigation/TableOfContents";
 import { WorkspacePlacement } from "./components/navigation/WorkspacePlacement";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
@@ -156,17 +157,6 @@ export default function App() {
   const chatImageInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const [chatAttachedImages, setChatAttachedImages] = useState<string[]>([]);
-
-  const [embeddingStatus, setEmbeddingStatus] =
-    useState<EmbeddingStatus>("idle");
-  const [embeddingProgress, setEmbeddingProgress] = useState(0);
-
-  useEffect(() => {
-    return embeddingService.subscribe((status, progress) => {
-      setEmbeddingStatus(status);
-      setEmbeddingProgress(progress);
-    });
-  }, []);
 
   useEffect(() => {
     import("./services/embeddingService").then(({ vectorStore }) => {
@@ -796,19 +786,35 @@ export default function App() {
     }
   }, [serviceConfigs]);
 
-  const wordCount = markdown.split(/\s+/).filter(Boolean).length;
-  const charCount = markdown.length;
-  const readingTime = Math.ceil(wordCount / 200);
-  const goalProgress =
-    (activePage?.wordGoal ?? 0) > 0
-      ? Math.min((wordCount / activePage.wordGoal) * 100, 100)
-      : 0;
+  // Expose the live editors to UI plugins (overlays) via context.
+  const appApi = useMemo<AppApi>(
+    () => ({
+      getEditorRef: (pageId?: string) => {
+        const id = pageId ?? activeFocusedPageId;
+        return id ? (editorRefs.current[id] ?? null) : null;
+      },
+      getActivePageId: () => activeFocusedPageId,
+    }),
+    [activeFocusedPageId],
+  );
+
+  const overlayPluginsRef = useRef<LoadedPlugins | null>(null);
+  const [overlayPlugins, setOverlayPlugins] = useState<
+    LoadedPlugins["collectors"]["overlays"] | null
+  >(null);
+  const handleEditorLoaded = useCallback((loaded: LoadedPlugins) => {
+    if (!overlayPluginsRef.current) {
+      overlayPluginsRef.current = loaded;
+      setOverlayPlugins(loaded.collectors.overlays);
+    }
+  }, []);
 
   if (!hasHydrated) return null;
 
   return (
-    <div
-      dir={direction}
+    <AppApiContext.Provider value={appApi}>
+      <div
+        dir={direction}
       className={cn(
         "h-screen overflow-hidden bg-minimal-bg text-minimal-text font-sans flex flex-col selection:bg-minimal-accent/20 transition-colors duration-500",
         "",
@@ -860,6 +866,7 @@ export default function App() {
         isWholeWord={isWholeWord}
         searchIndex={searchIndex}
         currentMatchIndex={currentMatchIndex}
+        onLoaded={handleEditorLoaded}
       />
 
       {!isMobile && (
@@ -946,21 +953,8 @@ export default function App() {
         } as any} 
       />
 
-      <TableOfContents
-        editorRef={{
-          current: activePage ? editorRefs.current[activePage.id] || null : null,
-        } as any}
-      />
-
-      <StatusBar
-        wordCount={wordCount}
-        charCount={charCount}
-        readingTime={readingTime}
-        wordGoal={activePage?.wordGoal ?? 0}
-        goalProgress={goalProgress}
-        embeddingStatus={embeddingStatus}
-        embeddingProgress={embeddingProgress}
-      />
+      <RegisteredOverlays overlays={overlayPlugins ?? []} />
     </div>
+    </AppApiContext.Provider>
   );
 }

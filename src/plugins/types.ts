@@ -79,7 +79,12 @@ export interface ToolbarItem {
   show?: () => boolean;
 }
 
-export type OverlayMount = "panel" | "modal" | "sidebar";
+export type OverlayMount =
+  | "panel"
+  | "modal"
+  | "sidebar"
+  | "statusbar"
+  | "overlay";
 
 /** A React overlay (modal, panel, sidebar) contributed by a plugin. */
 export interface PluginOverlay {

@@ -16,6 +16,9 @@ import { mathPlugin } from "./math";
 import { imagePlugin } from "./image";
 import { scribblePlugin } from "./scribble";
 import { diagramPlugin } from "./diagram";
+import { tablesPlugin } from "./tables";
+import { statusBarPlugin } from "./statusbar";
+import { tocPlugin } from "./toc";
 
 /**
  * The active plugin set. As features are extracted into plugins (later
@@ -32,6 +35,10 @@ const pluginModules: InkPlugin[] = [
   imagePlugin,
   scribblePlugin,
   diagramPlugin,
+  // UI plugins (overlays + table helpers).
+  tablesPlugin,
+  statusBarPlugin,
+  tocPlugin,
 ];
 
 export interface LoadedPlugins {
