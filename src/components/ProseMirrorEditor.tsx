@@ -14,15 +14,13 @@ import {
   TextSelection,
 } from "prosemirror-state";
 import { EditorView, Decoration, DecorationSet } from "prosemirror-view";
-import { Schema, DOMParser, DOMSerializer, Slice, Node } from "prosemirror-model";
-import { schema as baseSchema } from "prosemirror-markdown";
+import { DOMParser, DOMSerializer, Slice, Node } from "prosemirror-model";
 import { keymap } from "prosemirror-keymap";
 import { toggleMark, setBlockType, baseKeymap, wrapIn } from "prosemirror-commands";
 import { wrapInList } from "prosemirror-schema-list";
 import { history, undo, redo } from "prosemirror-history";
 import { buildInputRules, buildKeymap } from "./prose-setup";
-import { highlightPlugin } from "./prose-highlight";
-import { draftHighlightPlugin, draftHighlightKey } from "../lib/draftPlugin";
+import { draftHighlightKey } from "../lib/draftPlugin";
 import {
   defaultMarkdownParser,
   defaultMarkdownSerializer,
@@ -76,219 +74,23 @@ import {
 } from "lucide-react";
 import { dropCursor } from "prosemirror-dropcursor";
 import { gapCursor } from "prosemirror-gapcursor";
-import { tableNodes, tableEditing, goToNextCell } from "prosemirror-tables";
+import { tableEditing, goToNextCell } from "prosemirror-tables";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, slugify } from "../lib/utils";
 import { processAIAction, type AIAssistantAction } from "../services/aiService";
-import { diagramNodeSpec } from "../lib/diagramNode";
 import { diagramTransform } from "../lib/markdown/diagramTransform";
-import { createDiagramNodeView } from "../lib/diagramNodeView";
-import { createHeadingPlugin } from "../lib/headingPlugin";
-import { createScribbleNodeView } from "../lib/scribblePlugin";
-import { createImageNodeView, createGalleryNodeView } from "../lib/imagePlugin";
-import { createSearchPlugin, searchPluginKey } from "../lib/searchPlugin";
 import { createCollabPlugin } from "../lib/collabPlugin";
-import { createMathPlugin } from "../lib/mathPlugin";
+import { loadPlugins, type LoadedPlugins } from "../plugins";
+import { buildEditorSchema } from "../plugins/editor/schema";
+import type { EditorAPI } from "../plugins/types";
+import { searchPluginKey } from "../plugins/search";
 import "katex/dist/katex.min.css";
 import { SlashMenu } from "./SlashMenu";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useUIStore } from "../stores/uiStore";
 
-// We'll use a slightly customized schema to support more formatting
-const editorSchema = new Schema({
-  nodes: baseSchema.spec.nodes
-    .update("paragraph", {
-      content: "inline*",
-      group: "block",
-      attrs: { align: { default: "left" } },
-      parseDOM: [
-        {
-          tag: "p",
-          getAttrs: (dom: any) => ({
-            align: dom.style.textAlign || "left",
-          }),
-        },
-      ],
-      toDOM(node) {
-        const { align } = node.attrs;
-        return ["p", { style: align && align !== "left" ? `text-align: ${align}` : null }, 0];
-      },
-    })
-    .update("heading", {
-      attrs: { level: { default: 1 }, align: { default: "left" }, id: { default: null } },
-      content: "inline*",
-      group: "block",
-      defining: true,
-      parseDOM: [
-        { tag: "h1", getAttrs: (dom: any) => ({ level: 1, align: dom.style.textAlign || "left", id: dom.id || null }) },
-        { tag: "h2", getAttrs: (dom: any) => ({ level: 2, align: dom.style.textAlign || "left", id: dom.id || null }) },
-        { tag: "h3", getAttrs: (dom: any) => ({ level: 3, align: dom.style.textAlign || "left", id: dom.id || null }) },
-        { tag: "h4", getAttrs: (dom: any) => ({ level: 4, align: dom.style.textAlign || "left", id: dom.id || null }) },
-        { tag: "h5", getAttrs: (dom: any) => ({ level: 5, align: dom.style.textAlign || "left", id: dom.id || null }) },
-        { tag: "h6", getAttrs: (dom: any) => ({ level: 6, align: dom.style.textAlign || "left", id: dom.id || null }) },
-      ],
-      toDOM(node) {
-        const { level, align, id } = node.attrs;
-        const autoId = id || (node.textContent ? slugify(node.textContent) : null);
-        return ["h" + level, { 
-          id: autoId,
-          style: align && align !== "left" ? `text-align: ${align}` : null 
-        }, 0];
-      },
-    })
-    .append(
-      tableNodes({
-        tableGroup: "block",
-        cellContent: "block+",
-        cellAttributes: {
-          align: {
-            default: "left",
-            getFromDOM(dom) {
-              return (dom as HTMLElement).style.textAlign || "left";
-            },
-            setDOMAttr(value, attrs) {
-              if (value && value !== "left")
-                attrs.style = (attrs.style || "") + `text-align: ${value};`;
-            },
-          },
-          background: {
-            default: null,
-            getFromDOM(dom) {
-              return (dom as HTMLElement).style.backgroundColor || null;
-            },
-            setDOMAttr(value, attrs) {
-              if (value)
-                attrs.style = (attrs.style || "") + `background-color: ${value};`;
-            },
-          },
-          sort: {
-            default: null,
-            getFromDOM(dom) {
-              return dom.getAttribute("data-sort") || null;
-            },
-            setDOMAttr(value, attrs) {
-              if (value) attrs["data-sort"] = value;
-            },
-          },
-        },
-      }),
-    )
-    .update("image", {
-      inline: true,
-      group: "inline",
-      attrs: {
-        src: {},
-        alt: { default: null },
-        title: { default: null },
-        align: { default: "center" },
-        width: { default: "100%" },
-        float: { default: "none" },
-      },
-      parseDOM: [
-        {
-          tag: "img[src]",
-          getAttrs(dom: any) {
-            return {
-              src: dom.getAttribute("src"),
-              title: dom.getAttribute("title"),
-              alt: dom.getAttribute("alt"),
-              align: dom.getAttribute("data-align") || "center",
-              width: dom.style.width || "100%",
-              float: dom.style.float || "none",
-            };
-          },
-        },
-      ],
-      toDOM(node) {
-        let { src, alt, title, align, width, float } = node.attrs;
-        return [
-          "img",
-          {
-            src,
-            alt,
-            title,
-            "data-align": align,
-            style: `width: ${width}; float: ${float};`,
-          },
-        ];
-      },
-    })
-    .append({
-      gallery: {
-        group: "block",
-        content: "image*",
-        attrs: {
-          layout: { default: "grid" },
-        },
-        parseDOM: [
-          {
-            tag: "div.image-gallery",
-            getAttrs: (dom: any) => ({
-              layout: dom.getAttribute("data-layout") || "grid",
-            }),
-          },
-        ],
-        toDOM(node) {
-          return [
-            "div",
-            { class: "image-gallery", "data-layout": node.attrs.layout },
-            0,
-          ];
-        },
-      },
-      scribble: {
-        group: "block",
-        attrs: {
-          data: { default: null },
-          width: { default: "100%" },
-          aspectRatio: { default: 0.5 },
-        },
-        draggable: true,
-        selectable: true,
-        parseDOM: [
-          {
-            tag: "div.scribble-block",
-            getAttrs: (dom: any) => ({
-              data: dom.getAttribute("data-scribble"),
-              width: dom.style.width || "100%",
-              aspectRatio: parseFloat(dom.getAttribute("data-aspect") || "0.5"),
-            }),
-          },
-        ],
-        toDOM(node) {
-          return [
-            "div",
-            {
-              class: "scribble-block",
-              "data-scribble": node.attrs.data,
-              "data-aspect": node.attrs.aspectRatio,
-              style: `width: ${node.attrs.width}; position: relative;`,
-            },
-          ];
-        },
-      },
-      diagram: diagramNodeSpec,
-    }),
-  marks: baseSchema.spec.marks.append({
-    strike: {
-      parseDOM: [
-        { tag: "s" },
-        { tag: "del" },
-        { tag: "strike" },
-        { style: "text-decoration=line-through" },
-      ],
-      toDOM() {
-        return ["s", 0];
-      },
-    },
-    underline: {
-      parseDOM: [{ tag: "u" }, { style: "text-decoration=underline" }],
-      toDOM() {
-        return ["u", 0];
-      },
-    },
-  }),
-});
+// Editor schema is built dynamically from core specs + plugin contributions.
+const editorSchema = buildEditorSchema();
 
 // Custom serializer to handle our new marks and tables
 const editorSerializer = new MarkdownSerializer(
@@ -881,8 +683,25 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }, []);
 
+    const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
+    useEffect(() => {
+      let cancelled = false;
+      const editorApi: EditorAPI = {
+        getView: () => viewRef.current,
+        isReady: () => viewRef.current !== null,
+        focus: () => viewRef.current?.focus(),
+      };
+      loadPlugins(editorApi).then((result) => {
+        if (!cancelled) setLoaded(result);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, []);
+
     useLayoutEffect(() => {
       if (!editorRef.current) return;
+      if (!loaded) return;
 
       // Typewriter scrolling plugin
       const typewriterPlugin = new Plugin({
@@ -919,8 +738,15 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         },
       });
 
-      // Search highlighting plugin
-      const searchPlugin = createSearchPlugin();
+      // Plugins contributed by the plugin system (math, search, heading, ...).
+      const prosePlugins = loaded.collectors.prosePlugins.map((entry) =>
+        typeof entry.plugin === "function"
+          ? (entry.plugin as () => Plugin)()
+          : entry.plugin,
+      );
+      const nodeViews = Object.fromEntries(
+        loaded.collectors.nodeViews.map((n) => [n.name, n.view]),
+      );
 
       // Focus Mode plugin
       const focusModePlugin = new Plugin({
@@ -1073,18 +899,14 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           buildInputRules(editorSchema),
           dropCursor(),
           gapCursor(),
-          highlightPlugin,
-          draftHighlightPlugin,
           linkPreviewPlugin,
           tableEditing(),
           typewriterPlugin,
           focusModePlugin,
-          searchPlugin,
+          ...prosePlugins,
           ttsHighlightPlugin,
-          createHeadingPlugin(),
           tableSortPlugin,
           tableRowActionsPlugin,
-          createMathPlugin(),
           new Plugin({
             props: {
               handleDOMEvents: {
@@ -1231,10 +1053,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           spellcheck: "true",
         },
         nodeViews: {
-          scribble: createScribbleNodeView(),
-          image: createImageNodeView(),
-          gallery: createGalleryNodeView(),
-          diagram: createDiagramNodeView(),
+          ...nodeViews,
         },
         clipboardSerializer: DOMSerializer.fromSchema(editorSchema),
         clipboardTextSerializer(slice) {
@@ -1455,7 +1274,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       return () => {
         view.destroy();
       };
-    }, []); // Only run on mount
+    }, [loaded]); // Rebuild when plugins finish loading
 
     // Sync search state
     const prevSearchQuery = useRef("");
@@ -1521,6 +1340,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       isTypewriter,
       isFocusMode,
       placeholder,
+      loaded,
     ]);
 
     const getCursorContextInternal = () => {

@@ -8,13 +8,30 @@ import {
 import { buildEditorSchema } from "./editor/schema";
 import type { EditorAPI, InkPlugin, PluginContext, SchemaContribution } from "./types";
 
+import { highlightPluginInstance } from "./highlight";
+import { draftPlugin } from "./draft";
+import { headingPlugin } from "./heading";
+import { searchPlugin } from "./search";
+import { mathPlugin } from "./math";
+import { imagePlugin } from "./image";
+import { scribblePlugin } from "./scribble";
+import { diagramPlugin } from "./diagram";
+
 /**
  * The active plugin set. As features are extracted into plugins (later
  * phases) they are registered here. Order does not matter — dependency
  * resolution handles initialization order.
  */
 const pluginModules: InkPlugin[] = [
-  // Features are migrated into plugins incrementally. See PLAN.
+  // Editor ProseMirror plugins & node views (extracted in phase 1).
+  highlightPluginInstance,
+  draftPlugin,
+  searchPlugin,
+  headingPlugin,
+  mathPlugin,
+  imagePlugin,
+  scribblePlugin,
+  diagramPlugin,
 ];
 
 export interface LoadedPlugins {
