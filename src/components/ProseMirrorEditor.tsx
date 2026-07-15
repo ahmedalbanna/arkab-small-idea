@@ -80,7 +80,9 @@ import { tableNodes, tableEditing, goToNextCell } from "prosemirror-tables";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, slugify } from "../lib/utils";
 import { processAIAction, type AIAssistantAction } from "../services/aiService";
-import { createUmlPlugin } from "../lib/umlPlugin";
+import { diagramNodeSpec } from "../lib/diagramNode";
+import { diagramTransform } from "../lib/markdown/diagramTransform";
+import { createDiagramNodeView } from "../lib/diagramNodeView";
 import { createHeadingPlugin } from "../lib/headingPlugin";
 import { createScribbleNodeView } from "../lib/scribblePlugin";
 import { createImageNodeView, createGalleryNodeView } from "../lib/imagePlugin";
@@ -265,6 +267,7 @@ const editorSchema = new Schema({
           ];
         },
       },
+      diagram: diagramNodeSpec,
     }),
   marks: baseSchema.spec.marks.append({
     strike: {
@@ -356,6 +359,13 @@ const editorSerializer = new MarkdownSerializer(
       }
       state.write("```\n");
     },
+    diagram: (state, node) => {
+      state.write("```" + (node.attrs.lang || "") + "\n");
+      state.text(node.attrs.source || "", false);
+      state.ensureNewLine();
+      state.write("```");
+      state.closeBlock(node);
+    },
   },
   {
     ...defaultMarkdownSerializer.marks,
@@ -383,25 +393,36 @@ if (tokenizer && tokenizer.enable) {
   tokenizer.enable("table");
 }
 
-const editorParser = new MarkdownParser(editorSchema, tokenizer, {
-  ...((defaultMarkdownParser as any).tokens || {}),
-  s: { mark: "strike" },
-  strike: { mark: "strike" },
-  u: { mark: "underline" },
-  scribble: { 
-    block: "scribble", 
-    getAttrs: (tok: any) => {
-      const lines = tok.content.split('\n');
-      const aspectLine = lines.find((l: string) => l.startsWith('aspect:'));
-      const data = lines.find((l: string) => l.startsWith('data:image'));
-      return { 
-        data: data || null, 
-        aspectRatio: aspectLine ? parseFloat(aspectLine.split(':')[1]) : 0.5 
-      };
-    } 
-  },
-  ...tableTokens,
-});
+  const editorParser = new MarkdownParser(editorSchema, tokenizer, {
+    ...((defaultMarkdownParser as any).tokens || {}),
+    s: { mark: "strike" },
+    strike: { mark: "strike" },
+    u: { mark: "underline" },
+    scribble: { 
+      block: "scribble", 
+      getAttrs: (tok: any) => {
+        const lines = tok.content.split('\n');
+        const aspectLine = lines.find((l: string) => l.startsWith('aspect:'));
+        const data = lines.find((l: string) => l.startsWith('data:image'));
+        return { 
+          data: data || null, 
+          aspectRatio: aspectLine ? parseFloat(aspectLine.split(':')[1]) : 0.5 
+        };
+      } 
+    },
+    ...tableTokens,
+  });
+
+  /**
+   * Parses markdown into a document and converts any fenced diagram code
+   * blocks into `diagram` nodes so they render via the diagram NodeView.
+   * Used for initial load, paste, AI streaming, and all markdown insertion.
+   */
+  const parseMarkdownDoc = (md: string): Node => {
+    const parsed = editorParser.parse(md);
+    const doc = parsed ?? editorSchema.nodes.doc.createAndFill()!;
+    return diagramTransform(doc);
+  };
 
 interface Props {
   value: string;
@@ -976,7 +997,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
 
       const state = EditorState.create({
         schema: editorSchema,
-        doc: editorParser.parse(value) || editorSchema.nodes.doc.createAndFill()!,
+        doc: parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
         plugins: [
           ...(collabInstance
             ? collabInstance.plugins
@@ -1054,7 +1075,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           gapCursor(),
           highlightPlugin,
           draftHighlightPlugin,
-          createUmlPlugin(),
           linkPreviewPlugin,
           tableEditing(),
           typewriterPlugin,
@@ -1214,6 +1234,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           scribble: createScribbleNodeView(),
           image: createImageNodeView(),
           gallery: createGalleryNodeView(),
+          diagram: createDiagramNodeView(),
         },
         clipboardSerializer: DOMSerializer.fromSchema(editorSchema),
         clipboardTextSerializer(slice) {
@@ -1225,10 +1246,10 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           // Detect if text is markdown-like
           const isMarkdown = /[#*`\[]|^\s*[-+]\s|^\s*\d+\.\s/m.test(text);
           if (isMarkdown) {
-            return new Slice(editorParser.parse(text).content, 0, 0);
+            return new Slice(parseMarkdownDoc(text).content, 0, 0);
           }
           // Fallback to default parsing which might just be plain text
-          return new Slice(editorParser.parse(text).content, 0, 0);
+          return new Slice(parseMarkdownDoc(text).content, 0, 0);
         },
         dispatchTransaction(tr) {
           const newState = this.state.apply(tr);
@@ -1420,7 +1441,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               const label =
                 window.prompt("Enter link label:", "Link") || "Link";
               const markdownLink = `[${label}](${text.trim()})`;
-              const node = editorParser.parse(markdownLink);
+              const node = parseMarkdownDoc(markdownLink);
               view.dispatch(view.state.tr.replaceSelectionWith(node));
               return true;
             }
@@ -1545,7 +1566,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       if (viewRef.current) {
         const currentMarkdown = editorSerializer.serialize(viewRef.current.state.doc);
         if (value !== currentMarkdown) {
-          const node = editorParser.parse(value);
+          const node = parseMarkdownDoc(value);
           if (node) {
             viewRef.current.dispatch(
               viewRef.current.state.tr.replaceWith(0, viewRef.current.state.doc.content.size, node.content)
@@ -1607,7 +1628,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       appendMarkdown: (content: string) => {
         if (!viewRef.current) return;
         const { state, dispatch } = viewRef.current;
-        const parsed = editorParser.parse(content);
+        const parsed = parseMarkdownDoc(content);
         const tr = state.tr.insert(state.doc.content.size, parsed.content);
         dispatch(tr);
         viewRef.current.focus();
@@ -1616,7 +1637,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         if (!viewRef.current) return;
         const { state, dispatch } = viewRef.current;
         const { from, to } = state.selection;
-        const parsed = editorParser.parse(content);
+        const parsed = parseMarkdownDoc(content);
         const tr = state.tr.replaceWith(from, to, parsed.content);
         dispatch(tr);
         viewRef.current.focus();
@@ -1747,7 +1768,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         const from = streamStartRef.current ?? state.selection.from;
         const to = streamEndRef.current ?? state.selection.to;
 
-        const parsed = editorParser.parse(content);
+        const parsed = parseMarkdownDoc(content);
         const tr = state.tr.replaceWith(from, to, parsed.content);
 
         // Update end ref after replacement
@@ -1765,7 +1786,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         const tr = state.tr.replaceWith(
           0,
           state.doc.content.size,
-          editorParser.parse(content).content,
+          parseMarkdownDoc(content).content,
         );
         dispatch(tr);
         isUpdatingFromProps.current = false;
@@ -1853,7 +1874,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               markdownTable += "| " + row.join(" | ") + " |\n";
             }
 
-            const slice = editorParser.parse(markdownTable);
+            const slice = parseMarkdownDoc(markdownTable);
             dispatch(state.tr.replaceSelection(new Slice(slice.content, 0, 0)));
           }
         }
@@ -1917,7 +1938,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
             
             if (viewRef.current) {
                const { state: curState, dispatch: curDispatch } = viewRef.current;
-               const parsed = defaultMarkdownParser.parse(fullResponse);
+                const parsed = parseMarkdownDoc(fullResponse);
                
                // We replace the original text with the streamed text.
                const tr = curState.tr.replaceWith(streamStart, streamEnd, parsed.content);
@@ -1972,7 +1993,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
            const tr = finalState.tr;
            
            // Restore original text
-           const parsed = editorParser.parse(initialDraftState.originalText);
+           const parsed = parseMarkdownDoc(initialDraftState.originalText);
            tr.replaceWith(initialDraftState.from, aiDraftRef.current?.streamEnd ?? initialDraftState.to, parsed.content);
            tr.setMeta(draftHighlightKey, null);
            finalDispatch(tr);
@@ -1992,12 +2013,12 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         tr.setMeta(draftHighlightKey, null); // clear highlight
 
         if (decision === 'cancel') {
-            const parsed = editorParser.parse(draft.originalText);
+            const parsed = parseMarkdownDoc(draft.originalText);
             tr.replaceWith(draft.from, draft.streamEnd, parsed.content);
         } else if (decision === 'append') {
             // Restore original text, then append new text
-            const parsedOrg = editorParser.parse(draft.originalText);
-            const parsedDraft = editorParser.parse("\n\n" + draft.content);
+            const parsedOrg = parseMarkdownDoc(draft.originalText);
+            const parsedDraft = parseMarkdownDoc("\n\n" + draft.content);
             
             // first put original back
             tr.replaceWith(draft.from, draft.streamEnd, parsedOrg.content);
@@ -2006,7 +2027,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
             tr.insert(draft.from + parsedOrg.content.size, parsedDraft.content);
             tr.scrollIntoView();
         } else if (decision === 'retry') {
-            const parsedOrg = editorParser.parse(draft.originalText);
+            const parsedOrg = parseMarkdownDoc(draft.originalText);
             tr.replaceWith(draft.from, draft.streamEnd, parsedOrg.content);
             dispatch(tr);
             

@@ -516,47 +516,61 @@
   filter: blur(0);
 }
 
-/* UML Rendering Styles */
-.uml-block {
-  @apply relative my-12;
+/* Diagram Rendering Styles */
+.diagram-block {
+  @apply relative my-12 block;
 }
 
-.uml-block.uml-collapsed {
-  max-height: 300px;
-  overflow: hidden;
-  position: relative;
+.diagram-block .diagram-preview {
+  @apply relative min-h-[120px] flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl border border-minimal-border p-8 transition-all duration-300 my-2;
 }
 
-.uml-diagram-wrapper {
-  @apply relative min-h-[100px] flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl border border-minimal-border p-8 transition-all duration-300 my-6;
+.diagram-block .diagram-preview.is-rendering {
+  @apply opacity-60;
 }
 
-.uml-diagram-preview {
-  @apply max-w-full h-auto rounded-lg shadow-2xl bg-white dark:bg-zinc-900 p-6 transition-all duration-500 hover:scale-[1.01];
+.diagram-block .diagram-preview.is-editing {
+  @apply opacity-30 blur-[1px] pointer-events-none;
 }
 
-.uml-diagram-wrapper.is-rendering .uml-diagram-preview {
-  @apply opacity-50 grayscale transition-all duration-300;
+.diagram-block .diagram-preview svg {
+  @apply max-w-full h-auto rounded-lg;
 }
 
-.uml-diagram-toolbar {
+.diagram-block .diagram-editor {
+  @apply hidden w-full h-64 m-2 p-4 font-mono text-sm leading-relaxed bg-minimal-sidebar text-minimal-text border border-minimal-border rounded-xl resize-y outline-none;
+}
+
+.diagram-block .diagram-editor.is-active {
+  @apply block absolute inset-0 z-30;
+}
+
+.diagram-block .diagram-toolbar {
   @apply absolute top-4 right-4 flex gap-2 opacity-0 transition-opacity duration-200 z-20;
 }
 
-.uml-diagram-wrapper:hover .uml-diagram-toolbar {
+.diagram-block:hover .diagram-toolbar {
   @apply opacity-100;
 }
 
-.uml-diagram-error {
-  @apply w-full;
+.diagram-toolbar-btn {
+  @apply px-2 py-1 bg-minimal-sidebar text-minimal-muted hover:text-minimal-accent hover:bg-minimal-accent/10 rounded border border-minimal-border transition-all text-[10px] font-bold uppercase tracking-wider cursor-pointer select-none;
 }
 
-.uml-diagram-wrapper::before {
-  content: "Live Diagram Rendering";
+.diagram-error {
+  @apply flex items-center gap-2 p-4 w-full bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm italic font-medium;
+}
+
+.diagram-placeholder {
+  @apply text-minimal-muted text-sm italic p-4;
+}
+
+.diagram-block::before {
+  content: "Diagram";
   @apply absolute -top-3 left-6 text-[9px] font-bold text-minimal-accent bg-minimal-bg px-2 py-0.5 rounded border border-minimal-accent/20 uppercase tracking-widest opacity-0 transition-opacity z-10;
 }
 
-.uml-diagram-wrapper:hover::before {
+.diagram-block:hover::before {
   @apply opacity-100;
 }
 

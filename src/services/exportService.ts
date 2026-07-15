@@ -17,7 +17,8 @@ import {
   LevelFormat
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { getKrokiUrl } from '../lib/kroki';
+import { renderDiagram, isDiagramLang } from '../lib/diagrams/engine';
+import { resolveTheme } from '../lib/diagrams/theme';
 
 async function getImageData(url: string): Promise<Uint8Array | null> {
   try {
@@ -26,6 +27,42 @@ async function getImageData(url: string): Promise<Uint8Array | null> {
     return new Uint8Array(arrayBuffer);
   } catch (e) {
     console.error("Failed to fetch image data for DOCX export:", e);
+    return null;
+  }
+}
+
+/** Rasterizes an SVG string to a PNG byte array for embedding in DOCX. */
+async function svgToPng(svg: string, maxWidth = 800): Promise<Uint8Array | null> {
+  try {
+    if (typeof document === "undefined") return null;
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("svg load failed"));
+      img.src = url;
+    });
+    const w = img.naturalWidth || img.width || maxWidth;
+    const h = img.naturalHeight || img.height || Math.round(w * 0.6);
+    const scale = Math.min(1, maxWidth / w);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      URL.revokeObjectURL(url);
+      return null;
+    }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/png");
+    URL.revokeObjectURL(url);
+    const base64 = dataUrl.split(",")[1];
+    return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  } catch (e) {
+    console.error("SVG to PNG conversion failed:", e);
     return null;
   }
 }
@@ -69,6 +106,47 @@ export const exportToPDF = async (element: HTMLElement, filename: string = 'docu
 
 export const exportToDOCX = async (doc: any, filename: string = 'document') => {
   const children: any[] = [];
+
+  const plainCodeParagraph = (text: string): Paragraph =>
+    new Paragraph({
+      children: [new TextRun({ text, font: 'Courier New', size: 20 })],
+      shading: { fill: 'F3F4F6' },
+      indent: { left: 360, right: 360 },
+      spacing: { before: 200, after: 200 },
+      border: {
+        top: { color: 'E5E7EB', size: 6, style: BorderStyle.SINGLE },
+        bottom: { color: 'E5E7EB', size: 6, style: BorderStyle.SINGLE },
+        left: { color: 'E5E7EB', size: 6, style: BorderStyle.SINGLE },
+        right: { color: 'E5E7EB', size: 6, style: BorderStyle.SINGLE },
+      },
+    });
+
+  /** Renders a diagram and embeds it as a PNG. Returns true if embedded. */
+  const embedDiagram = async (lang: string, source: string): Promise<boolean> => {
+    if (!source.trim()) return false;
+    const theme = resolveTheme(
+      typeof document !== "undefined"
+        ? document.documentElement.getAttribute("data-theme")
+        : "light",
+    );
+    const result = await renderDiagram(lang, source, { theme });
+    if (!result.ok) return false;
+    const png = await svgToPng(result.svg);
+    if (!png) return false;
+    children.push(
+      new Paragraph({
+        children: [
+          new ImageRun({
+            data: png,
+            transformation: { width: 600, height: 400 },
+          } as any),
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 200, after: 200 },
+      }),
+    );
+    return true;
+  };
 
   const processTextRuns = (node: any): (TextRun | ExternalHyperlink)[] => {
     const runs: (TextRun | ExternalHyperlink)[] = [];
@@ -200,43 +278,21 @@ export const exportToDOCX = async (doc: any, filename: string = 'document') => {
         },
         spacing: { before: 200, after: 200 },
       }));
-    } else if (node.type.name === 'code_block') {
-      const lang = (node.attrs.params || "").trim().toLowerCase();
-      const umlLangs = ["mermaid", "plantuml", "graphviz", "ditaa", "erd", "blockdiag", "c4plantuml", "structurizr", "vega", "vegalite", "bpmn", "d2", "nomnoml", "rackdiag", "seqdiag", "actdiag", "nwdiag"];
-      
-      if (umlLangs.includes(lang)) {
-        const url = getKrokiUrl(lang, node.textContent);
-        const imageData = url ? await getImageData(url) : null;
-        if (imageData) {
-          children.push(new Paragraph({
-            children: [
-              new ImageRun({
-                data: imageData,
-                transformation: {
-                  width: 600,
-                  height: 400,
-                },
-              } as any),
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 200, after: 200 },
-          }));
-          return;
-        }
+    } else if (node.type.name === 'diagram') {
+      const embedded = await embedDiagram(
+        (node.attrs.lang || '').trim().toLowerCase(),
+        node.attrs.source || '',
+      );
+      if (!embedded) {
+        children.push(plainCodeParagraph(node.attrs.source || ''));
       }
-
-      children.push(new Paragraph({
-        children: [new TextRun({ text: node.textContent, font: 'Courier New', size: 20 })],
-        shading: { fill: 'F3F4F6' },
-        indent: { left: 360, right: 360 },
-        spacing: { before: 200, after: 200 },
-        border: {
-          top: { color: 'E5E7EB', size: 6, style: BorderStyle.SINGLE },
-          bottom: { color: 'E5E7EB', size: 6, style: BorderStyle.SINGLE },
-          left: { color: 'E5E7EB', size: 6, style: BorderStyle.SINGLE },
-          right: { color: 'E5E7EB', size: 6, style: BorderStyle.SINGLE },
-        }
-      }));
+    } else if (node.type.name === 'code_block') {
+      const lang = (node.attrs.params || '').trim().toLowerCase();
+      if (isDiagramLang(lang)) {
+        const embedded = await embedDiagram(lang, node.textContent);
+        if (embedded) return;
+      }
+      children.push(plainCodeParagraph(node.textContent));
     } else if (node.type.name === 'gallery') {
       for (let i = 0; i < node.childCount; i++) {
         await processNode(node.child(i));
