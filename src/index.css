@@ -61,14 +61,14 @@
   transform: scale(1.1);
 }
 
-.is-collapsed .heading-content {
+.collapsible-heading.is-collapsed {
   color: var(--minimal-muted);
   font-style: italic;
   text-decoration: underline dotted var(--minimal-muted);
   text-underline-offset: 4px;
 }
 
-.is-collapsed .heading-content::after {
+.collapsible-heading.is-collapsed::after {
   content: " (Collapsed)";
   font-size: 0.5em;
   font-style: normal;
@@ -77,11 +77,6 @@
   margin-left: 12px;
   opacity: 0.5;
   font-weight: 400;
-}
-
-.heading-content {
-  display: inline-block;
-  width: 100%;
 }
 
 .collapsed-content {
@@ -522,17 +517,18 @@
 }
 
 /* UML Rendering Styles */
-.uml-code-block-container {
-  @apply relative my-12 flex flex-col gap-6;
+.uml-block {
+  @apply relative my-12;
 }
 
-.uml-code-block-editor pre {
-  margin: 0 !important;
-  @apply rounded-b-none;
+.uml-block.uml-collapsed {
+  max-height: 300px;
+  overflow: hidden;
+  position: relative;
 }
 
 .uml-diagram-wrapper {
-  @apply relative min-h-[100px] flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl border border-minimal-border p-8 transition-all duration-300;
+  @apply relative min-h-[100px] flex items-center justify-center bg-black/5 dark:bg-white/5 rounded-xl border border-minimal-border p-8 transition-all duration-300 my-6;
 }
 
 .uml-diagram-preview {
@@ -544,19 +540,23 @@
 }
 
 .uml-diagram-toolbar {
-  @apply absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20;
+  @apply absolute top-4 right-4 flex gap-2 opacity-0 transition-opacity duration-200 z-20;
+}
+
+.uml-diagram-wrapper:hover .uml-diagram-toolbar {
+  @apply opacity-100;
 }
 
 .uml-diagram-error {
   @apply w-full;
 }
 
-.uml-code-block-container::before {
+.uml-diagram-wrapper::before {
   content: "Live Diagram Rendering";
   @apply absolute -top-3 left-6 text-[9px] font-bold text-minimal-accent bg-minimal-bg px-2 py-0.5 rounded border border-minimal-accent/20 uppercase tracking-widest opacity-0 transition-opacity z-10;
 }
 
-.uml-code-block-container:hover::after {
+.uml-diagram-wrapper:hover::before {
   @apply opacity-100;
 }
 
