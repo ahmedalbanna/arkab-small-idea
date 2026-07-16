@@ -46,4 +46,14 @@ describe("loadPlugins (phase 1 wiring)", () => {
     // No toolbar items registered yet.
     expect(loaded.collectors.toolbarItems).toHaveLength(0);
   });
+
+  it("excludes disabled plugins from collectors", async () => {
+    const before = (await loadPlugins(fakeEditor())).collectors.prosePlugins
+      .length;
+    const loaded = await loadPlugins(fakeEditor(), { disabled: ["math"] });
+
+    // The math plugin contributes exactly one ProseMirror plugin; disabling it
+    // removes that contribution.
+    expect(loaded.collectors.prosePlugins.length).toBe(before - 1);
+  });
 });

@@ -10,6 +10,7 @@ export const documentPlugin: InkPlugin = {
   id: "document",
   name: "Document Lifecycle",
   version: "1.0.0",
+  essential: true,
   init(ctx) {
     ctx.registerHost(DocumentLifecycleHost);
   },

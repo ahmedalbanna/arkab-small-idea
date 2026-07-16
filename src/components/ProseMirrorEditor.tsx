@@ -82,6 +82,7 @@ import "katex/dist/katex.min.css";
 import { SlashMenu } from "./SlashMenu";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useUIStore } from "../stores/uiStore";
+import { useSettingsStore } from "../stores/settingsStore";
 
 // Editor schema is built dynamically from core specs + plugin contributions.
 const editorSchema = buildEditorSchema();
@@ -449,6 +450,11 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     }, []);
 
     const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
+    // Re-run plugin loading whenever the enabled/disabled plugin set changes,
+    // so the editor state is rebuilt without the toggled plugin's contributions.
+    const pluginSignature = useSettingsStore((s) =>
+      [...s.disabledPlugins].sort().join(","),
+    );
     useEffect(() => {
       let cancelled = false;
       const editorApi: EditorAPI = {
@@ -456,7 +462,9 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         isReady: () => viewRef.current !== null,
         focus: () => viewRef.current?.focus(),
       };
-      loadPlugins(editorApi).then((result) => {
+      loadPlugins(editorApi, {
+        disabled: useSettingsStore.getState().disabledPlugins,
+      }).then((result) => {
         if (!cancelled) {
           setLoaded(result);
           onLoaded?.(result);
@@ -465,7 +473,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       return () => {
         cancelled = true;
       };
-    }, []);
+    }, [pluginSignature]);
 
     useLayoutEffect(() => {
       if (!editorRef.current) return;
@@ -1022,6 +1030,9 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
 
       return () => {
         view.destroy();
+        // Release plugin resources (intervals, subscriptions, listeners)
+        // before the editor is rebuilt or unmounted.
+        loaded.registry.destroyAll();
       };
     }, [loaded]); // Rebuild when plugins finish loading
 

@@ -9,6 +9,14 @@ import {
 } from "./context";
 import { buildEditorSchema } from "./editor/schema";
 import type { EditorAPI, InkPlugin, PluginContext, SchemaContribution } from "./types";
+import { useSettingsStore } from "../stores/settingsStore";
+
+/**
+ * The registry backing the most recent `loadPlugins` call. Kept module-level so
+ * `setPluginEnabled` can invoke lifecycle methods (`disable`/`enable`) on the
+ * live plugin instances without threading the registry through the UI.
+ */
+let activeRegistry: PluginRegistry | null = null;
 
 import { corePlugin } from "./core";
 import { highlightPluginInstance } from "./highlight";
@@ -65,10 +73,19 @@ export interface LoadedPlugins {
  * the final schema, constructs the plugin context and initializes every
  * enabled plugin in dependency order.
  */
-export async function loadPlugins(editor: EditorAPI): Promise<LoadedPlugins> {
+export async function loadPlugins(
+  editor: EditorAPI,
+  options?: { disabled?: string[] },
+): Promise<LoadedPlugins> {
   const registry = new PluginRegistry();
   for (const plugin of pluginModules) {
     registry.register(plugin);
+  }
+
+  // Apply the persisted enable/disable state on the shared plugin instances.
+  const disabled = new Set(options?.disabled ?? []);
+  for (const plugin of pluginModules) {
+    plugin.enabled = !disabled.has(plugin.id);
   }
 
   const collectors = createCollectors();
@@ -87,7 +104,30 @@ export async function loadPlugins(editor: EditorAPI): Promise<LoadedPlugins> {
     collectors.nodeViews.map((n) => [n.name, n.view as NodeViewConstructor]),
   ) as Record<string, NodeViewConstructor>;
 
+  activeRegistry = registry;
   return { registry, collectors, context, schema, contributions };
+}
+
+/** Toggle a plugin's enabled state, persisting it and updating live instances. */
+export function setPluginEnabled(id: string, enabled: boolean): void {
+  useSettingsStore.getState().setPluginEnabled(id, enabled);
+  if (activeRegistry) {
+    if (enabled) activeRegistry.enable(id);
+    else activeRegistry.disable(id);
+  }
+}
+
+/** Metadata for every known plugin, for building the Settings UI. */
+export function getPluginList(): {
+  id: string;
+  name: string;
+  essential: boolean;
+}[] {
+  return pluginModules.map((p) => ({
+    id: p.id,
+    name: p.name,
+    essential: !!p.essential,
+  }));
 }
 
 /** Convenience re-exports for consumers. */

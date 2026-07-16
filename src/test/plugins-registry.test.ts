@@ -137,4 +137,55 @@ describe("PluginRegistry", () => {
     reg.destroyAll();
     expect(calls).toEqual(["b", "a"]);
   });
+
+  describe("disable / enable", () => {
+    it("disable marks the plugin disabled and runs its destroy", async () => {
+      const reg = new PluginRegistry();
+      let destroyed = false;
+      reg.register(
+        makePlugin("a", {
+          init: vi.fn(),
+          destroy: () => {
+            destroyed = true;
+          },
+        }),
+      );
+      await reg.initAll(async () => ({
+        schema: {} as Schema,
+        context: fakeContext(),
+      }));
+
+      reg.disable("a");
+
+      expect(reg.getEnabled().map((p) => p.id)).toEqual([]);
+      expect(destroyed).toBe(true);
+    });
+
+    it("enable re-includes the plugin and resets its lifecycle flags", async () => {
+      const reg = new PluginRegistry();
+      let destroyed = false;
+      reg.register(
+        makePlugin("a", {
+          init: vi.fn(),
+          destroy: () => {
+            destroyed = true;
+          },
+        }),
+      );
+      await reg.initAll(async () => ({
+        schema: {} as Schema,
+        context: fakeContext(),
+      }));
+      reg.disable("a");
+      expect(destroyed).toBe(true);
+
+      reg.enable("a");
+      expect(reg.getEnabled().map((p) => p.id)).toEqual(["a"]);
+    });
+
+    it("disable is a no-op for unknown ids", () => {
+      const reg = new PluginRegistry();
+      expect(() => reg.disable("ghost")).not.toThrow();
+    });
+  });
 });

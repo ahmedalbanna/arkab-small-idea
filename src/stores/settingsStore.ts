@@ -9,6 +9,8 @@ interface SettingsState {
   fontFamily: string;
   headingColor: string;
   enableHeadingNumbering: boolean;
+  /** Ids of plugins the user has turned off. Persisted. */
+  disabledPlugins: string[];
   
   setTheme: (theme: SettingsState['theme'] | ((prev: SettingsState['theme']) => SettingsState['theme'])) => void;
   setFontSize: (size: number | ((prev: number) => number)) => void;
@@ -17,6 +19,7 @@ interface SettingsState {
   setFontFamily: (font: string | ((prev: string) => string)) => void;
   setHeadingColor: (color: string) => void;
   setEnableHeadingNumbering: (enabled: boolean) => void;
+  setPluginEnabled: (id: string, enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -29,6 +32,7 @@ export const useSettingsStore = create<SettingsState>()(
       fontFamily: 'Inter, sans-serif',
       headingColor: '#000000',
       enableHeadingNumbering: false,
+      disabledPlugins: [],
 
       setTheme: (theme) => set((state) => ({ 
         theme: typeof theme === 'function' ? theme(state.theme) : theme 
@@ -43,6 +47,13 @@ export const useSettingsStore = create<SettingsState>()(
       })),
       setHeadingColor: (headingColor) => set({ headingColor }),
       setEnableHeadingNumbering: (enableHeadingNumbering) => set({ enableHeadingNumbering }),
+      setPluginEnabled: (id, enabled) =>
+        set((state) => {
+          const set = new Set(state.disabledPlugins);
+          if (enabled) set.delete(id);
+          else set.add(id);
+          return { disabledPlugins: [...set] };
+        }),
     }),
     {
       name: 'ink-quill-settings',

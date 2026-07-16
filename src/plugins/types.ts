@@ -145,6 +145,12 @@ export interface InkPlugin {
   name: string;
   version: string;
   enabled?: boolean;
+  /**
+   * When true the plugin cannot be disabled from the Settings UI (e.g. the
+   * core editor plugin or the document lifecycle plugin). Essential plugins
+   * are always loaded.
+   */
+  essential?: boolean;
   /** Plugin ids that must be initialized first. */
   dependencies?: string[];
   getSchemaContribution?(): SchemaContribution | Promise<SchemaContribution>;

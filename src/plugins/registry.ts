@@ -155,4 +155,33 @@ export class PluginRegistry {
       }
     }
   }
+
+  /**
+   * Disable a plugin at runtime: run its cleanup and mark it disabled so it is
+   * excluded from `getEnabled`, schema collection and `initAll`. The host must
+   * rebuild the editor (e.g. re-run `loadPlugins`) for the plugin's
+   * contributions to actually be removed from the live editor state.
+   */
+  disable(id: string): void {
+    const entry = this.entries.get(id);
+    if (!entry) return;
+    entry.plugin.enabled = false;
+    if (entry.initialized && !entry.destroyed && entry.plugin.destroy) {
+      try {
+        entry.plugin.destroy();
+      } catch (err) {
+        console.error(`Failed to destroy plugin "${id}":`, err);
+      }
+      entry.destroyed = true;
+    }
+  }
+
+  /** Re-enable a plugin. A rebuild is required for its effects to return. */
+  enable(id: string): void {
+    const entry = this.entries.get(id);
+    if (!entry) return;
+    entry.plugin.enabled = true;
+    entry.initialized = false;
+    entry.destroyed = false;
+  }
 }

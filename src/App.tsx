@@ -143,11 +143,23 @@ export default function App() {
     LoadedPlugins["collectors"]["hosts"] | null
   >(null);
   const handleEditorLoaded = useCallback((loaded: LoadedPlugins) => {
-    if (!overlayPluginsRef.current) {
+    const prev = overlayPluginsRef.current;
+    // Only refresh overlays/hosts when the enabled plugin set actually changes
+    // (e.g. a feature was toggled), avoiding re-mounts on identical reloads.
+    const key = (l: LoadedPlugins) =>
+      l.collectors.overlays.map((o) => o.id).sort().join(",") +
+      "|" +
+      l.collectors.hosts
+        .map((h) => (h as { name?: string }).name || "")
+        .sort()
+        .join(",");
+    if (prev && key(prev) === key(loaded)) {
       overlayPluginsRef.current = loaded;
-      setOverlayPlugins(loaded.collectors.overlays);
-      setHostPlugins(loaded.collectors.hosts);
+      return;
     }
+    overlayPluginsRef.current = loaded;
+    setOverlayPlugins(loaded.collectors.overlays);
+    setHostPlugins(loaded.collectors.hosts);
   }, []);
 
   if (!hasHydrated) return null;

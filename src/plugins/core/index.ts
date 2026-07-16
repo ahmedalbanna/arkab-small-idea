@@ -87,6 +87,7 @@ export const corePlugin: InkPlugin = {
   id: "core",
   name: "Core Editor",
   version: "1.0.0",
+  essential: true,
   init(ctx: PluginContext) {
     const schema = ctx.schema;
 

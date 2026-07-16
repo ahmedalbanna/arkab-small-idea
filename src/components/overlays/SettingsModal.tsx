@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useUIStore } from '../../stores/uiStore';
+import { getPluginList, setPluginEnabled } from '../../plugins';
 
 export const SettingsModal: React.FC = () => {
   const { showSettings, setSettings } = useUIStore();
@@ -12,8 +13,11 @@ export const SettingsModal: React.FC = () => {
     fontFamily, setFontFamily,
     maxWidth, setMaxWidth,
     headingColor, setHeadingColor,
-    enableHeadingNumbering, setEnableHeadingNumbering
+    enableHeadingNumbering, setEnableHeadingNumbering,
+    disabledPlugins
   } = useSettingsStore();
+
+  const plugins = getPluginList().filter((p) => !p.essential);
 
   return (
     <AnimatePresence>
@@ -180,6 +184,40 @@ export const SettingsModal: React.FC = () => {
                       {headingColor}
                     </div>
                   </div>
+                </div>
+              </section>
+
+              {/* Features Section */}
+              <section className="space-y-3">
+                <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Features / الميزات</h4>
+                <div className="space-y-2">
+                  {plugins.map((p) => {
+                    const enabled = !disabledPlugins.includes(p.id);
+                    return (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between p-3 bg-minimal-sidebar/50 border border-minimal-border rounded-xl"
+                      >
+                        <div className="space-y-0.5">
+                          <label className="text-[10px] font-bold text-minimal-text uppercase">{p.name}</label>
+                          <p className="text-[8px] text-minimal-muted uppercase">{p.id}</p>
+                        </div>
+                        <button
+                          onClick={() => setPluginEnabled(p.id, !enabled)}
+                          className={cn(
+                            "w-10 h-5 rounded-full transition-all relative",
+                            enabled ? "bg-minimal-accent" : "bg-minimal-border"
+                          )}
+                          aria-pressed={enabled}
+                        >
+                          <motion.div
+                            animate={{ x: enabled ? 20 : 2 }}
+                            className="absolute top-1 left-0 w-3 h-3 rounded-full bg-white shadow-sm"
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             </div>
