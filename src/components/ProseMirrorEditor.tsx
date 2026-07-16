@@ -1,29 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useImperativeHandle,
-  forwardRef,
-  useState,
-} from "react";
-import {
-  EditorState,
-  Selection,
-  TextSelection,
-} from "prosemirror-state";
-import { EditorView } from "prosemirror-view";
-import { DOMParser, DOMSerializer, Slice, Node } from "prosemirror-model";
-import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
-import { wrapInList } from "prosemirror-schema-list";
-import { draftHighlightKey } from "../lib/draftPlugin";
-import {
-  defaultMarkdownParser,
-  defaultMarkdownSerializer,
-  MarkdownSerializer,
-  MarkdownParser,
-} from "prosemirror-markdown";
+import { forwardRef, useEffect, useRef, useState } from "react";
+import { EditorState, Selection, TextSelection } from "prosemirror-state";
+import type { EditorView } from "prosemirror-view";
+import { DOMSerializer } from "prosemirror-model";
+import { toggleMark } from "prosemirror-commands";
+import { type AIAssistantAction } from "../services/aiService";
 import {
   Bold,
   Italic,
@@ -67,128 +47,23 @@ import {
   Trash2,
   Undo2,
   Redo2,
-  Table
+  Table,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, slugify } from "../lib/utils";
-import { processAIAction, type AIAssistantAction } from "../services/aiService";
-import { diagramTransform } from "../lib/markdown/diagramTransform";
-import { createCollabPlugin } from "../lib/collabPlugin";
-import { loadPlugins, type LoadedPlugins } from "../plugins";
-import { buildEditorSchema } from "../plugins/editor/schema";
-import type { EditorAPI, EditorCommand, PluginContext } from "../plugins/types";
-import { searchPluginKey } from "../plugins/search";
-import "katex/dist/katex.min.css";
 import { SlashMenu } from "./SlashMenu";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { useUIStore } from "../stores/uiStore";
 import { useAIUIStore } from "../stores/aiUIStore";
-import { useSettingsStore } from "../stores/settingsStore";
-import { setInlineAiActionHandler } from "../plugins/ai/inlineDraftBridge";
-
-// Custom serializer to handle our new marks and tables
-const editorSerializer = new MarkdownSerializer(
-  {
-    ...defaultMarkdownSerializer.nodes,
-    paragraph: (state, node) => {
-      if (node.attrs.align && node.attrs.align !== "left") {
-        state.write(`<p style="text-align: ${node.attrs.align}">`);
-        state.renderInline(node);
-        state.write("</p>\n\n");
-      } else {
-        state.renderInline(node);
-        state.closeBlock(node);
-      }
-    },
-    heading: (state, node) => {
-      if (node.attrs.align && node.attrs.align !== "left") {
-        state.write(`<h${node.attrs.level} style="text-align: ${node.attrs.align}">`);
-        state.renderInline(node);
-        state.write(`</h${node.attrs.level}>\n\n`);
-      } else {
-        state.write(state.repeat("#", node.attrs.level) + " ");
-        state.renderInline(node);
-        state.closeBlock(node);
-      }
-    },
-    table: (state, node) => {
-      state.write("\n");
-      state.renderContent(node);
-      state.write("\n");
-    },
-    table_row: (state, node) => {
-      state.write("| ");
-      node.forEach((cell, _, i) => {
-        if (i > 0) state.write(" | ");
-        state.renderContent(cell);
-      });
-      state.write(" |\n");
-      
-      // Write separator if this is the first row
-      if (node.childCount > 0 && node.child(0).type.name === "table_header") {
-        state.write("|");
-        node.forEach((cell) => {
-          const align = cell.attrs.align || "left";
-          if (align === "center") state.write(" :---: |");
-          else if (align === "right") state.write(" ---: |");
-          else state.write(" --- |");
-        });
-        state.write("\n");
-      }
-    },
-    table_cell: (state, node) => {
-      state.renderContent(node);
-    },
-    table_header: (state, node) => {
-      state.renderContent(node);
-    },
-    gallery: (state, node) => {
-      state.write("\n");
-      state.renderContent(node);
-      state.write("\n");
-    },
-    scribble: (state, node) => {
-      state.write("\n```scribble\n");
-      state.write(`aspect: ${node.attrs.aspectRatio}\n`);
-      if (node.attrs.data) {
-        state.write(`${node.attrs.data}\n`);
-      }
-      state.write("```\n");
-    },
-    diagram: (state, node) => {
-      state.write("```" + (node.attrs.lang || "") + "\n");
-      state.text(node.attrs.source || "", false);
-      state.ensureNewLine();
-      state.write("```");
-      state.closeBlock(node);
-    },
-  },
-  {
-    ...defaultMarkdownSerializer.marks,
-    strike: {
-      open: "~~",
-      close: "~~",
-      mixable: true,
-      expelEnclosingWhitespace: true,
-    },
-    underline: { open: "<u>", close: "</u>", mixable: true },
-  },
-);
-
-const tableTokens = {
-  table: { block: "table" },
-  thead: { ignore: true },
-  tbody: { ignore: true },
-  tr: { block: "table_row" },
-  th: { block: "table_header" },
-  td: { block: "table_cell" },
-};
-
-const tokenizer = (defaultMarkdownParser as any).tokenizer;
-if (tokenizer && tokenizer.enable) {
-  tokenizer.enable("table");
-}
-
+import { editorSerializer } from "./editor/hooks/useMarkdownSerializer";
+import { usePluginLoader } from "./editor/hooks/usePluginLoader";
+import { useMarkdownSerializer } from "./editor/hooks/useMarkdownSerializer";
+import { useEditorView } from "./editor/hooks/useEditorView";
+import { useSearchSync } from "./editor/hooks/useSearchSync";
+import { useMarkdownSync } from "./editor/hooks/useMarkdownSync";
+import { useFormatting } from "./editor/hooks/useFormatting";
+import { useImperativeEditorApi } from "./editor/hooks/useImperativeEditorApi";
+import { useAIStreaming } from "./editor/hooks/useAIStreaming";
+import type { LoadedPlugins } from "../plugins";
 
 interface Props {
   value: string;
@@ -263,9 +138,9 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       placeholder,
       isTypewriter,
       isFocusMode,
+      onToggleFocusMode,
       fontSize,
       lineHeight,
-      onToggleFocusMode,
       direction = "ltr",
       personalInstructions,
       selectedModel = "mistral",
@@ -292,56 +167,12 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     },
     ref,
   ) => {
-    const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
-    // The editor schema is built once by the plugin system (loadPlugins) and
-    // surfaced through PluginContext. Every editor helper and the live editor
-    // state read it, so any schema contribution a plugin makes is reflected
-    // everywhere. The buildEditorSchema() fallback keeps the parser usable
-    // before the first load resolves.
-    const editorSchema = loaded?.context.schema ?? buildEditorSchema();
-
-    // Markdown parser — rebuilt only when the schema changes.
-    const editorParser = useMemo(
-      () =>
-        new MarkdownParser(editorSchema, tokenizer, {
-          ...((defaultMarkdownParser as any).tokens || {}),
-          s: { mark: "strike" },
-          strike: { mark: "strike" },
-          u: { mark: "underline" },
-          scribble: {
-            block: "scribble",
-            getAttrs: (tok: any) => {
-              const lines = tok.content.split("\n");
-              const aspectLine = lines.find((l: string) =>
-                l.startsWith("aspect:"),
-              );
-              const data = lines.find((l: string) => l.startsWith("data:image"));
-              return {
-                data: data || null,
-                aspectRatio: aspectLine
-                  ? parseFloat(aspectLine.split(":")[1])
-                  : 0.5,
-              };
-            },
-          },
-          ...tableTokens,
-        }),
-      [editorSchema],
-    );
-
-    const parseMarkdownDoc = useCallback(
-      (md: string): Node => {
-        const parsed = editorParser.parse(md);
-        const doc = parsed ?? editorSchema.nodes.doc.createAndFill()!;
-        return diagramTransform(doc);
-      },
-      [editorParser, editorSchema],
-    );
-
     const containerRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<HTMLDivElement>(null);
-    const viewRef = useRef<EditorView | null>(null);
+    const viewRef = useRef<EditorView>(null);
     const isUpdatingFromProps = useRef(false);
+    const streamStartRef = useRef<number | null>(null);
+    const streamEndRef = useRef<number | null>(null);
 
     // Use a ref to store the latest props to avoid stale closures in ProseMirror callbacks/plugins
     const latestProps = useRef({
@@ -401,25 +232,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     const sideMenu = useAIUIStore((s) => s.sideMenu);
     const setSideMenu = useAIUIStore((s) => s.setSideMenu);
 
-    // AI Draft State
-    const [aiDraft, setAiDraft] = useState<{
-      isStreaming: boolean;
-      content: string;
-      originalText: string;
-      action: AIAssistantAction | null;
-      from: number;
-      to: number;
-      showActions: boolean;
-      y: number; // for rendering buttons
-      abortController: AbortController | null;
-      originalSelection: { from: number; to: number };
-      streamEnd: number;
-    } | null>(null);
-    const aiDraftRef = useRef(aiDraft);
-    useEffect(() => { aiDraftRef.current = aiDraft; }, [aiDraft]);
-
-    const [isProcessingAI, setIsProcessingAI] = useState(false);
-
     // Mirror the per-page typewriter/focus-mode props into the store so the
     // `editorUI` plugin's typewriter/focus-mode ProseMirror plugins can read
     // them live.
@@ -429,1043 +241,82 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       setIsTypewriter(isTypewriter);
       setIsFocusMode(isFocusMode);
     }, [isTypewriter, isFocusMode, setIsTypewriter, setIsFocusMode]);
+
     const [isCopied, setIsCopied] = useState(false);
 
-    const streamStartRef = useRef<number | null>(null);
-    const streamEndRef = useRef<number | null>(null);
-
-    // Close menus on outside click
-    useEffect(() => {
-      const handleClick = () => {
-        setContextMenu((prev) => ({ ...prev, show: false }));
-      };
-      window.addEventListener("click", handleClick);
-      return () => window.removeEventListener("click", handleClick);
-    }, []);
-
-    useEffect(() => {
-      if (!editorRef.current) return;
-
-      const scrollContainer = editorRef.current.parentElement;
-      if (!scrollContainer) return;
-
-      const handleScroll = () => {
-        if (latestProps.current.onScroll) {
-          latestProps.current.onScroll();
-        }
-      };
-
-      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-      return () => scrollContainer.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    // Re-run plugin loading whenever the enabled/disabled plugin set changes,
-    // so the editor state is rebuilt without the toggled plugin's contributions.
-    const pluginSignature = useSettingsStore((s) =>
-      [...s.disabledPlugins].sort().join(","),
-    );
-    useEffect(() => {
-      let cancelled = false;
-      const editorApi: EditorAPI = {
-        getView: () => viewRef.current,
-        isReady: () => viewRef.current !== null,
-        focus: () => viewRef.current?.focus(),
-      };
-      loadPlugins(editorApi, {
-        disabled: useSettingsStore.getState().disabledPlugins,
-      }).then((result) => {
-        if (!cancelled) {
-          setLoaded(result);
-          onLoaded?.(result);
-        }
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, [pluginSignature]);
-
-    useLayoutEffect(() => {
-      if (!editorRef.current) return;
-      if (!loaded) return;
-
-      // Plugins and node views contributed by the plugin system: core base
-      // plugins, feature plugins (math, search, heading, ...), the editor UI
-      // plugins (side menu, context menu, bubble menu, TTS highlight,
-      // typewriter, focus mode) and the AI keymap — all surfaced through
-      // PluginContext. The editor no longer defines any ProseMirror plugins
-      // inline.
-      const { editorPlugins, nodeViews } = loaded.context;
-
-      // Collaboration plugin
-      const collabInstance = collab?.enabled
-        ? createCollabPlugin({
-            docId: collab.docId,
-            username: collab.username,
-          })
-        : null;
-
-      const state = EditorState.create({
-        schema: editorSchema,
-        doc: parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
-        plugins: [
-          ...(collabInstance ? collabInstance.plugins : []),
-          // All ProseMirror plugins — core base plugins, feature plugins, the
-          // editor UI plugins (side menu, context menu, bubble menu, TTS
-          // highlight, typewriter, focus mode) and the AI keymap — are
-          // contributed by the plugin system and surfaced through
-          // PluginContext.editorPlugins. The editor defines none inline.
-          ...editorPlugins,
-        ],
-      });
-
-      const view = new EditorView(editorRef.current, {
-        state,
-        attributes: {
-          class: cn("ProseMirror", isTypewriter && "typewriter-mode"),
-          "data-placeholder": placeholder || "Start writing...",
-          dir: direction,
-          role: "textbox",
-          "aria-multiline": "true",
-          "aria-label": "Markdown editor",
-          spellcheck: "true",
-        },
-        nodeViews: {
-          ...nodeViews,
-        },
-        clipboardSerializer: DOMSerializer.fromSchema(editorSchema),
-        clipboardTextSerializer(slice) {
-          return editorSerializer.serialize(
-            editorSchema.nodes.doc.create(null, slice.content),
-          );
-        },
-        clipboardTextParser(text, $context) {
-          // Detect if text is markdown-like
-          const isMarkdown = /[#*`\[]|^\s*[-+]\s|^\s*\d+\.\s/m.test(text);
-          if (isMarkdown) {
-            return new Slice(parseMarkdownDoc(text).content, 0, 0);
-          }
-          // Fallback to default parsing which might just be plain text
-          return new Slice(parseMarkdownDoc(text).content, 0, 0);
-        },
-        dispatchTransaction(tr) {
-          const newState = this.state.apply(tr);
-          this.updateState(newState);
-
-          // Slash menu query detection
-          if (slashMenu.show) {
-            const { selection, doc } = newState;
-            // Check if the trigger slash is still there
-            const charBefore = doc.textBetween(
-              Math.max(0, slashMenu.pos - 1),
-              Math.max(0, slashMenu.pos),
-            );
-
-            // If cursor moves before the slash, slash is deleted, or selection is not empty, hide menu
-            if (
-              selection.from < slashMenu.pos ||
-              charBefore !== "/" ||
-              !selection.empty
-            ) {
-              setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
-            } else {
-              const text = doc.textBetween(slashMenu.pos, selection.from);
-              // Limit query length or check for spaces to hide menu
-              if (text.includes(" ") || text.length > 50) {
-                setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
-              } else {
-                setSlashMenu((prev) => ({ ...prev, query: text }));
-              }
-            }
-          }
-
-          // Track search metadata
-          if (latestProps.current.onSearchMetadata) {
-            const searchState = searchPluginKey.getState(newState);
-            if (searchState) {
-              const count = searchState.decorations.find().length;
-              latestProps.current.onSearchMetadata(
-                count,
-                latestProps.current.searchOptions.currentMatchIndex,
-              );
-            }
-          }
-
-          if (tr.docChanged && !isUpdatingFromProps.current) {
-            const markdown = editorSerializer.serialize(newState.doc);
-            latestProps.current.onChange(markdown);
-          }
-
-          if (!tr.selection.eq(this.state.selection)) {
-            latestProps.current.onSelectionChange?.({
-              from: tr.selection.from,
-              to: tr.selection.to,
-            });
-          }
-        },
-        handleKeyDown(view, event) {
-          if (latestProps.current.onKeyDown) {
-            latestProps.current.onKeyDown(event as any);
-          }
-
-          // Slash command detection
-          if (event.key === "/") {
-            const { selection } = view.state;
-            if (selection.empty) {
-              const $from = selection.$from;
-              const before = $from.parent.textContent.substring(
-                0,
-                $from.parentOffset,
-              );
-              const isStartOfLine = $from.parentOffset === 0;
-              const isAfterSpace = before.endsWith(" ");
-
-              if (isStartOfLine || isAfterSpace) {
-                const coords = view.coordsAtPos(selection.from);
-                const editorRect =
-                  containerRef.current?.getBoundingClientRect();
-                if (editorRect) {
-                  setSlashMenu({
-                    x: coords.left - editorRect.left,
-                    y: coords.bottom - editorRect.top + 5,
-                    show: true,
-                    pos: selection.from + 1, // Start query AFTER the slash
-                    query: "",
-                  });
-                }
-              }
-            }
-          } else if (event.key === "Escape") {
-            setSlashMenu((prev) => ({ ...prev, show: false }));
-          }
-
-          return false;
-        },
-        handleDrop(view, event) {
-          const files = event.dataTransfer?.files;
-          if (files && files.length > 0) {
-            const imageFiles = Array.from(files).filter((f) =>
-              f.type.startsWith("image/"),
-            );
-            if (imageFiles.length === 0) return false;
-
-            const pos = view.posAtCoords({
-              left: event.clientX,
-              top: event.clientY,
-            });
-            const insertPos = pos ? pos.pos : view.state.selection.from;
-
-            if (imageFiles.length > 1) {
-              // Create a gallery
-              const promises = imageFiles.map((file) => {
-                return new Promise<string>((resolve) => {
-                  const reader = new FileReader();
-                  reader.onload = (e) => resolve(e.target?.result as string);
-                  reader.readAsDataURL(file);
-                });
-              });
-
-              Promise.all(promises).then((srcs) => {
-                const imageNodes = srcs.map((src) =>
-                  editorSchema.nodes.image.create({ src }),
-                );
-                const galleryNode = editorSchema.nodes.gallery.create(
-                  { layout: "grid" },
-                  imageNodes,
-                );
-                view.dispatch(view.state.tr.insert(insertPos, galleryNode));
-              });
-            } else {
-              // Single image
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                const src = e.target?.result as string;
-                const node = editorSchema.nodes.image.create({ src });
-                view.dispatch(view.state.tr.insert(insertPos, node));
-              };
-              reader.readAsDataURL(imageFiles[0]);
-            }
-            event.preventDefault();
-            return true;
-          }
-          return false;
-        },
-        handlePaste(view, event) {
-          const text = event.clipboardData?.getData("text/plain");
-          const html = event.clipboardData?.getData("text/html");
-
-          // Handle images
-          const items = event.clipboardData?.items;
-          if (items) {
-            for (let i = 0; i < items.length; i++) {
-              if (items[i].type.indexOf("image") !== -1) {
-                const file = items[i].getAsFile();
-                if (file) {
-                  // For now, we can base64 encode it or trigger an upload request
-                  // Given the architecture, triggering an upload request or a dedicated handler is better
-                  // If onImageUploadRequest is provided, we can potentially use it, but it's usually for a selector.
-                  // Let's at least log or provide a placeholder.
-                  const reader = new FileReader();
-                  reader.onload = (e) => {
-                    const src = e.target?.result as string;
-                    const node = editorSchema.nodes.image.create({ src });
-                    view.dispatch(view.state.tr.replaceSelectionWith(node));
-                  };
-                  reader.readAsDataURL(file);
-                  return true;
-                }
-              }
-            }
-          }
-
-          if (text && /^https?:\/\/[^\s$.?#].[^\s]*$/.test(text.trim())) {
-            // If selecting text, we can wrap it as a link instead of prompting
-            const { from, to } = view.state.selection;
-            if (from !== to) {
-              const tr = view.state.tr.addMark(
-                from,
-                to,
-                editorSchema.marks.link.create({ href: text.trim() }),
-              );
-              view.dispatch(tr);
-              return true;
-            }
-
-            const confirmed = window.confirm(
-              "Detected a URL. Would you like to insert it as a Markdown link?",
-            );
-            if (confirmed) {
-              const label =
-                window.prompt("Enter link label:", "Link") || "Link";
-              const markdownLink = `[${label}](${text.trim()})`;
-              const node = parseMarkdownDoc(markdownLink);
-              view.dispatch(view.state.tr.replaceSelectionWith(node));
-              return true;
-            }
-          }
-          return false;
-        },
-      });
-
-      viewRef.current = view;
-
-      return () => {
-        view.destroy();
-        // Release plugin resources (intervals, subscriptions, listeners)
-        // before the editor is rebuilt or unmounted.
-        loaded.registry.destroyAll();
-      };
-    }, [loaded]); // Rebuild when plugins finish loading
-
-    // Sync search state
-    const prevSearchQuery = useRef("");
-    const prevSearchOptions = useRef<any>(null);
-
-    useEffect(() => {
-      if (viewRef.current) {
-        const tr = viewRef.current.state.tr;
-        tr.setMeta("searchQuery", searchQuery);
-        tr.setMeta("searchOptions", searchOptions);
-        // Explicitly trigger a decoration update for Focus Mode if it changed
-        tr.setMeta("focusModeUpdate", isFocusMode);
-
-        viewRef.current.dispatch(tr);
-
-        prevSearchQuery.current = searchQuery;
-        prevSearchOptions.current = searchOptions;
-
-        viewRef.current.setProps({
-          attributes: {
-            class: cn(
-              "ProseMirror",
-              isTypewriter && "typewriter-mode",
-              isFocusMode && "focus-mode-active",
-            ),
-            "data-placeholder": placeholder || "Start writing...",
-            dir: direction,
-          },
-        });
-
-        // If we have a current match, try to scroll to it
-        // Note: mapping searchIndex (string index) to PM pos is approximate
-        // but for basic markdown it's usually 1:1 or very close.
-        if (searchQuery && searchOptions.searchIndex !== -1) {
-          // We'll try to find the PM position that matches the searchIndex
-          // For simplicity, we'll just scroll the view if we can find the decoration pos
-          // Or just use coordsAtPos if we assume 1:1 mapping for now.
-          try {
-            const pos = searchOptions.searchIndex; // Naive approximation
-            const coords = viewRef.current.coordsAtPos(pos);
-            if (coords) {
-              const editorRect = editorRef.current?.getBoundingClientRect();
-              const scrollContainer = editorRef.current?.parentElement;
-              if (scrollContainer && editorRect) {
-                const relativeTop =
-                  coords.top - editorRect.top + scrollContainer.scrollTop;
-                scrollContainer.scrollTo({
-                  top: relativeTop - scrollContainer.clientHeight / 3,
-                  behavior: "smooth",
-                });
-              }
-            }
-          } catch (e) {}
-        }
-      }
-    }, [
-      searchQuery,
-      searchOptions.searchIndex,
-      searchOptions.currentMatchIndex,
-      searchOptions.isCaseSensitive,
-      searchOptions.isWholeWord,
+    // --- Composed hooks (single-responsibility slices) -------------------
+    const loaded = usePluginLoader(viewRef, onLoaded);
+    const { editorSchema, parseMarkdownDoc } = useMarkdownSerializer(loaded);
+    useEditorView({
+      editorRef,
+      viewRef,
+      containerRef,
+      loaded,
+      editorSchema,
+      parseMarkdownDoc,
+      collab,
+      placeholder,
       direction,
       isTypewriter,
+      value,
+      latestProps,
+      slashMenu,
+      setSlashMenu,
+      setContextMenu,
+      isUpdatingFromProps,
+    });
+    useSearchSync({
+      viewRef,
+      editorRef,
+      searchQuery,
+      searchOptions,
       isFocusMode,
+      isTypewriter,
       placeholder,
+      direction,
       loaded,
-    ]);
+    });
+    useMarkdownSync({ viewRef, value, parseMarkdownDoc, isUpdatingFromProps });
+    const { handleFormat } = useFormatting({
+      viewRef,
+      editorSchema,
+      parseMarkdownDoc,
+    });
+    useImperativeEditorApi({
+      ref,
+      viewRef,
+      editorSchema,
+      parseMarkdownDoc,
+      isUpdatingFromProps,
+      streamStartRef,
+      streamEndRef,
+      handleFormat,
+    });
+    const {
+      aiDraft,
+      isProcessingAI,
+      handleAIAction,
+      handleAIActionDecision,
+      handleSlashSelect,
+      handlePluginSlashSelect,
+    } = useAIStreaming({
+      viewRef,
+      containerRef,
+      editorSchema,
+      parseMarkdownDoc,
+      latestProps,
+      loaded,
+      slashMenu,
+      setSlashMenu,
+      setBubbleMenu,
+      setShowAiPopover,
+      handleFormat,
+      onImageUploadRequest,
+      streamStartRef,
+      streamEndRef,
+    });
 
-    const getCursorContextInternal = () => {
-      if (!viewRef.current) return "";
-      const { state } = viewRef.current;
-      const { $from } = state.selection;
-      const depth = $from.depth;
-
-      // Get current block content safely
-      const start = depth > 0 ? $from.start(depth) : 0;
-      const end = depth > 0 ? $from.end(depth) : state.doc.content.size;
-      const currentPara = state.doc.textBetween(start, end, " ");
-
-      // Try to find the heading path
-      let headingPath = [];
-      let pos = $from.pos;
-      while (pos > 0) {
-        const $pos = state.doc.resolve(pos);
-        const node = $pos.parent;
-        if (node && node.type.name === "heading") {
-          headingPath.unshift(node.textContent);
-        }
-
-        if ($pos.depth > 0) {
-          pos = $pos.before();
-        } else {
-          break;
-        }
-
-        if (pos === 0) break;
-      }
-
-      const pathStr =
-        headingPath.length > 0 ? `Path: ${headingPath.join(" > ")}` : "";
-      return `${pathStr}\n\n${currentPara}`.trim();
-    };
-
-    useEffect(() => {
-      if (isUpdatingFromProps.current) {
-        isUpdatingFromProps.current = false;
-        return;
-      }
-      if (viewRef.current) {
-        const currentMarkdown = editorSerializer.serialize(viewRef.current.state.doc);
-        if (value !== currentMarkdown) {
-          const node = parseMarkdownDoc(value);
-          if (node) {
-            viewRef.current.dispatch(
-              viewRef.current.state.tr.replaceWith(0, viewRef.current.state.doc.content.size, node.content)
-                .setMeta("addToHistory", false)
-            );
-          }
-        }
-      }
-    }, [value]);
-
-    useImperativeHandle(ref, () => ({
-      focus: () => {
-        viewRef.current?.focus();
-      },
-      insertText: (before: string, after: string = "") => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-        const { from, to } = state.selection;
-
-        // This is a bit simplified. Real markdown insertion in ProseMirror
-        // usually involves toggling marks or changing block types.
-        // But we can insert raw text if we want.
-        let tr = state.tr.insertText(before, from);
-        tr = tr.insertText(after, to + before.length);
-        dispatch(tr);
-      },
-      insertImage: (src: string, alt: string = "", title: string = "") => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-        const { from } = state.selection;
-
-        const node = editorSchema.nodes.image.create({ src, alt, title });
-        const tr = state.tr.insert(from, node);
-        dispatch(tr);
-      },
-      insertGallery: (srcs: string[]) => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-        const { from } = state.selection;
-
-        const imageNodes = srcs.map((src) =>
-          editorSchema.nodes.image.create({ src }),
-        );
-        const galleryNode = editorSchema.nodes.gallery.create(
-          { layout: "grid" },
-          imageNodes,
-        );
-        const tr = state.tr.insert(from, galleryNode);
-        dispatch(tr);
-      },
-      insertScribble: () => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-        const { from } = state.selection;
-        const node = editorSchema.nodes.scribble.create({ aspectRatio: 0.5 });
-        const tr = state.tr.insert(from, node);
-        dispatch(tr);
-      },
-      appendMarkdown: (content: string) => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-        const parsed = parseMarkdownDoc(content);
-        const tr = state.tr.insert(state.doc.content.size, parsed.content);
-        dispatch(tr);
-        viewRef.current.focus();
-      },
-      replaceSelectionWithMarkdown: (content: string) => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-        const { from, to } = state.selection;
-        const parsed = parseMarkdownDoc(content);
-        const tr = state.tr.replaceWith(from, to, parsed.content);
-        dispatch(tr);
-        viewRef.current.focus();
-      },
-      getSelectedText: () => {
-        if (!viewRef.current) return "";
-        const { state } = viewRef.current;
-        const { from, to } = state.selection;
-        return state.doc.textBetween(from, to, " ");
-      },
-      getHtml: () => {
-        if (!viewRef.current) return "";
-        const fragment = DOMSerializer.fromSchema(
-          editorSchema,
-        ).serializeFragment(viewRef.current.state.doc.content);
-        const container = document.createElement("div");
-        container.appendChild(fragment);
-        return container.innerHTML;
-      },
-      getDoc: () => {
-        return viewRef.current?.state.doc;
-      },
-      getHeadings: () => {
-        if (!viewRef.current) return [];
-        const headings: { text: string; level: number; pos: number; id: string }[] = [];
-        viewRef.current.state.doc.descendants((node, pos) => {
-          if (node.type.name === "heading") {
-            headings.push({
-              text: node.textContent,
-              level: node.attrs.level,
-              pos: pos,
-              id: node.attrs.id || slugify(node.textContent)
-            });
-          }
-        });
-        return headings;
-      },
-      getTextWithPositions: () => {
-        if (!viewRef.current) return [];
-        const result: { text: string; pos: number }[] = [];
-        viewRef.current.state.doc.descendants((node, pos) => {
-          if (node.isText) {
-            result.push({ text: node.text || "", pos });
-          }
-        });
-        return result;
-      },
-      setTTSHighlight: (range: { from: number; to: number } | null) => {
-        const view = viewRef.current;
-        if (!view) return;
-        
-        const tr = view.state.tr;
-        tr.setMeta("ttsHighlight", range);
-        if (range) {
-          // Find if the range is valid
-          const from = Math.max(0, Math.min(range.from, view.state.doc.content.size));
-          // Center the highlight in view if possible
-          tr.setSelection(TextSelection.create(view.state.doc, from));
-          tr.scrollIntoView();
-        }
-        view.dispatch(tr);
-        
-        useUIStore.getState().setTTSHighlightRange(range);
-      },
-      handleFormat: (type: string) => {
-        handleFormat(type);
-      },
-      getCursorContext: () => {
-        return getCursorContextInternal();
-      },
-      scrollToText: (text: string) => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-        const docText = state.doc.textContent;
-        const index = docText.indexOf(text);
-        if (index !== -1) {
-          let pos = 1;
-          let found = false;
-          state.doc.descendants((node, nodePos) => {
-            if (found) return false;
-            if (node.isText) {
-              const nodeText = node.text || "";
-              const internalIndex = nodeText.indexOf(text);
-              if (internalIndex !== -1) {
-                pos = nodePos + internalIndex;
-                found = true;
-                return false;
-              }
-            }
-            return true;
-          });
-
-          if (found) {
-            const tr = state.tr.setSelection(
-              TextSelection.create(state.doc, pos, pos + text.length),
-            );
-            tr.scrollIntoView();
-            dispatch(tr);
-            viewRef.current.focus();
-          }
-        }
-      },
-      scrollToPos: (pos: number) => {
-        const view = viewRef.current;
-        if (!view) return;
-        
-        try {
-          const { state, dispatch } = view;
-          const resolvedPos = state.doc.resolve(Math.min(pos, state.doc.content.size));
-          // Create a point selection at the start of the heading
-          const selection = TextSelection.create(state.doc, resolvedPos.pos);
-          const tr = state.tr.setSelection(selection).scrollIntoView();
-          dispatch(tr);
-          view.focus();
-        } catch (e) {
-          console.error("Scroll to pos failed", e);
-        }
-      },
-      streamMarkdown: (content: string, isNew: boolean = false) => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-
-        if (isNew) {
-          streamStartRef.current = state.selection.from;
-          streamEndRef.current = state.selection.to;
-        }
-
-        const from = streamStartRef.current ?? state.selection.from;
-        const to = streamEndRef.current ?? state.selection.to;
-
-        const parsed = parseMarkdownDoc(content);
-        const tr = state.tr.replaceWith(from, to, parsed.content);
-
-        // Update end ref after replacement
-        streamEndRef.current = from + parsed.content.size;
-
-        // Auto-scroll to keep bottom of stream visible
-        tr.scrollIntoView();
-
-        dispatch(tr);
-      },
-      setMarkdown: (content: string) => {
-        if (!viewRef.current) return;
-        const { state, dispatch } = viewRef.current;
-        isUpdatingFromProps.current = true;
-        const tr = state.tr.replaceWith(
-          0,
-          state.doc.content.size,
-          parseMarkdownDoc(content).content,
-        );
-        dispatch(tr);
-        isUpdatingFromProps.current = false;
-        viewRef.current.focus();
-      },
-    }));
-
-    const handleFormat = (type: string) => {
-      if (!viewRef.current) return;
-      const { state, dispatch } = viewRef.current;
-
-      const setAlign = (alignment: string) => {
-        const { from, to } = state.selection;
-        let tr = state.tr;
-        state.doc.nodesBetween(from, to, (node, pos) => {
-          if (node.type.name === "paragraph" || node.type.name === "heading") {
-            tr.setNodeMarkup(pos, null, { ...node.attrs, align: alignment });
-          }
-        });
-        if (tr.docChanged) dispatch(tr);
-      };
-
-      if (type === "bold")
-        toggleMark(editorSchema.marks.strong)(state, dispatch);
-      if (type === "italic") toggleMark(editorSchema.marks.em)(state, dispatch);
-      if (type === "underline")
-        toggleMark(editorSchema.marks.underline)(state, dispatch);
-      if (type === "strike")
-        toggleMark(editorSchema.marks.strike)(state, dispatch);
-      if (type === "code") toggleMark(editorSchema.marks.code)(state, dispatch);
-      if (type === "h1")
-        setBlockType(editorSchema.nodes.heading, { level: 1 })(state, dispatch);
-      if (type === "h2")
-        setBlockType(editorSchema.nodes.heading, { level: 2 })(state, dispatch);
-      if (type === "h3")
-        setBlockType(editorSchema.nodes.heading, { level: 3 })(state, dispatch);
-      if (type === "quote")
-        wrapInBlock(editorSchema.nodes.blockquote)(state, dispatch);
-      if (type === "alignLeft") setAlign("left");
-      if (type === "alignCenter") setAlign("center");
-      if (type === "alignRight") setAlign("right");
-      if (type === "alignJustify") setAlign("justify");
-      if (type === "bullet") wrapInList(editorSchema.nodes.bullet_list)(state, dispatch);
-      if (type === "tableify") {
-        const { from, to } = state.selection;
-        const selectedText = state.doc.textBetween(from, to, "\n");
-        if (selectedText.trim()) {
-          const lines = selectedText.split("\n").filter(l => l.trim().length > 0);
-          if (lines.length > 0) {
-            const delimiters = ["|", "\t", ","];
-            let bestDelimiter = delimiters[0];
-            let maxCols = 0;
-
-            for (const delim of delimiters) {
-              const cols = lines[0].split(delim).length;
-              if (cols > maxCols) {
-                maxCols = cols;
-                bestDelimiter = delim;
-              }
-            }
-
-            const processLine = (line: string) => {
-              let cols = line.split(bestDelimiter);
-              if (bestDelimiter === "|") {
-                cols = cols.filter((c, i) => {
-                  if ((i === 0 || i === cols.length - 1) && c.trim() === "") return false;
-                  return true;
-                });
-              }
-              return cols.map(c => c.trim());
-            };
-
-            const tableData = lines.map(processLine);
-            const colCount = Math.max(...tableData.map(r => r.length));
-
-            let markdownTable = "";
-            const header = [...tableData[0]];
-            while (header.length < colCount) header.push(`Header ${header.length + 1}`);
-            markdownTable += "| " + header.join(" | ") + " |\n";
-            markdownTable += "| " + Array(colCount).fill("---").join(" | ") + " |\n";
-            
-            for (let i = 1; i < tableData.length; i++) {
-              const row = [...tableData[i]];
-              while (row.length < colCount) row.push("");
-              markdownTable += "| " + row.join(" | ") + " |\n";
-            }
-
-            const slice = parseMarkdownDoc(markdownTable);
-            dispatch(state.tr.replaceSelection(new Slice(slice.content, 0, 0)));
-          }
-        }
-      }
-
-      viewRef.current.focus();
-    };
-
-    const handleAIAction = async (action: AIAssistantAction, retryText?: string, retryAction?: AIAssistantAction, retryFrom?: number, retryTo?: number) => {
-      if (!viewRef.current) return;
-      
-      const { state, dispatch } = viewRef.current;
-      const from = retryFrom ?? state.selection.from;
-      const to = retryTo ?? state.selection.to;
-      const selectedText = retryText ?? state.doc.textBetween(from, to, " ");
-
-      if (!selectedText.trim()) return;
-
-      const abortController = new AbortController();
-      
-      const coords = viewRef.current.coordsAtPos(to);
-      const editorRect = containerRef.current?.getBoundingClientRect();
-      const y = coords.bottom - (editorRect?.top || 0);
-
-      const initialDraftState = {
-        isStreaming: true,
-        content: "",
-        originalText: selectedText,
-        action: retryAction ?? action,
-        from,
-        to, // initial to
-        showActions: false,
-        y: y + 20,
-        abortController,
-        originalSelection: { from, to },
-        streamEnd: to
-      };
-      
-      setAiDraft(initialDraftState);
-      setIsProcessingAI(true);
-      setBubbleMenu((prev) => ({ ...prev, show: false }));
-      setShowAiPopover(false);
-
-      try {
-        const fullDoc = editorSerializer.serialize(state.doc);
-        const cursorContext = getCursorContextInternal();
-
-        let fullResponse = "";
-        let streamStart = from;
-        let streamEnd = to;
-
-        await processAIAction(selectedText, retryAction ?? action, {
-          personalInstructions: latestProps.current.personalInstructions,
-          model: latestProps.current.selectedModel,
-          provider: latestProps.current.provider as any,
-          apiKeys: latestProps.current.apiKeys,
-          providerConfigs: latestProps.current.providerConfigs,
-          signal: abortController.signal,
-          onChunk: (chunk) => {
-            fullResponse += chunk;
-            
-            if (viewRef.current) {
-               const { state: curState, dispatch: curDispatch } = viewRef.current;
-                const parsed = parseMarkdownDoc(fullResponse);
-               
-               // We replace the original text with the streamed text.
-               const tr = curState.tr.replaceWith(streamStart, streamEnd, parsed.content);
-               
-               streamEnd = streamStart + parsed.content.size;
-               
-               tr.setMeta(draftHighlightKey, { from: streamStart, to: streamEnd, isGenerating: true });
-               if (latestProps.current.isTypewriter) {
-                   tr.scrollIntoView();
-               }
-               curDispatch(tr);
-
-               setAiDraft(prev => prev ? ({
-                 ...prev,
-                 content: fullResponse,
-                 to: streamEnd,
-                 streamEnd
-               }) : null);
-            }
-          },
-          documentContext: fullDoc,
-          cursorContext: cursorContext,
-        });
-
-        if (viewRef.current) {
-           const { state: finalState, dispatch: finalDispatch } = viewRef.current;
-           const tr = finalState.tr;
-           tr.setMeta(draftHighlightKey, { from: streamStart, to: streamEnd, isGenerating: false });
-           
-           const finalCoords = viewRef.current.coordsAtPos(streamEnd);
-           const finalY = finalCoords.bottom - (editorRect?.top || 0);
-
-           finalDispatch(tr);
-           
-           setAiDraft(prev => prev ? ({
-             ...prev,
-             isStreaming: false,
-             showActions: true,
-             to: streamEnd,
-             streamEnd,
-             y: finalY + 10
-           }) : null);
-        }
-
-      } catch (error: any) {
-        if (error.name !== "AbortError") {
-          console.error("AI Action failed:", error);
-          alert("Failed to process AI request. Check console for details.");
-        }
-        if (viewRef.current) {
-           const { state: finalState, dispatch: finalDispatch } = viewRef.current;
-           const tr = finalState.tr;
-           
-           // Restore original text
-           const parsed = parseMarkdownDoc(initialDraftState.originalText);
-           tr.replaceWith(initialDraftState.from, aiDraftRef.current?.streamEnd ?? initialDraftState.to, parsed.content);
-           tr.setMeta(draftHighlightKey, null);
-           finalDispatch(tr);
-        }
-        setAiDraft(null);
-      } finally {
-        setIsProcessingAI(false);
-      }
-    };
-
-    // Bridge the inline AI draft handler to the `ai` plugin's keymap (which is
-    // registered at the plugin level so it is removed when the plugin is
-    // disabled). The handler is coupled to this component's local `aiDraft`
-    // state, so it is registered here on mount.
-    const handleAIActionRef = useRef(handleAIAction);
-    handleAIActionRef.current = handleAIAction;
-    useEffect(() => {
-      setInlineAiActionHandler((a) => handleAIActionRef.current(a as AIAssistantAction));
-      return () => setInlineAiActionHandler(null);
-    }, []);
-
-    const handleAIActionDecision = (decision: 'replace' | 'append' | 'retry' | 'cancel') => {
-        if (!aiDraftRef.current || !viewRef.current) return;
-        const draft = aiDraftRef.current;
-        const { state, dispatch } = viewRef.current;
-        const tr = state.tr;
-        
-        tr.setMeta(draftHighlightKey, null); // clear highlight
-
-        if (decision === 'cancel') {
-            const parsed = parseMarkdownDoc(draft.originalText);
-            tr.replaceWith(draft.from, draft.streamEnd, parsed.content);
-        } else if (decision === 'append') {
-            // Restore original text, then append new text
-            const parsedOrg = parseMarkdownDoc(draft.originalText);
-            const parsedDraft = parseMarkdownDoc("\n\n" + draft.content);
-            
-            // first put original back
-            tr.replaceWith(draft.from, draft.streamEnd, parsedOrg.content);
-            
-            // then append draft content after it
-            tr.insert(draft.from + parsedOrg.content.size, parsedDraft.content);
-            tr.scrollIntoView();
-        } else if (decision === 'retry') {
-            const parsedOrg = parseMarkdownDoc(draft.originalText);
-            tr.replaceWith(draft.from, draft.streamEnd, parsedOrg.content);
-            dispatch(tr);
-            
-            handleAIAction(draft.action!, draft.originalText, draft.action!, draft.from, draft.from + parsedOrg.content.size);
-            return;
-        } else if (decision === 'replace') {
-            // Do nothing, text is already replaced. Just clear highlight.
-            tr.setMeta("addToHistory", true);
-            tr.setMeta("ai-modification", true);
-        }
-
-        dispatch(tr);
-        setAiDraft(null);
-        viewRef.current.focus();
-    };
-
-    // Deletes the "/query" text the user typed to open the slash menu and
-    // returns the start position of the deleted range (for AI block actions).
-    const deleteSlashText = (): number => {
-      if (!viewRef.current) return 0;
-      const { state } = viewRef.current;
-      const endPos = state.selection.from;
-      const startPos = slashMenu.pos - 1;
-      const finalStart = Math.max(0, Math.min(startPos, state.doc.content.size));
-      const finalEnd = Math.max(finalStart, Math.min(endPos, state.doc.content.size));
-      viewRef.current.dispatch(state.tr.delete(finalStart, finalEnd));
-      return finalStart;
-    };
-
-    const handleSlashSelect = async (action: string) => {
-      if (!viewRef.current) return;
-      const finalStart = deleteSlashText();
-
-      const afterDeleteState = viewRef.current.state;
-      setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
-
-      if (action === "h1") handleFormat("h1");
-      else if (action === "h2") handleFormat("h2");
-      else if (action === "align-left") handleFormat("alignLeft");
-      else if (action === "align-center") handleFormat("alignCenter");
-      else if (action === "align-right") handleFormat("alignRight");
-      else if (action === "align-justify") handleFormat("alignJustify");
-      else if (action === "bullet") handleFormat("bullet");
-      else if (action.startsWith("todo-")) {
-        const priority = action.replace("todo-", "");
-        let priorityTag = "";
-        switch (priority) {
-          case "high":
-            priorityTag = "(H)";
-            break;
-          case "medium":
-            priorityTag = "(M)";
-            break;
-          case "low":
-            priorityTag = "(L)";
-            break;
-        }
-        const tr = afterDeleteState.tr.replaceSelectionWith(
-          editorSchema.text(`- [ ] ${priorityTag} `),
-        );
-        viewRef.current.dispatch(tr);
-      } else if (action === "code")
-        setBlockType(editorSchema.nodes.code_block)(
-          afterDeleteState,
-          viewRef.current.dispatch,
-        );
-      else if (action === "scribble") {
-        const node = editorSchema.nodes.scribble.create({ aspectRatio: 0.5 });
-        viewRef.current.dispatch(afterDeleteState.tr.replaceSelectionWith(node));
-      } else if (action === "tableify") {
-        handleFormat("tableify");
-      } else if (action === "image") onImageUploadRequest?.();
-      else if (action === "gallery") {
-        // We'll prompt for multiple images or just insert an empty one with a placeholder
-        onImageUploadRequest?.(); // Reuse image upload for now, or we could have a specific gallery creator
-      } else if (action === "quote") {
-        handleFormat("quote");
-      } else if (
-        [
-          "improve",
-          "outline",
-          "summarize",
-          "rewrite",
-          "complete-text",
-        ].includes(action) ||
-        action.startsWith("ai-")
-      ) {
-        const type = action.replace("ai-", "") as AIAssistantAction;
-
-        const resolvedPos = afterDeleteState.doc.resolve(
-          Math.min(finalStart, afterDeleteState.doc.content.size),
-        );
-        const depth = resolvedPos.depth;
-
-        const start = depth > 0 ? resolvedPos.start(depth) : 0;
-        const end =
-          depth > 0
-            ? resolvedPos.end(depth)
-            : afterDeleteState.doc.content.size;
-
-        try {
-          const trSelect = afterDeleteState.tr.setSelection(
-            TextSelection.create(afterDeleteState.doc, start, end),
-          );
-          viewRef.current.dispatch(trSelect);
-          await handleAIAction(type);
-        } catch (err) {
-          console.error("Failed to set selection for AI action:", err);
-          await handleAIAction(type);
-        }
-      }
-
-      viewRef.current.focus();
-    };
-
-    // Runs a plugin-contributed slash command after removing the "/query" text.
-    const handlePluginSlashSelect = (cmd: EditorCommand) => {
-      if (!viewRef.current) return;
-      deleteSlashText();
-      setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
-      cmd.run(loaded?.context as PluginContext);
-    };
-
-    const wrapInBlock = (type: any) => (state: EditorState, dispatch: any) => {
-      return wrapIn(type)(state, dispatch);
-    };
-
+    // Restore the initial cursor position once the editor has mounted.
     useEffect(() => {
       if (viewRef.current) {
         viewRef.current.focus();
@@ -1531,7 +382,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("h1")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.h1 && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.h1 && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Heading 1 (#)"
                   >
@@ -1541,7 +392,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("h2")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.h2 && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.h2 && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Heading 2 (##)"
                   >
@@ -1551,7 +402,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("h3")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.h3 && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.h3 && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Heading 3 (###)"
                   >
@@ -1562,7 +413,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("bold")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.bold && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.bold && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Bold (Mod+B)"
                   >
@@ -1572,7 +423,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("italic")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.italic && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.italic && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Italic (Mod+I)"
                   >
@@ -1582,7 +433,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("underline")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.underline && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.underline && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Underline (Mod+U)"
                   >
@@ -1592,7 +443,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("strike")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.strike && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.strike && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Strikethrough (Mod+Shift+X)"
                   >
@@ -1602,7 +453,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("quote")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.blockquote && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.blockquote && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Quote"
                   >
@@ -1612,7 +463,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("bullet")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.bullet && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.bullet && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Bullet List"
                   >
@@ -1622,7 +473,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("code")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.code && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.code && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Code (Mod+E)"
                   >
@@ -1640,7 +491,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("alignLeft")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.alignLeft && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.alignLeft && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Align Left"
                   >
@@ -1650,7 +501,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("alignCenter")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.alignCenter && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.alignCenter && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Align Center"
                   >
@@ -1660,7 +511,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("alignRight")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.alignRight && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.alignRight && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Align Right"
                   >
@@ -1670,7 +521,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     onClick={() => handleFormat("alignJustify")}
                     className={cn(
                       "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.alignJustify && "bg-minimal-accent/20 text-minimal-accent"
+                      activeFormats.alignJustify && "bg-minimal-accent/20 text-minimal-accent",
                     )}
                     title="Justify"
                   >
@@ -1917,7 +768,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                   <button
                     onClick={() => {
                        if (aiDraft.abortController) {
-                           aiDraft.abortController.abort();
+                          aiDraft.abortController.abort();
                        }
                     }}
                     className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-400 hover:bg-white/10 hover:text-red-300 rounded"
@@ -1960,7 +811,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         <AnimatePresence>
           {slashMenu.show && (
             <SlashMenu
@@ -2032,8 +883,8 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     }}
                     className={cn(
                       "p-1.5 rounded-lg transition-all cursor-pointer bg-minimal-bg/50 backdrop-blur border border-transparent",
-                      isCopied 
-                        ? "text-emerald-500 bg-emerald-500/5 border-emerald-500/20" 
+                      isCopied
+                        ? "text-emerald-500 bg-emerald-500/5 border-emerald-500/20"
                         : "text-minimal-muted/40 hover:text-minimal-accent hover:bg-minimal-accent/10"
                     )}
                     title={isCopied ? "Copied!" : "Copy Anchor Link"}
