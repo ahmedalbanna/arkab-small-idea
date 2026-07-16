@@ -8,6 +8,41 @@ export interface SemanticResult {
   source?: string;
 }
 
+/** A value or a functional updater, so store setters mirror React's `setState`. */
+type Updatable<T> = T | ((prev: T) => T);
+
+/** Hover menu shown in the editor's left gutter for the current block. */
+export interface SideMenuState {
+  y: number;
+  show: boolean;
+  pos: number;
+  nodeName?: string;
+}
+
+/** Right-click context menu positioned over the editor. */
+export interface ContextMenuState {
+  x: number;
+  y: number;
+  show: boolean;
+  pos: number;
+}
+
+/** Selection bubble menu positioned over the current selection. */
+export interface BubbleMenuState {
+  x: number;
+  y: number;
+  show: boolean;
+}
+
+/** Slash command menu triggered by typing `/`. */
+export interface SlashMenuState {
+  x: number;
+  y: number;
+  show: boolean;
+  pos: number;
+  query: string;
+}
+
 /**
  * UI state for the AI assistant, search dialog, and related panels. Previously
  * this lived as local `useState` in `App.tsx`; lifting it into a store lets the
@@ -48,6 +83,28 @@ interface AIUIState {
   setShowShortcuts: (v: boolean) => void;
   showFileActions: boolean;
   setShowFileActions: (v: boolean) => void;
+
+  // Editor menu UI — lifted from ProseMirrorEditor so the `editorUI` plugin can
+  // drive it through ProseMirror plugins and the menu components can render it.
+  sideMenu: SideMenuState;
+  setSideMenu: (v: Updatable<SideMenuState>) => void;
+  contextMenu: ContextMenuState;
+  setContextMenu: (v: Updatable<ContextMenuState>) => void;
+  bubbleMenu: BubbleMenuState;
+  setBubbleMenu: (v: Updatable<BubbleMenuState>) => void;
+  showAiPopover: boolean;
+  setShowAiPopover: (v: boolean) => void;
+  activeFormats: Record<string, boolean>;
+  setActiveFormats: (v: Record<string, boolean>) => void;
+  slashMenu: SlashMenuState;
+  setSlashMenu: (v: Updatable<SlashMenuState>) => void;
+
+  // Live editor-shell flags mirrored from ProseMirrorEditor props; read by the
+  // `editorUI` plugin's typewriter/focus-mode ProseMirror plugins.
+  isTypewriter: boolean;
+  setIsTypewriter: (v: boolean) => void;
+  isFocusMode: boolean;
+  setIsFocusMode: (v: boolean) => void;
 }
 
 export const useAIUIStore = create<AIUIState>((set) => ({
@@ -81,4 +138,30 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   setShowShortcuts: (v) => set({ showShortcuts: v }),
   showFileActions: false,
   setShowFileActions: (v) => set({ showFileActions: v }),
+
+  sideMenu: { y: 0, show: false, pos: 0 },
+  setSideMenu: (v) =>
+    set((s) => ({ sideMenu: typeof v === "function" ? v(s.sideMenu) : v })),
+  contextMenu: { x: 0, y: 0, show: false, pos: 0 },
+  setContextMenu: (v) =>
+    set((s) => ({
+      contextMenu: typeof v === "function" ? v(s.contextMenu) : v,
+    })),
+  bubbleMenu: { x: 0, y: 0, show: false },
+  setBubbleMenu: (v) =>
+    set((s) => ({
+      bubbleMenu: typeof v === "function" ? v(s.bubbleMenu) : v,
+    })),
+  showAiPopover: false,
+  setShowAiPopover: (v) => set({ showAiPopover: v }),
+  activeFormats: {},
+  setActiveFormats: (v) => set({ activeFormats: v }),
+  slashMenu: { x: 0, y: 0, show: false, pos: 0, query: "" },
+  setSlashMenu: (v) =>
+    set((s) => ({ slashMenu: typeof v === "function" ? v(s.slashMenu) : v })),
+
+  isTypewriter: false,
+  setIsTypewriter: (v) => set({ isTypewriter: v }),
+  isFocusMode: false,
+  setIsFocusMode: (v) => set({ isFocusMode: v }),
 }));

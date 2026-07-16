@@ -31,6 +31,7 @@ import { tablesPlugin } from "./tables";
 import { statusBarPlugin } from "./statusbar";
 import { tocPlugin } from "./toc";
 import { documentPlugin } from "./document";
+import { editorUIPlugin } from "./editorUI";
 import { aiPlugin } from "./ai";
 
 /**
@@ -56,6 +57,7 @@ const pluginModules: InkPlugin[] = [
   statusBarPlugin,
   tocPlugin,
   documentPlugin,
+  editorUIPlugin,
   aiPlugin,
 ];
 

@@ -1,6 +1,8 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useImperativeHandle,
   forwardRef,
@@ -8,13 +10,11 @@ import {
 } from "react";
 import {
   EditorState,
-  Plugin,
   Selection,
   TextSelection,
 } from "prosemirror-state";
-import { EditorView, Decoration, DecorationSet } from "prosemirror-view";
+import { EditorView } from "prosemirror-view";
 import { DOMParser, DOMSerializer, Slice, Node } from "prosemirror-model";
-import { keymap } from "prosemirror-keymap";
 import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
 import { wrapInList } from "prosemirror-schema-list";
 import { draftHighlightKey } from "../lib/draftPlugin";
@@ -82,10 +82,9 @@ import "katex/dist/katex.min.css";
 import { SlashMenu } from "./SlashMenu";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useUIStore } from "../stores/uiStore";
+import { useAIUIStore } from "../stores/aiUIStore";
 import { useSettingsStore } from "../stores/settingsStore";
-
-// Editor schema is built dynamically from core specs + plugin contributions.
-const editorSchema = buildEditorSchema();
+import { setInlineAiActionHandler } from "../plugins/ai/inlineDraftBridge";
 
 // Custom serializer to handle our new marks and tables
 const editorSerializer = new MarkdownSerializer(
@@ -190,36 +189,6 @@ if (tokenizer && tokenizer.enable) {
   tokenizer.enable("table");
 }
 
-  const editorParser = new MarkdownParser(editorSchema, tokenizer, {
-    ...((defaultMarkdownParser as any).tokens || {}),
-    s: { mark: "strike" },
-    strike: { mark: "strike" },
-    u: { mark: "underline" },
-    scribble: { 
-      block: "scribble", 
-      getAttrs: (tok: any) => {
-        const lines = tok.content.split('\n');
-        const aspectLine = lines.find((l: string) => l.startsWith('aspect:'));
-        const data = lines.find((l: string) => l.startsWith('data:image'));
-        return { 
-          data: data || null, 
-          aspectRatio: aspectLine ? parseFloat(aspectLine.split(':')[1]) : 0.5 
-        };
-      } 
-    },
-    ...tableTokens,
-  });
-
-  /**
-   * Parses markdown into a document and converts any fenced diagram code
-   * blocks into `diagram` nodes so they render via the diagram NodeView.
-   * Used for initial load, paste, AI streaming, and all markdown insertion.
-   */
-  const parseMarkdownDoc = (md: string): Node => {
-    const parsed = editorParser.parse(md);
-    const doc = parsed ?? editorSchema.nodes.doc.createAndFill()!;
-    return diagramTransform(doc);
-  };
 
 interface Props {
   value: string;
@@ -323,6 +292,52 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     },
     ref,
   ) => {
+    const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
+    // The editor schema is built once by the plugin system (loadPlugins) and
+    // surfaced through PluginContext. Every editor helper and the live editor
+    // state read it, so any schema contribution a plugin makes is reflected
+    // everywhere. The buildEditorSchema() fallback keeps the parser usable
+    // before the first load resolves.
+    const editorSchema = loaded?.context.schema ?? buildEditorSchema();
+
+    // Markdown parser — rebuilt only when the schema changes.
+    const editorParser = useMemo(
+      () =>
+        new MarkdownParser(editorSchema, tokenizer, {
+          ...((defaultMarkdownParser as any).tokens || {}),
+          s: { mark: "strike" },
+          strike: { mark: "strike" },
+          u: { mark: "underline" },
+          scribble: {
+            block: "scribble",
+            getAttrs: (tok: any) => {
+              const lines = tok.content.split("\n");
+              const aspectLine = lines.find((l: string) =>
+                l.startsWith("aspect:"),
+              );
+              const data = lines.find((l: string) => l.startsWith("data:image"));
+              return {
+                data: data || null,
+                aspectRatio: aspectLine
+                  ? parseFloat(aspectLine.split(":")[1])
+                  : 0.5,
+              };
+            },
+          },
+          ...tableTokens,
+        }),
+      [editorSchema],
+    );
+
+    const parseMarkdownDoc = useCallback(
+      (md: string): Node => {
+        const parsed = editorParser.parse(md);
+        const doc = parsed ?? editorSchema.nodes.doc.createAndFill()!;
+        return diagramTransform(doc);
+      },
+      [editorParser, editorSchema],
+    );
+
     const containerRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
@@ -369,14 +384,23 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       };
     });
 
-    const [bubbleMenu, setBubbleMenu] = useState<{
-      x: number;
-      y: number;
-      show: boolean;
-    }>({ x: 0, y: 0, show: false });
+    // Editor menu UI state lives in `aiUIStore` (lifted from here) so the
+    // `editorUI` plugin's ProseMirror plugins can drive it and the menu
+    // components can render it. These replace the previous local `useState`
+    // values; the store setters keep the same functional-update API.
+    const bubbleMenu = useAIUIStore((s) => s.bubbleMenu);
+    const setBubbleMenu = useAIUIStore((s) => s.setBubbleMenu);
+    const activeFormats = useAIUIStore((s) => s.activeFormats);
+    const setActiveFormats = useAIUIStore((s) => s.setActiveFormats);
+    const showAiPopover = useAIUIStore((s) => s.showAiPopover);
+    const setShowAiPopover = useAIUIStore((s) => s.setShowAiPopover);
+    const slashMenu = useAIUIStore((s) => s.slashMenu);
+    const setSlashMenu = useAIUIStore((s) => s.setSlashMenu);
+    const contextMenu = useAIUIStore((s) => s.contextMenu);
+    const setContextMenu = useAIUIStore((s) => s.setContextMenu);
+    const sideMenu = useAIUIStore((s) => s.sideMenu);
+    const setSideMenu = useAIUIStore((s) => s.setSideMenu);
 
-    const [activeFormats, setActiveFormats] = useState<Record<string, boolean>>({});
-    
     // AI Draft State
     const [aiDraft, setAiDraft] = useState<{
       isStreaming: boolean;
@@ -395,30 +419,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     useEffect(() => { aiDraftRef.current = aiDraft; }, [aiDraft]);
 
     const [isProcessingAI, setIsProcessingAI] = useState(false);
-    const [showAiPopover, setShowAiPopover] = useState(false);
-    const [slashMenu, setSlashMenu] = useState<{
-      x: number;
-      y: number;
-      show: boolean;
-      pos: number;
-      query: string;
-    }>({ x: 0, y: 0, show: false, pos: 0, query: "" });
-    const [contextMenu, setContextMenu] = useState<{
-      x: number;
-      y: number;
-      show: boolean;
-      pos: number;
-    }>({ x: 0, y: 0, show: false, pos: 0 });
-    const [sideMenu, setSideMenu] = useState<{
-      y: number;
-      show: boolean;
-      pos: number;
-      nodeName?: string;
-    }>({ y: 0, show: false, pos: 0 });
-    const isSideMenuEnabled = useUIStore((s) => s.showQuickCommands);
-    const isSideMenuEnabledRef = useRef(isSideMenuEnabled);
-    useEffect(() => { isSideMenuEnabledRef.current = isSideMenuEnabled; }, [isSideMenuEnabled]);
-    const sideMenuHideTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    // Mirror the per-page typewriter/focus-mode props into the store so the
+    // `editorUI` plugin's typewriter/focus-mode ProseMirror plugins can read
+    // them live.
+    const setIsTypewriter = useAIUIStore((s) => s.setIsTypewriter);
+    const setIsFocusMode = useAIUIStore((s) => s.setIsFocusMode);
+    useEffect(() => {
+      setIsTypewriter(isTypewriter);
+      setIsFocusMode(isFocusMode);
+    }, [isTypewriter, isFocusMode, setIsTypewriter, setIsFocusMode]);
     const [isCopied, setIsCopied] = useState(false);
 
     const streamStartRef = useRef<number | null>(null);
@@ -449,7 +459,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
     // Re-run plugin loading whenever the enabled/disabled plugin set changes,
     // so the editor state is rebuilt without the toggled plugin's contributions.
     const pluginSignature = useSettingsStore((s) =>
@@ -479,110 +488,13 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       if (!editorRef.current) return;
       if (!loaded) return;
 
-      // Typewriter scrolling plugin
-      const typewriterPlugin = new Plugin({
-        view() {
-          return {
-            update(view) {
-              if (!latestProps.current.isTypewriter) return;
-              const { state } = view;
-              const { selection } = state;
-              if (!selection.empty) return;
-
-              // Avoid scrolling for the first few lines of a new document
-              if (selection.from < 50) return;
-
-              const coords = view.coordsAtPos(selection.from);
-              const editorRect = editorRef.current?.getBoundingClientRect();
-              if (!editorRect) return;
-
-              const viewportHeight = window.innerHeight;
-              const targetY = viewportHeight / 2;
-              const currentY = coords.top;
-
-              const diff = currentY - targetY;
-
-              // Only scroll if we are below the target point
-              if (diff > 0 && Math.abs(diff) > 20) {
-                const scrollContainer = editorRef.current?.parentElement;
-                if (scrollContainer) {
-                  scrollContainer.scrollBy({ top: diff, behavior: "smooth" });
-                }
-              }
-            },
-          };
-        },
-      });
-
-      // Plugins and node views contributed by the plugin system (core base
-      // plugins + math, search, heading, ...). Resolved once during load and
-      // surfaced through the PluginContext.
+      // Plugins and node views contributed by the plugin system: core base
+      // plugins, feature plugins (math, search, heading, ...), the editor UI
+      // plugins (side menu, context menu, bubble menu, TTS highlight,
+      // typewriter, focus mode) and the AI keymap — all surfaced through
+      // PluginContext. The editor no longer defines any ProseMirror plugins
+      // inline.
       const { editorPlugins, nodeViews } = loaded.context;
-
-      // Focus Mode plugin
-      const focusModePlugin = new Plugin({
-        state: {
-          init() {
-            return DecorationSet.empty;
-          },
-          apply(tr, set, oldState, newState) {
-            if (!latestProps.current.isFocusMode) return DecorationSet.empty;
-            const { selection } = newState;
-            const $pos = selection.$from;
-            let topNodePos = 0;
-            let found = false;
-            newState.doc.forEach((node, pos) => {
-              if (found) return;
-              if (pos <= $pos.pos && pos + node.nodeSize >= $pos.pos) {
-                topNodePos = pos;
-                found = true;
-              }
-            });
-            if (!found) return DecorationSet.empty;
-            const node = newState.doc.nodeAt(topNodePos);
-            if (!node) return DecorationSet.empty;
-            const deco = Decoration.node(
-              topNodePos,
-              topNodePos + node.nodeSize,
-              { class: "is-focused-node" },
-            );
-            return DecorationSet.create(newState.doc, [deco]);
-          },
-        },
-        props: {
-          decorations(state) {
-            return this.getState(state);
-          },
-        },
-      });
-
-      // TTS Highlight plugin
-      const ttsHighlightPlugin = new Plugin({
-        state: {
-          init() { return DecorationSet.empty; },
-          apply(tr, set, oldState, newState) {
-            const range = tr.getMeta("ttsHighlight");
-            if (range === undefined) {
-              return set.map(tr.mapping, tr.doc);
-            }
-            
-            if (!range) return DecorationSet.empty;
-            
-            const from = Math.max(0, Math.min(range.from, tr.doc.content.size));
-            const to = Math.max(from, Math.min(range.to, tr.doc.content.size));
-            
-            if (from === to) return DecorationSet.empty;
-
-            const deco = Decoration.inline(from, to, { class: "tts-highlight" });
-            return DecorationSet.create(tr.doc, [deco]);
-          }
-        },
-        props: {
-          decorations(state) {
-            return this.getState(state);
-          }
-        }
-      });
 
       // Collaboration plugin
       const collabInstance = collab?.enabled
@@ -597,204 +509,12 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         doc: parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
         plugins: [
           ...(collabInstance ? collabInstance.plugins : []),
-          // Base editor plugins (history, keymaps, input rules, gap/drop
-          // cursors, tables, link preview) plus feature plugins (math,
-          // search, heading, ...) — all resolved by the plugin system and
-          // surfaced through PluginContext.editorPlugins.
+          // All ProseMirror plugins — core base plugins, feature plugins, the
+          // editor UI plugins (side menu, context menu, bubble menu, TTS
+          // highlight, typewriter, focus mode) and the AI keymap — are
+          // contributed by the plugin system and surfaced through
+          // PluginContext.editorPlugins. The editor defines none inline.
           ...editorPlugins,
-          typewriterPlugin,
-          focusModePlugin,
-          keymap({
-            "Mod-j": (state, dispatch) => {
-              let { from, to } = state.selection;
-              if (from === to) {
-                const $from = state.selection.$from;
-                const blockFrom = $from.start();
-                const blockTo = $from.end();
-                if (blockFrom !== blockTo) {
-                  if (dispatch) {
-                    dispatch(state.tr.setSelection(TextSelection.create(state.doc, blockFrom, blockTo)));
-                  }
-                }
-              }
-              setShowAiPopover(true);
-              return true;
-            },
-            "Mod-Shift-j": (state, dispatch) => {
-              let { from, to } = state.selection;
-              if (from === to) {
-                const $from = state.selection.$from;
-                const blockFrom = $from.start();
-                const blockTo = $from.end();
-                if (blockFrom !== blockTo) {
-                  if (dispatch) {
-                    dispatch(state.tr.setSelection(TextSelection.create(state.doc, blockFrom, blockTo)));
-                  }
-                }
-              }
-              setShowAiPopover(true);
-              return true;
-            },
-            "Mod-Shift-i": (state) => {
-              const { from, to } = state.selection;
-              const text = state.doc.textBetween(from, to, " ");
-              if (text.trim()) {
-                handleAIAction("improve");
-                return true;
-              }
-              return false;
-            },
-            "Mod-Shift-s": (state) => {
-              const { from, to } = state.selection;
-              const text = state.doc.textBetween(from, to, " ");
-              if (text.trim()) {
-                handleAIAction("summarize");
-                return true;
-              }
-              return false;
-            },
-            "Mod-Shift-g": (state) => {
-              const { from, to } = state.selection;
-              const text = state.doc.textBetween(from, to, " ");
-              if (text.trim()) {
-                handleAIAction("fix-grammar");
-                return true;
-              }
-              return false;
-            }
-          }),
-          ttsHighlightPlugin,
-          new Plugin({
-            props: {
-              handleDOMEvents: {
-                mousemove(view, event) {
-                  if (bubbleMenu.show || !isSideMenuEnabledRef.current) return false;
-                  
-                  if (sideMenuHideTimeout.current) clearTimeout(sideMenuHideTimeout.current);
-
-                  const pos = view.posAtCoords({
-                    left: event.clientX,
-                    top: event.clientY,
-                  });
-                  if (pos && pos.pos >= 0) {
-                    const $pos = view.state.doc.resolve(pos.pos);
-                    if ($pos.depth >= 1) {
-                      let blockNode = $pos.node(1);
-                      let blockPos = $pos.before(1);
-
-                      if (blockNode) {
-                        const coords = view.coordsAtPos(blockPos);
-                        const editorRect =
-                          editorRef.current?.getBoundingClientRect();
-                        if (editorRect) {
-                          setSideMenu({
-                            y: coords.top - editorRect.top,
-                            show: true,
-                            pos: blockPos,
-                            nodeName: blockNode.type.name,
-                          });
-                        }
-                      }
-                    } else {
-                      setSideMenu((prev) => ({ ...prev, show: false }));
-                    }
-                  }
-                  return false;
-                },
-                mouseleave() {
-                  if (sideMenuHideTimeout.current) clearTimeout(sideMenuHideTimeout.current);
-                  sideMenuHideTimeout.current = setTimeout(() => {
-                    setSideMenu((prev) => ({ ...prev, show: false }));
-                  }, 400);
-                  return false;
-                },
-              },
-            },
-          }),
-          new Plugin({
-            props: {
-              handleDOMEvents: {
-                contextmenu(view, event) {
-                  event.preventDefault();
-                  const pos = view.posAtCoords({
-                    left: event.clientX,
-                    top: event.clientY,
-                  });
-                  const editorRect =
-                    containerRef.current?.getBoundingClientRect();
-                  setContextMenu({
-                    x: event.clientX - (editorRect?.left || 0),
-                    y: event.clientY - (editorRect?.top || 0),
-                    show: true,
-                    pos: pos ? pos.pos : view.state.selection.from,
-                  });
-                  return true;
-                },
-              },
-            },
-          }),
-          new Plugin({
-            view() {
-              return {
-                update(view) {
-                  const { state } = view;
-                  const { from, to } = state.selection;
-
-                  if (from === to) {
-                    setBubbleMenu((prev) => ({ ...prev, show: false }));
-                    setShowAiPopover(false);
-                    return;
-                  }
-
-                  const start = view.coordsAtPos(from);
-                  const end = view.coordsAtPos(to);
-                  const left = (start.left + end.left) / 2;
-
-                  const editorRect =
-                    containerRef.current?.getBoundingClientRect();
-                  if (editorRect) {
-                    const { state } = view;
-                    const { from, $from, to, empty } = state.selection;
-                    
-                    // Update active formats
-                    const formats: Record<string, boolean> = {
-                      bold: state.doc.rangeHasMark(from, to, editorSchema.marks.strong) || (empty && !!editorSchema.marks.strong.isInSet(state.storedMarks || $from.marks())),
-                      italic: state.doc.rangeHasMark(from, to, editorSchema.marks.em) || (empty && !!editorSchema.marks.em.isInSet(state.storedMarks || $from.marks())),
-                      underline: state.doc.rangeHasMark(from, to, editorSchema.marks.underline) || (empty && !!editorSchema.marks.underline.isInSet(state.storedMarks || $from.marks())),
-                      strike: state.doc.rangeHasMark(from, to, editorSchema.marks.strike) || (empty && !!editorSchema.marks.strike.isInSet(state.storedMarks || $from.marks())),
-                      code: state.doc.rangeHasMark(from, to, editorSchema.marks.code) || (empty && !!editorSchema.marks.code.isInSet(state.storedMarks || $from.marks())),
-                      h1: $from.parent.type.name === "heading" && $from.parent.attrs.level === 1,
-                      h2: $from.parent.type.name === "heading" && $from.parent.attrs.level === 2,
-                      h3: $from.parent.type.name === "heading" && $from.parent.attrs.level === 3,
-                      alignLeft: $from.parent.attrs.align === "left" || !$from.parent.attrs.align,
-                      alignCenter: $from.parent.attrs.align === "center",
-                      alignRight: $from.parent.attrs.align === "right",
-                      alignJustify: $from.parent.attrs.align === "justify",
-                      blockquote: ((): boolean => {
-                        for (let d = $from.depth; d > 0; d--) {
-                          if ($from.node(d).type.name === "blockquote") return true;
-                        }
-                        return false;
-                      })(),
-                      bullet: ((): boolean => {
-                        for (let d = $from.depth; d > 0; d--) {
-                          if ($from.node(d).type.name === "bullet_list") return true;
-                        }
-                        return false;
-                      })(),
-                    };
-                    setActiveFormats(formats);
-
-                    setBubbleMenu({
-                      x: left - editorRect.left,
-                      y: start.top - editorRect.top - 45,
-                      show: true,
-                    });
-                  }
-                },
-              };
-            },
-          }),
         ],
       });
 
@@ -1583,6 +1303,17 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         setIsProcessingAI(false);
       }
     };
+
+    // Bridge the inline AI draft handler to the `ai` plugin's keymap (which is
+    // registered at the plugin level so it is removed when the plugin is
+    // disabled). The handler is coupled to this component's local `aiDraft`
+    // state, so it is registered here on mount.
+    const handleAIActionRef = useRef(handleAIAction);
+    handleAIActionRef.current = handleAIAction;
+    useEffect(() => {
+      setInlineAiActionHandler((a) => handleAIActionRef.current(a as AIAssistantAction));
+      return () => setInlineAiActionHandler(null);
+    }, []);
 
     const handleAIActionDecision = (decision: 'replace' | 'append' | 'retry' | 'cancel') => {
         if (!aiDraftRef.current || !viewRef.current) return;
