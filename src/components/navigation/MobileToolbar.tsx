@@ -5,13 +5,21 @@ import { useUIStore } from '../../stores/uiStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { getEditorRef } from '../../plugins/editorAccess';
 import { insertText } from '../../plugins/ai/handlers';
+import type { PluginContext, ToolbarItem } from '../../plugins/types';
+import { cn } from '../../lib/utils';
 
 interface MobileToolbarProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
+  /** Plugin-contributed toolbar buttons. */
+  toolbarItems?: ToolbarItem[];
+  /** The resolved plugin context, passed to `ToolbarItem.onClick`. */
+  pluginContext?: PluginContext | null;
 }
 
 export const MobileToolbar: React.FC<MobileToolbarProps> = ({
-  fileInputRef
+  fileInputRef,
+  toolbarItems = [],
+  pluginContext = null,
 }) => {
   const { setAIAssistant, setTTS, showTTS } = useUIStore();
   const { activeFocusedPageId, pages } = useEditorStore();
@@ -19,6 +27,8 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   const editorRef: any = {
     current: activePage ? getEditorRef(activePage.id) : null,
   };
+
+  const pluginButtons = toolbarItems.filter((t) => (t.show ? t.show() : true));
 
   return (
     <motion.div
@@ -39,6 +49,25 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         <button onClick={() => editorRef.current?.insertScribble()} className="p-3 bg-minimal-sidebar rounded-xl text-minimal-muted hover:text-minimal-text transition-colors shrink-0"><PenTool className="w-5 h-5" /></button>
         <div className="w-px h-8 bg-minimal-border mx-1 shrink-0" />
         <button onClick={() => setAIAssistant(true)} className="p-3 bg-minimal-accent/10 rounded-xl text-minimal-accent transition-colors shrink-0"><Sparkles className="w-5 h-5" /></button>
+        {pluginButtons.map((item) => {
+          const Icon = item.icon;
+          const active = item.isActive ? item.isActive() : false;
+          return (
+            <button
+              key={item.id}
+              onClick={() => item.onClick(pluginContext as PluginContext)}
+              title={item.label}
+              className={cn(
+                "p-3 rounded-xl transition-colors shrink-0",
+                active
+                  ? "bg-minimal-accent/20 text-minimal-accent"
+                  : "bg-minimal-sidebar text-minimal-muted hover:text-minimal-text"
+              )}
+            >
+              <Icon className="w-5 h-5" />
+            </button>
+          );
+        })}
       </div>
     </motion.div>
   );

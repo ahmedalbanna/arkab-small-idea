@@ -30,6 +30,9 @@ function fakeContext(): PluginContext {
     registerHost: () => {},
     editorPlugins: [],
     nodeViews: {},
+    toolbarItems: [],
+    commands: [],
+    settings: [],
   };
 }
 

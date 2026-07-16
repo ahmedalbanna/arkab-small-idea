@@ -43,8 +43,29 @@ describe("loadPlugins (phase 1 wiring)", () => {
     // The tables plugin contributes its ProseMirror plugins (sort + row actions).
     expect(pmPlugins.length).toBeGreaterThanOrEqual(7);
 
-    // No toolbar items registered yet.
-    expect(loaded.collectors.toolbarItems).toHaveLength(0);
+    // Phase 8: plugin-driven UI is surfaced through the collectors and the
+    // resolved plugin context. The editorUI plugin contributes the focus /
+    // typewriter toolbar buttons; the ai plugin contributes the "/ask-ai"
+    // slash command; the status-bar plugin contributes its visibility setting.
+    const toolbarIds = loaded.collectors.toolbarItems.map((t) => t.id).sort();
+    expect(toolbarIds).toEqual(["focus-mode", "typewriter"]);
+
+    const slashIds = loaded.collectors.commands
+      .filter((c) => c.slash)
+      .map((c) => c.id);
+    expect(slashIds).toContain("ai-ask");
+
+    const settingKeys = loaded.collectors.settings.map(
+      (s) => `${s.pluginId}.${s.key}`,
+    );
+    expect(settingKeys).toContain("status-bar.visible");
+
+    // The same contributions are exposed on the resolved PluginContext.
+    expect(loaded.context.toolbarItems).toHaveLength(2);
+    expect(loaded.context.commands.some((c) => c.id === "ai-ask")).toBe(true);
+    expect(
+      loaded.context.settings.some((s) => s.pluginId === "status-bar"),
+    ).toBe(true);
   });
 
   it("excludes disabled plugins from collectors", async () => {

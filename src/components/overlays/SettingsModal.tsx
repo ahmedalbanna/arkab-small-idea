@@ -5,8 +5,14 @@ import { cn } from '../../lib/utils';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useUIStore } from '../../stores/uiStore';
 import { getPluginList, setPluginEnabled } from '../../plugins';
+import type { PluginSettingDef } from '../../plugins/types';
 
-export const SettingsModal: React.FC = () => {
+interface SettingsModalProps {
+  /** Plugin-contributed settings to render. */
+  pluginSettings?: PluginSettingDef[];
+}
+
+export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [] }) => {
   const { showSettings, setSettings } = useUIStore();
   const {
     theme, setTheme,
@@ -14,10 +20,22 @@ export const SettingsModal: React.FC = () => {
     maxWidth, setMaxWidth,
     headingColor, setHeadingColor,
     enableHeadingNumbering, setEnableHeadingNumbering,
-    disabledPlugins
+    disabledPlugins,
+    pluginSettings: pluginSettingValues,
+    setPluginSetting,
   } = useSettingsStore();
 
   const plugins = getPluginList().filter((p) => !p.essential);
+
+  // Group plugin settings by their `group` for rendering.
+  const groupedSettings = pluginSettings.reduce<Record<string, PluginSettingDef[]>>(
+    (acc, def) => {
+      const group = def.group ?? "Plugins";
+      (acc[group] ||= []).push(def);
+      return acc;
+    },
+    {},
+  );
 
   return (
     <AnimatePresence>
@@ -220,6 +238,87 @@ export const SettingsModal: React.FC = () => {
                   })}
                 </div>
               </section>
+
+              {/* Plugin Settings Section */}
+              {pluginSettings.length > 0 && (
+                <section className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Plugin Settings</h4>
+                  {Object.entries(groupedSettings).map(([group, defs]) => (
+                    <div key={group} className="space-y-2">
+                      <p className="text-[8px] font-bold text-minimal-accent uppercase tracking-widest">{group}</p>
+                      {defs.map((def) => {
+                        const key = `${def.pluginId}.${def.key}`;
+                        const value = pluginSettingValues[key] ?? def.defaultValue;
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center justify-between p-3 bg-minimal-sidebar/50 border border-minimal-border rounded-xl gap-3"
+                          >
+                            <div className="space-y-0.5 min-w-0">
+                              <label className="text-[10px] font-bold text-minimal-text uppercase block truncate">{def.label}</label>
+                              {def.description && (
+                                <p className="text-[8px] text-minimal-muted uppercase truncate">{def.description}</p>
+                              )}
+                            </div>
+                            <div className="shrink-0">
+                              {def.type === "toggle" && (
+                                <button
+                                  onClick={() => setPluginSetting(def.pluginId, def.key, !value)}
+                                  className={cn(
+                                    "w-10 h-5 rounded-full transition-all relative",
+                                    value ? "bg-minimal-accent" : "bg-minimal-border"
+                                  )}
+                                  aria-pressed={!!value}
+                                >
+                                  <motion.div
+                                    animate={{ x: value ? 20 : 2 }}
+                                    className="absolute top-1 left-0 w-3 h-3 rounded-full bg-white shadow-sm"
+                                  />
+                                </button>
+                              )}
+                              {def.type === "select" && (
+                                <select
+                                  value={String(value)}
+                                  onChange={(e) => setPluginSetting(def.pluginId, def.key, e.target.value)}
+                                  className="bg-minimal-sidebar border border-minimal-border rounded-lg px-2 py-1 text-[10px] font-bold text-minimal-text"
+                                >
+                                  {def.options?.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                  ))}
+                                </select>
+                              )}
+                              {def.type === "text" && (
+                                <input
+                                  type="text"
+                                  value={String(value)}
+                                  onChange={(e) => setPluginSetting(def.pluginId, def.key, e.target.value)}
+                                  className="bg-minimal-sidebar border border-minimal-border rounded-lg px-2 py-1 text-[10px] font-bold text-minimal-text w-32"
+                                />
+                              )}
+                              {def.type === "number" && (
+                                <input
+                                  type="number"
+                                  value={Number(value)}
+                                  onChange={(e) => setPluginSetting(def.pluginId, def.key, Number(e.target.value))}
+                                  className="bg-minimal-sidebar border border-minimal-border rounded-lg px-2 py-1 text-[10px] font-bold text-minimal-text w-20"
+                                />
+                              )}
+                              {def.type === "slider" && (
+                                <input
+                                  type="range"
+                                  value={Number(value)}
+                                  onChange={(e) => setPluginSetting(def.pluginId, def.key, Number(e.target.value))}
+                                  className="w-24 accent-minimal-accent"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </section>
+              )}
             </div>
 
             <div className="p-4 bg-minimal-sidebar/30 border-t border-minimal-border text-center">

@@ -194,14 +194,27 @@ export default function App() {
         />
 
         {!isMobile && (
-          <FloatingToolbar direction={direction} setDirection={setDirection} />
+          <FloatingToolbar
+            direction={direction}
+            setDirection={setDirection}
+            toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
+            pluginContext={overlayPluginsRef.current?.context ?? null}
+          />
         )}
 
         <AnimatePresence>{showPages && <WorkspacePlacement />}</AnimatePresence>
 
-        {isMobile && <MobileToolbar fileInputRef={fileInputRef} />}
+        {isMobile && (
+          <MobileToolbar
+            fileInputRef={fileInputRef}
+            toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
+            pluginContext={overlayPluginsRef.current?.context ?? null}
+          />
+        )}
 
-        <SettingsModal />
+        <SettingsModal
+          pluginSettings={overlayPluginsRef.current?.context?.settings ?? []}
+        />
 
         <ImportModal
           onImport={(content) => {

@@ -106,6 +106,11 @@ export async function loadPlugins(
     collectors.nodeViews.map((n) => [n.name, n.view as NodeViewConstructor]),
   ) as Record<string, NodeViewConstructor>;
 
+  // Surface the resolved UI contributions so the app shell renders them.
+  context.toolbarItems = collectors.toolbarItems;
+  context.commands = collectors.commands;
+  context.settings = collectors.settings;
+
   activeRegistry = registry;
   return { registry, collectors, context, schema, contributions };
 }

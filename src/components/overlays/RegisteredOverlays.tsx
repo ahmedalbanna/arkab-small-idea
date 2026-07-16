@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { PluginOverlay } from "../../plugins/types";
+import { useSettingsStore } from "../../stores/settingsStore";
 
 interface RegisteredOverlaysProps {
   overlays: PluginOverlay[];
@@ -12,6 +13,10 @@ interface RegisteredOverlaysProps {
  * are passed here.
  */
 export function RegisteredOverlays({ overlays }: RegisteredOverlaysProps) {
+  // Re-evaluate overlay `show` predicates whenever plugin settings change
+  // (e.g. a setting toggles an overlay's visibility).
+  useSettingsStore((s) => s.pluginSettings);
+
   return (
     <>
       {overlays.map((overlay) => {

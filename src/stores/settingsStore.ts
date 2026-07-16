@@ -11,7 +11,9 @@ interface SettingsState {
   enableHeadingNumbering: boolean;
   /** Ids of plugins the user has turned off. Persisted. */
   disabledPlugins: string[];
-  
+  /** Values for plugin-contributed settings, keyed by `${pluginId}.${key}`. */
+  pluginSettings: Record<string, unknown>;
+
   setTheme: (theme: SettingsState['theme'] | ((prev: SettingsState['theme']) => SettingsState['theme'])) => void;
   setFontSize: (size: number | ((prev: number) => number)) => void;
   setLineHeight: (height: number | ((prev: number) => number)) => void;
@@ -20,11 +22,13 @@ interface SettingsState {
   setHeadingColor: (color: string) => void;
   setEnableHeadingNumbering: (enabled: boolean) => void;
   setPluginEnabled: (id: string, enabled: boolean) => void;
+  setPluginSetting: (pluginId: string, key: string, value: unknown) => void;
+  getPluginSetting: (pluginId: string, key: string, fallback?: unknown) => unknown;
 }
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       theme: 'light',
       fontSize: 16,
       lineHeight: 1.6,
@@ -33,6 +37,7 @@ export const useSettingsStore = create<SettingsState>()(
       headingColor: '#000000',
       enableHeadingNumbering: false,
       disabledPlugins: [],
+      pluginSettings: {},
 
       setTheme: (theme) => set((state) => ({ 
         theme: typeof theme === 'function' ? theme(state.theme) : theme 
@@ -54,6 +59,15 @@ export const useSettingsStore = create<SettingsState>()(
           else set.add(id);
           return { disabledPlugins: [...set] };
         }),
+      setPluginSetting: (pluginId, key, value) =>
+        set((state) => ({
+          pluginSettings: {
+            ...state.pluginSettings,
+            [`${pluginId}.${key}`]: value,
+          },
+        })),
+      getPluginSetting: (pluginId, key, fallback) =>
+        get().pluginSettings[`${pluginId}.${key}`] ?? fallback,
     }),
     {
       name: 'ink-quill-settings',

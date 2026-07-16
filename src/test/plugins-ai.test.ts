@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { aiPlugin } from "../plugins/ai";
 import { AIHost } from "../plugins/ai/AIHost";
+import { useAIUIStore } from "../stores/aiUIStore";
 import type { PluginContext } from "../plugins/types";
 
 function fakeContext(): PluginContext {
@@ -17,6 +18,9 @@ function fakeContext(): PluginContext {
     registerHost: () => {},
     editorPlugins: [],
     nodeViews: {},
+    toolbarItems: [],
+    commands: [],
+    settings: [],
   };
 }
 
@@ -31,5 +35,18 @@ describe("ai plugin", () => {
   it("has stable metadata", () => {
     expect(aiPlugin.id).toBe("ai");
     expect(aiPlugin.name).toContain("AI");
+  });
+
+  it("registers the 'ai-ask' slash command that opens the popover", () => {
+    const commands: any[] = [];
+    const ctx = { ...fakeContext(), registerCommand: (c: any) => commands.push(c) };
+    aiPlugin.init(ctx);
+    const ask = commands.find((c) => c.id === "ai-ask");
+    expect(ask).toBeDefined();
+    expect(ask.slash).toBe(true);
+    useAIUIStore.setState({ showAiPopover: false });
+    const open = vi.spyOn(useAIUIStore.getState(), "setShowAiPopover");
+    ask.run({} as any);
+    expect(open).toHaveBeenCalledWith(true);
   });
 });

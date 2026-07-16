@@ -89,6 +89,9 @@ export function buildPluginContext(
     // Populated by `loadPlugins` after all plugins have initialized.
     editorPlugins: [],
     nodeViews: {},
+    toolbarItems: [],
+    commands: [],
+    settings: [],
   };
 }
 

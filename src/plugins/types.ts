@@ -133,6 +133,15 @@ export interface PluginContext {
   editorPlugins: Plugin[];
   /** Resolved node-view map for the editor's `EditorState`. */
   nodeViews: Record<string, NodeViewConstructor>;
+  /**
+   * Resolved UI contributions, populated by `loadPlugins` after every plugin
+   * has initialized, from the `toolbarItems` / `commands` / `settings`
+   * collectors. The app shell (toolbars, slash menu, settings) reads these
+   * instead of hard-coding feature buttons.
+   */
+  toolbarItems: ToolbarItem[];
+  commands: EditorCommand[];
+  settings: PluginSettingDef[];
 }
 
 /**

@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Wand2, 
-  Layout, 
-  FileText, 
-  Heading1, 
-  Heading2, 
-  List, 
+import {
+  Wand2,
+  Layout,
+  FileText,
+  Heading1,
+  Heading2,
+  List,
   Quote,
   Code,
   Image as ImageIcon,
@@ -21,6 +21,7 @@ import {
   Table
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import type { EditorCommand } from '../plugins/types';
 
 interface SlashMenuItem {
   id: string;
@@ -54,22 +55,64 @@ const ITEMS: SlashMenuItem[] = [
   { id: 'ai-complete', label: 'AI Auto-complete', description: 'Continue writing', icon: Zap, action: 'complete-text' },
 ];
 
+/** A unified menu entry: either a built-in action or a plugin-contributed command. */
+type MenuEntry = {
+  id: string;
+  label: string;
+  description: string;
+  icon: any;
+  onChoose: () => void;
+};
+
 interface Props {
   x: number;
   y: number;
   query?: string;
   isAbsolute?: boolean;
+  /** Plugin commands that opted into the slash menu. */
+  pluginCommands?: EditorCommand[];
   onSelect: (action: string) => void;
+  /** Called when a plugin command entry is chosen. */
+  onPluginCommand?: (cmd: EditorCommand) => void;
   onClose: () => void;
 }
 
-export const SlashMenu: React.FC<Props> = ({ x, y, query = '', isAbsolute = false, onSelect, onClose }) => {
+export const SlashMenu: React.FC<Props> = ({
+  x,
+  y,
+  query = '',
+  isAbsolute = false,
+  pluginCommands = [],
+  onSelect,
+  onPluginCommand,
+  onClose,
+}) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const filteredItems = ITEMS.filter(item => 
-    item.label.toLowerCase().includes(query.toLowerCase()) || 
-    item.description.toLowerCase().includes(query.toLowerCase())
+  const entries: MenuEntry[] = [
+    ...ITEMS.map((it) => ({
+      id: it.id,
+      label: it.label,
+      description: it.description,
+      icon: it.icon,
+      onChoose: () => onSelect(it.action),
+    })),
+    ...pluginCommands
+      .filter((c) => c.slash)
+      .map((c) => ({
+        id: c.id,
+        label: c.label ?? c.id,
+        description: c.label ? 'Plugin command' : c.id,
+        icon: Wand2,
+        onChoose: () => onPluginCommand?.(c),
+      })),
+  ];
+
+  const filteredItems = entries.filter(
+    (item) =>
+      item.label.toLowerCase().includes(query.toLowerCase()) ||
+      item.description.toLowerCase().includes(query.toLowerCase()),
   );
 
   useEffect(() => {
@@ -82,13 +125,13 @@ export const SlashMenu: React.FC<Props> = ({ x, y, query = '', isAbsolute = fals
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev + 1) % filteredItems.length);
+        setSelectedIndex((prev) => (prev + 1) % filteredItems.length);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + filteredItems.length) % filteredItems.length);
+        setSelectedIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        onSelect(filteredItems[selectedIndex].action);
+        filteredItems[selectedIndex].onChoose();
       } else if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
@@ -97,7 +140,7 @@ export const SlashMenu: React.FC<Props> = ({ x, y, query = '', isAbsolute = fals
 
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [selectedIndex, onSelect, onClose, filteredItems]);
+  }, [selectedIndex, onClose, filteredItems]);
 
   if (filteredItems.length === 0) return null;
 
@@ -107,10 +150,10 @@ export const SlashMenu: React.FC<Props> = ({ x, y, query = '', isAbsolute = fals
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-      style={{ 
-        position: isAbsolute ? 'absolute' : 'fixed', 
-        left: x, 
-        top: y 
+      style={{
+        position: isAbsolute ? 'absolute' : 'fixed',
+        left: x,
+        top: y,
       }}
       className="z-[200] w-64 bg-minimal-bg border border-minimal-border rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden"
     >
@@ -121,7 +164,7 @@ export const SlashMenu: React.FC<Props> = ({ x, y, query = '', isAbsolute = fals
         {filteredItems.map((item, index) => (
           <button
             key={item.id}
-            onClick={() => onSelect(item.action)}
+            onClick={() => item.onChoose()}
             onMouseEnter={() => setSelectedIndex(index)}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left",

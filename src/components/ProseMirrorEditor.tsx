@@ -76,7 +76,7 @@ import { diagramTransform } from "../lib/markdown/diagramTransform";
 import { createCollabPlugin } from "../lib/collabPlugin";
 import { loadPlugins, type LoadedPlugins } from "../plugins";
 import { buildEditorSchema } from "../plugins/editor/schema";
-import type { EditorAPI } from "../plugins/types";
+import type { EditorAPI, EditorCommand, PluginContext } from "../plugins/types";
 import { searchPluginKey } from "../plugins/search";
 import "katex/dist/katex.min.css";
 import { SlashMenu } from "./SlashMenu";
@@ -1355,24 +1355,22 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         viewRef.current.focus();
     };
 
-    const handleSlashSelect = async (action: string) => {
-      if (!viewRef.current) return;
+    // Deletes the "/query" text the user typed to open the slash menu and
+    // returns the start position of the deleted range (for AI block actions).
+    const deleteSlashText = (): number => {
+      if (!viewRef.current) return 0;
       const { state } = viewRef.current;
-
       const endPos = state.selection.from;
       const startPos = slashMenu.pos - 1;
+      const finalStart = Math.max(0, Math.min(startPos, state.doc.content.size));
+      const finalEnd = Math.max(finalStart, Math.min(endPos, state.doc.content.size));
+      viewRef.current.dispatch(state.tr.delete(finalStart, finalEnd));
+      return finalStart;
+    };
 
-      const finalStart = Math.max(
-        0,
-        Math.min(startPos, state.doc.content.size),
-      );
-      const finalEnd = Math.max(
-        finalStart,
-        Math.min(endPos, state.doc.content.size),
-      );
-
-      const tr = state.tr.delete(finalStart, finalEnd);
-      viewRef.current.dispatch(tr);
+    const handleSlashSelect = async (action: string) => {
+      if (!viewRef.current) return;
+      const finalStart = deleteSlashText();
 
       const afterDeleteState = viewRef.current.state;
       setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
@@ -1454,6 +1452,14 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       }
 
       viewRef.current.focus();
+    };
+
+    // Runs a plugin-contributed slash command after removing the "/query" text.
+    const handlePluginSlashSelect = (cmd: EditorCommand) => {
+      if (!viewRef.current) return;
+      deleteSlashText();
+      setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
+      cmd.run(loaded?.context as PluginContext);
     };
 
     const wrapInBlock = (type: any) => (state: EditorState, dispatch: any) => {
@@ -1962,7 +1968,9 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               y={slashMenu.y}
               query={slashMenu.query}
               isAbsolute={true}
+              pluginCommands={loaded?.context.commands ?? []}
               onSelect={handleSlashSelect}
+              onPluginCommand={handlePluginSlashSelect}
               onClose={() =>
                 setSlashMenu((prev) => ({ ...prev, show: false, query: "" }))
               }

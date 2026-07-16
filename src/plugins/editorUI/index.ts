@@ -1,5 +1,6 @@
 import { Plugin } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
+import { Focus, Type } from "lucide-react";
 import type { InkPlugin, PluginContext } from "../types";
 import { useAIUIStore } from "../../stores/aiUIStore";
 import { useUIStore } from "../../stores/uiStore";
@@ -20,6 +21,30 @@ export const editorUIPlugin: InkPlugin = {
   init(ctx: PluginContext) {
     const schema = ctx.schema;
     let sideMenuHideTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // Toolbar items — editor-shell toggles surfaced in the app toolbar.
+    ctx.registerToolbarItem({
+      id: "focus-mode",
+      icon: Focus,
+      label: "Focus Mode",
+      group: "editor",
+      onClick: () => {
+        const s = useAIUIStore.getState();
+        s.setIsFocusMode(!s.isFocusMode);
+      },
+      isActive: () => useAIUIStore.getState().isFocusMode,
+    });
+    ctx.registerToolbarItem({
+      id: "typewriter",
+      icon: Type,
+      label: "Typewriter Scrolling",
+      group: "editor",
+      onClick: () => {
+        const s = useAIUIStore.getState();
+        s.setIsTypewriter(!s.isTypewriter);
+      },
+      isActive: () => useAIUIStore.getState().isTypewriter,
+    });
 
     // Hover side menu — shows a "+" gutter button for the block under the cursor.
     ctx.registerProsePlugin(

@@ -32,6 +32,9 @@ function captureInit(plugin: {
     registerHost: () => {},
     editorPlugins: [],
     nodeViews: {},
+    toolbarItems: [],
+    commands: [],
+    settings: [],
   } as PluginContext);
   return { prosePlugins, overlays };
 }
@@ -46,6 +49,38 @@ describe("UI plugin extraction", () => {
     const { overlays } = captureInit(statusBarPlugin);
     expect(overlays).toHaveLength(1);
     expect((overlays[0] as any).mount).toBe("statusbar");
+  });
+
+  it("status-bar plugin registers its visibility setting and a show predicate", () => {
+    const settings: any[] = [];
+    const ctx = {
+      ...({} as any),
+      editor: fakeEditor(),
+      stores: {} as any,
+      schema: {} as any,
+      registerProsePlugin: () => {},
+      registerNodeView: () => {},
+      registerToolbarItem: () => {},
+      registerCommand: () => {},
+      registerOverlay: () => {},
+      registerSetting: (s: any) => settings.push(s),
+      registerHost: () => {},
+      editorPlugins: [] as any[],
+      nodeViews: {} as any,
+      toolbarItems: [] as any[],
+      commands: [] as any[],
+      settings: [] as any[],
+    };
+    statusBarPlugin.init(ctx as any);
+    expect(settings).toHaveLength(1);
+    expect(settings[0]).toMatchObject({
+      pluginId: "status-bar",
+      key: "visible",
+      type: "toggle",
+    });
+    // The overlay's `show` predicate reads the persisted plugin setting.
+    const overlay = captureInit(statusBarPlugin).overlays[0] as any;
+    expect(typeof overlay.show).toBe("function");
   });
 
   it("toc plugin registers an overlay", () => {

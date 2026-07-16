@@ -47,6 +47,17 @@ export const aiPlugin: InkPlugin = {
   init(ctx: PluginContext) {
     ctx.registerHost(AIHost);
 
+    // Slash-menu command — opens the AI drafting popover from "/".
+    ctx.registerCommand({
+      id: "ai-ask",
+      label: "Ask AI",
+      slash: true,
+      run: () => {
+        useAIUIStore.getState().setShowAiPopover(true);
+        return true;
+      },
+    });
+
     ctx.registerProsePlugin(() =>
       keymap({
         "Mod-j": (state, dispatch) =>
