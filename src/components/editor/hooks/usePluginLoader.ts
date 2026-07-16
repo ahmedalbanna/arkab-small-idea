@@ -1,6 +1,7 @@
 import { useEffect, useState, type RefObject } from "react";
 import type { EditorView } from "prosemirror-view";
 import { loadPlugins, type LoadedPlugins } from "../../../plugins";
+import type { CollabPluginOptions } from "../../../plugins/collab";
 import { useSetPluginRegistry } from "../../../plugins/registryContext";
 import { useSettingsStore } from "../../../stores/settingsStore";
 
@@ -16,6 +17,7 @@ import { useSettingsStore } from "../../../stores/settingsStore";
 export function usePluginLoader(
   viewRef: RefObject<EditorView | null>,
   onLoaded?: (loaded: LoadedPlugins) => void,
+  collab?: CollabPluginOptions,
 ): LoadedPlugins | null {
   const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
 
@@ -39,6 +41,7 @@ export function usePluginLoader(
     };
     loadPlugins(editorApi, {
       disabled: useSettingsStore.getState().disabledPlugins,
+      collab,
     }).then((result) => {
       if (!cancelled) {
         setLoaded(result);

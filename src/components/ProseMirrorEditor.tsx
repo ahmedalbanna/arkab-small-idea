@@ -245,7 +245,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     const [isCopied, setIsCopied] = useState(false);
 
     // --- Composed hooks (single-responsibility slices) -------------------
-    const loaded = usePluginLoader(viewRef, onLoaded);
+    const loaded = usePluginLoader(viewRef, onLoaded, collab);
     const { editorSchema, parseMarkdownDoc } = useMarkdownSerializer(loaded);
     useEditorView({
       editorRef,
@@ -254,7 +254,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       loaded,
       editorSchema,
       parseMarkdownDoc,
-      collab,
       placeholder,
       direction,
       isTypewriter,

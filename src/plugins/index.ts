@@ -25,6 +25,7 @@ import { tocPlugin } from "./toc";
 import { documentPlugin } from "./document";
 import { editorUIPlugin } from "./editorUI";
 import { aiPlugin } from "./ai";
+import { createCollabPlugin, type CollabPluginOptions } from "./collab";
 
 /**
  * The active plugin set. As features are extracted into plugins (later
@@ -69,9 +70,18 @@ export interface LoadedPlugins {
  */
 export async function loadPlugins(
   editor: EditorAPI,
-  options?: { disabled?: string[] },
+  options?: { disabled?: string[]; collab?: CollabPluginOptions },
 ): Promise<LoadedPlugins> {
   const registry = new PluginRegistry();
+
+  // Collaboration is registered (when enabled) ahead of the static plugin set
+  // so its ProseMirror plugins (ySync, yCursor, yUndo, keymap) lead the editor
+  // plugin list — matching the previous ordering where collab was prepended
+  // inline. This also routes its setup/teardown through the registry lifecycle.
+  if (options?.collab?.enabled) {
+    registry.register(createCollabPlugin(options.collab));
+  }
+
   for (const plugin of pluginModules) {
     registry.register(plugin);
   }

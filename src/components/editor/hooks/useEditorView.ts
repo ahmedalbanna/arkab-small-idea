@@ -3,7 +3,6 @@ import { EditorState, PluginKey } from "prosemirror-state";
 import { DOMSerializer, Slice, type Schema, type Node } from "prosemirror-model";
 import { EditorView } from "prosemirror-view";
 import { cn } from "../../../lib/utils";
-import { createCollabPlugin } from "../../../lib/collabPlugin";
 import { searchPluginKey } from "../../../plugins/search";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { LoadedPlugins } from "../../../plugins";
@@ -16,11 +15,6 @@ interface EditorViewParams {
   loaded: LoadedPlugins | null;
   editorSchema: Schema;
   parseMarkdownDoc: (md: string) => Node;
-  collab?: {
-    enabled: boolean;
-    docId: string;
-    username?: string;
-  };
   placeholder?: string;
   direction?: "ltr" | "rtl";
   isTypewriter?: boolean;
@@ -57,7 +51,6 @@ export function useEditorView({
   loaded,
   editorSchema,
   parseMarkdownDoc,
-  collab,
   placeholder,
   direction,
   isTypewriter,
@@ -108,24 +101,18 @@ export function useEditorView({
     // inline.
     const { editorPlugins, nodeViews } = loaded.context;
 
-    // Collaboration plugin
-    const collabInstance = collab?.enabled
-      ? createCollabPlugin({
-          docId: collab.docId,
-          username: collab.username,
-        })
-      : null;
-
+    // Collaboration plugins (ySync, yCursor, yUndo, keymap) are contributed by
+    // the `collab` registry plugin and surfaced through `editorPlugins`, so
+    // they lead the plugin list exactly as the previous inline wiring did.
     const state = EditorState.create({
       schema: editorSchema,
       doc:
         parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
       plugins: [
-        ...(collabInstance ? collabInstance.plugins : []),
-        // All ProseMirror plugins — core base plugins, feature plugins, the
-        // editor UI plugins (side menu, context menu, bubble menu, TTS
-        // highlight, typewriter, focus mode) and the AI keymap — are
-        // contributed by the plugin system and surfaced through
+        // All ProseMirror plugins — collaboration (when enabled), core base
+        // plugins, feature plugins, the editor UI plugins (side menu, context
+        // menu, bubble menu, TTS highlight, typewriter, focus mode) and the AI
+        // keymap — are contributed by the plugin system and surfaced through
         // PluginContext.editorPlugins. The editor defines none inline.
         ...editorPlugins,
       ],
