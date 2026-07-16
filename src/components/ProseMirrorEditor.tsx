@@ -9,17 +9,14 @@ import {
 import {
   EditorState,
   Plugin,
-  PluginKey,
   Selection,
   TextSelection,
 } from "prosemirror-state";
 import { EditorView, Decoration, DecorationSet } from "prosemirror-view";
 import { DOMParser, DOMSerializer, Slice, Node } from "prosemirror-model";
 import { keymap } from "prosemirror-keymap";
-import { toggleMark, setBlockType, baseKeymap, wrapIn } from "prosemirror-commands";
+import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
 import { wrapInList } from "prosemirror-schema-list";
-import { history, undo, redo } from "prosemirror-history";
-import { buildInputRules, buildKeymap } from "./prose-setup";
 import { draftHighlightKey } from "../lib/draftPlugin";
 import {
   defaultMarkdownParser,
@@ -72,9 +69,6 @@ import {
   Redo2,
   Table
 } from "lucide-react";
-import { dropCursor } from "prosemirror-dropcursor";
-import { gapCursor } from "prosemirror-gapcursor";
-import { tableEditing, goToNextCell } from "prosemirror-tables";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, slugify } from "../lib/utils";
 import { processAIAction, type AIAssistantAction } from "../services/aiService";
@@ -288,71 +282,6 @@ export interface EditorRef {
   streamMarkdown: (content: string, isNew?: boolean) => void;
   setMarkdown: (content: string) => void;
 }
-
-const linkPreviewPlugin = new Plugin({
-  props: {
-    handleDOMEvents: {
-      mouseover(view, event) {
-        const pos = view.posAtCoords({
-          left: event.clientX,
-          top: event.clientY,
-        });
-        if (pos) {
-          const node = view.state.doc.nodeAt(pos.pos);
-          const linkMark = view.state.doc
-            .resolve(pos.pos)
-            .marks()
-            .find((m) => m.type.name === "link");
-          if (linkMark) {
-            const el = event.target as HTMLElement;
-            el.title = `Preview: ${linkMark.attrs.href}`;
-          }
-        }
-        return false;
-      },
-      click(view, event) {
-        const target = event.target as HTMLElement;
-
-        // Toggle checkbox logic
-        if (target.classList.contains("task-checkbox")) {
-          const isChecked = target.getAttribute("data-checked") === "true";
-          const pos = view.posAtDOM(target, 0);
-          if (pos !== null) {
-            const newText = isChecked ? "[ ]" : "[x]";
-            view.dispatch(view.state.tr.insertText(newText, pos, pos + 3));
-            return true;
-          }
-        }
-
-        // Cycle priority logic
-        if (target.classList.contains("task-priority")) {
-          const current = target.getAttribute("data-priority");
-          const priorities = ["H", "M", "L"];
-          const currentIndex = priorities.indexOf(current || "");
-          const nextIndex = (currentIndex + 1) % (priorities.length + 1); // +1 for "none"
-
-          const pos = view.posAtDOM(target, 0);
-          if (pos !== null) {
-            if (nextIndex === priorities.length) {
-              // Remove priority badge
-              view.dispatch(
-                view.state.tr.delete(pos, pos + 3).scrollIntoView(),
-              );
-            } else {
-              const next = priorities[nextIndex];
-              const newTag = `(${next})`;
-              view.dispatch(
-                view.state.tr.insertText(newTag, pos, pos + 3).scrollIntoView(),
-              );
-            }
-            return true;
-          }
-        }
-        return false;
-      },
-    },
-  },
-});
 
 const ProseMirrorEditor = forwardRef<EditorRef, Props>(
   (
@@ -577,15 +506,10 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         },
       });
 
-      // Plugins contributed by the plugin system (math, search, heading, ...).
-      const prosePlugins = loaded.collectors.prosePlugins.map((entry) =>
-        typeof entry.plugin === "function"
-          ? (entry.plugin as () => Plugin)()
-          : entry.plugin,
-      );
-      const nodeViews = Object.fromEntries(
-        loaded.collectors.nodeViews.map((n) => [n.name, n.view]),
-      );
+      // Plugins and node views contributed by the plugin system (core base
+      // plugins + math, search, heading, ...). Resolved once during load and
+      // surfaced through the PluginContext.
+      const { editorPlugins, nodeViews } = loaded.context;
 
       // Focus Mode plugin
       const focusModePlugin = new Plugin({
@@ -664,18 +588,14 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         schema: editorSchema,
         doc: parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
         plugins: [
-          ...(collabInstance
-            ? collabInstance.plugins
-            : [
-                history(),
-                keymap({
-                  "Mod-z": undo,
-                  "Mod-y": redo,
-                  "Mod-Shift-z": redo,
-                }),
-              ]),
-          keymap(buildKeymap(editorSchema)),
-          keymap(baseKeymap),
+          ...(collabInstance ? collabInstance.plugins : []),
+          // Base editor plugins (history, keymaps, input rules, gap/drop
+          // cursors, tables, link preview) plus feature plugins (math,
+          // search, heading, ...) — all resolved by the plugin system and
+          // surfaced through PluginContext.editorPlugins.
+          ...editorPlugins,
+          typewriterPlugin,
+          focusModePlugin,
           keymap({
             "Mod-j": (state, dispatch) => {
               let { from, to } = state.selection;
@@ -735,14 +655,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               return false;
             }
           }),
-          buildInputRules(editorSchema),
-          dropCursor(),
-          gapCursor(),
-          linkPreviewPlugin,
-          tableEditing(),
-          typewriterPlugin,
-          focusModePlugin,
-          ...prosePlugins,
           ttsHighlightPlugin,
           new Plugin({
             props: {

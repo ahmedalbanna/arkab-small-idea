@@ -1,6 +1,7 @@
 import type { Plugin, PluginKey } from "prosemirror-state";
 import type { Schema } from "prosemirror-model";
 import type { ComponentType } from "react";
+import type { NodeViewConstructor } from "prosemirror-view";
 import { useEditorStore } from "../stores/editorStore";
 import { useUIStore } from "../stores/uiStore";
 import { useAIStore } from "../stores/aiStore";
@@ -85,6 +86,9 @@ export function buildPluginContext(
     registerHost(host) {
       collectors.hosts.push(host);
     },
+    // Populated by `loadPlugins` after all plugins have initialized.
+    editorPlugins: [],
+    nodeViews: {},
   };
 }
 

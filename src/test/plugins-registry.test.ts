@@ -28,6 +28,8 @@ function fakeContext(): PluginContext {
     registerOverlay: () => {},
     registerSetting: () => {},
     registerHost: () => {},
+    editorPlugins: [],
+    nodeViews: {},
   };
 }
 

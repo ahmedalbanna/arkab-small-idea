@@ -8,7 +8,7 @@
  */
 import type { Plugin, PluginKey } from "prosemirror-state";
 import type { NodeSpec, MarkSpec, Schema } from "prosemirror-model";
-import type { EditorView } from "prosemirror-view";
+import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 import type { ComponentType } from "react";
 
 import type { useEditorStore } from "../stores/editorStore";
@@ -124,6 +124,15 @@ export interface PluginContext {
   registerSetting(setting: PluginSettingDef): void;
   /** Register an app-level React host component that runs the plugin's hooks/effects. */
   registerHost(host: ComponentType<any>): void;
+  /**
+   * Resolved ProseMirror plugins to hand to the editor's `EditorState`.
+   * Populated by `loadPlugins` after every plugin has initialized, from the
+   * `prosePlugins` collector. The editor reads these instead of defining the
+   * base plugins inline.
+   */
+  editorPlugins: Plugin[];
+  /** Resolved node-view map for the editor's `EditorState`. */
+  nodeViews: Record<string, NodeViewConstructor>;
 }
 
 /**
