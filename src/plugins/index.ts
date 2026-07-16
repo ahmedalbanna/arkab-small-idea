@@ -9,14 +9,6 @@ import {
 } from "./context";
 import { buildEditorSchema } from "./editor/schema";
 import type { EditorAPI, InkPlugin, PluginContext, SchemaContribution } from "./types";
-import { useSettingsStore } from "../stores/settingsStore";
-
-/**
- * The registry backing the most recent `loadPlugins` call. Kept module-level so
- * `setPluginEnabled` can invoke lifecycle methods (`disable`/`enable`) on the
- * live plugin instances without threading the registry through the UI.
- */
-let activeRegistry: PluginRegistry | null = null;
 
 import { corePlugin } from "./core";
 import { highlightPluginInstance } from "./highlight";
@@ -111,17 +103,7 @@ export async function loadPlugins(
   context.commands = collectors.commands;
   context.settings = collectors.settings;
 
-  activeRegistry = registry;
   return { registry, collectors, context, schema, contributions };
-}
-
-/** Toggle a plugin's enabled state, persisting it and updating live instances. */
-export function setPluginEnabled(id: string, enabled: boolean): void {
-  useSettingsStore.getState().setPluginEnabled(id, enabled);
-  if (activeRegistry) {
-    if (enabled) activeRegistry.enable(id);
-    else activeRegistry.disable(id);
-  }
 }
 
 /** Metadata for every known plugin, for building the Settings UI. */

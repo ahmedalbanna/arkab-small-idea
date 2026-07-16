@@ -14,6 +14,7 @@ import { PluginProvider, type AppApi } from "./plugins/appContext";
 import { setEditorRefs } from "./plugins/editorAccess";
 import { RegisteredOverlays } from "./components/overlays/RegisteredOverlays";
 import { RegisteredHosts } from "./components/overlays/RegisteredHosts";
+import { PluginRegistryProvider } from "./plugins/registryContext";
 
 // Components
 import { MobileMenu } from "./components/navigation/MobileMenu";
@@ -165,10 +166,11 @@ export default function App() {
   if (!hasHydrated) return null;
 
   return (
-    <PluginProvider
-      appApi={appApi}
-      pluginContext={overlayPluginsRef.current?.context ?? null}
-    >
+    <PluginRegistryProvider>
+      <PluginProvider
+        appApi={appApi}
+        pluginContext={overlayPluginsRef.current?.context ?? null}
+      >
       <div
         dir={direction}
         className={cn(
@@ -229,5 +231,6 @@ export default function App() {
         <RegisteredOverlays overlays={overlayPlugins ?? []} />
       </div>
     </PluginProvider>
+    </PluginRegistryProvider>
   );
 }

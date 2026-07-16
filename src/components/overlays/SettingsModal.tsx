@@ -4,7 +4,8 @@ import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useUIStore } from '../../stores/uiStore';
-import { getPluginList, setPluginEnabled } from '../../plugins';
+import { getPluginList } from '../../plugins';
+import { useSetPluginEnabled } from '../../plugins/registryContext';
 import type { PluginSettingDef } from '../../plugins/types';
 
 interface SettingsModalProps {
@@ -26,6 +27,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
   } = useSettingsStore();
 
   const plugins = getPluginList().filter((p) => !p.essential);
+
+  const togglePlugin = useSetPluginEnabled();
 
   // Group plugin settings by their `group` for rendering.
   const groupedSettings = pluginSettings.reduce<Record<string, PluginSettingDef[]>>(
@@ -221,7 +224,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                           <p className="text-[8px] text-minimal-muted uppercase">{p.id}</p>
                         </div>
                         <button
-                          onClick={() => setPluginEnabled(p.id, !enabled)}
+                          onClick={() => togglePlugin(p.id, !enabled)}
                           className={cn(
                             "w-10 h-5 rounded-full transition-all relative",
                             enabled ? "bg-minimal-accent" : "bg-minimal-border"
