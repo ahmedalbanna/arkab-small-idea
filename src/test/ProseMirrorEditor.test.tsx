@@ -4,6 +4,7 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 import ProseMirrorEditor from "../components/ProseMirrorEditor";
 import type { EditorRef } from "../components/ProseMirrorEditor";
+import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
 
 // The embedding service instantiates a `Worker` (and `VectorStore`, which uses
 // IndexedDB) at module load. Those browser APIs aren't available under the test
@@ -46,7 +47,10 @@ vi.mock("../services/embeddingService", () => {
  * between the plugin system and the live view.
  */
 describe("ProseMirrorEditor (mount + plugin loading)", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    defaultEditorCommandBus.clearHistory();
+  });
 
   it("loads plugins, builds the EditorView, and exposes a working API", async () => {
     const onChange = vi.fn();
@@ -88,6 +92,30 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
     expect(headings).toHaveLength(1);
     expect(headings[0].level).toBe(1);
     expect(headings[0].text).toBe("Hello");
+
+    // --- EditorCommandBus wiring & undo integration -------------------------
+    // The setMarkdown call above went through the bus, so it recorded history.
+    expect(defaultEditorCommandBus.canUndo).toBe(true);
+    const htmlBeforeUndo = ref.current?.getHtml() ?? "";
+
+    // Undo should restore the empty document (the "before" captured at
+    // setMarkdown time).
+    act(() => {
+      defaultEditorCommandBus.undo();
+    });
+    await waitFor(() => {
+      const htmlAfterUndo = ref.current?.getHtml() ?? "";
+      expect(htmlAfterUndo).not.toContain("Hello");
+    });
+
+    // Redo should re-apply the undone command.
+    act(() => {
+      defaultEditorCommandBus.redo();
+    });
+    await waitFor(() => {
+      const htmlAfterRedo = ref.current?.getHtml() ?? "";
+      expect(htmlAfterRedo).toBe(htmlBeforeUndo);
+    });
   });
 
   it("syncs an external value-prop change into the document", async () => {
