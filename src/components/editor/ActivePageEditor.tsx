@@ -18,37 +18,21 @@ import { Page, useEditorStore } from "../../stores/editorStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useAIStore } from "../../stores/aiStore";
+import { useAIUIStore } from "../../stores/aiUIStore";
+import { handleKeyDown, handleAiAction } from "../../plugins/ai/handlers";
 import type { LoadedPlugins } from "../../plugins";
 
 interface ActivePageEditorProps {
   page: Page;
   editorRefs: React.MutableRefObject<Record<string, EditorRef | null>>;
-  handleKeyDown: (e: KeyboardEvent) => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  handleAiAction: (actionId: string, customInstruction?: string) => Promise<void>;
-  isSemantic: boolean;
-  setMatchCount: (val: number) => void;
-  findText: string;
-  isCaseSensitive: boolean;
-  isWholeWord: boolean;
-  searchIndex: number;
-  currentMatchIndex: number;
   onLoaded?: (loaded: LoadedPlugins) => void;
 }
 
 export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
   page,
   editorRefs,
-  handleKeyDown,
   fileInputRef,
-  handleAiAction,
-  isSemantic,
-  setMatchCount,
-  findText,
-  isCaseSensitive,
-  isWholeWord,
-  searchIndex,
-  currentMatchIndex,
   onLoaded,
 }) => {
   const { id } = page;
@@ -79,6 +63,16 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
     apiKeys,
     providerConfigs,
   } = useAIStore();
+
+  const {
+    isSemantic,
+    setMatchCount,
+    findText,
+    isCaseSensitive,
+    isWholeWord,
+    searchIndex,
+    currentMatchIndex,
+  } = useAIUIStore();
 
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [showFileActions, setShowFileActions] = useState(false);

@@ -20,6 +20,7 @@ import { tablesPlugin } from "./tables";
 import { statusBarPlugin } from "./statusbar";
 import { tocPlugin } from "./toc";
 import { documentPlugin } from "./document";
+import { aiPlugin } from "./ai";
 
 /**
  * The active plugin set. As features are extracted into plugins (later
@@ -41,6 +42,7 @@ const pluginModules: InkPlugin[] = [
   statusBarPlugin,
   tocPlugin,
   documentPlugin,
+  aiPlugin,
 ];
 
 export interface LoadedPlugins {

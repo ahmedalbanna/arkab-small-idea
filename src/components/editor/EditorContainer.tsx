@@ -27,38 +27,13 @@ import { Page } from "../../stores/editorStore";
 
 interface EditorContainerProps {
   editorRefs: React.MutableRefObject<Record<string, EditorRef | null>>;
-  handleKeyDown: (e: KeyboardEvent) => void;
-  insertText: (before: string, after: string) => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  applyContent: (
-    content: string,
-    method: "append" | "insert" | "replace" | "suggest",
-  ) => void;
-  handleAiAction: (actionId: string, customInstruction?: string) => Promise<void>;
-  isSemantic: boolean;
-  setMatchCount: (val: number) => void;
-  findText: string;
-  isCaseSensitive: boolean;
-  isWholeWord: boolean;
-  searchIndex: number;
-  currentMatchIndex: number;
   onLoaded?: (loaded: LoadedPlugins) => void;
 }
 
 export const EditorContainer: React.FC<EditorContainerProps> = ({
   editorRefs,
-  handleKeyDown,
-  insertText,
   fileInputRef,
-  applyContent,
-  handleAiAction,
-  isSemantic,
-  setMatchCount,
-  findText,
-  isCaseSensitive,
-  isWholeWord,
-  searchIndex,
-  currentMatchIndex,
   onLoaded,
 }) => {
   const {
@@ -331,18 +306,9 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                 key={page.id}
                 page={page}
                 editorRefs={editorRefs}
-                handleKeyDown={handleKeyDown}
                 fileInputRef={fileInputRef}
-                handleAiAction={handleAiAction}
-                isSemantic={isSemantic}
-        setMatchCount={setMatchCount}
-        findText={findText}
-        isCaseSensitive={isCaseSensitive}
-        isWholeWord={isWholeWord}
-        searchIndex={searchIndex}
-        currentMatchIndex={currentMatchIndex}
-        onLoaded={onLoaded}
-      />
+                onLoaded={onLoaded}
+              />
             ))}
           </AnimatePresence>
 

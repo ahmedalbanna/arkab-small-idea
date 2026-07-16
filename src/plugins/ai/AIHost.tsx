@@ -1,0 +1,440 @@
+import React, { useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { X } from "lucide-react";
+import { AIAssistantSidebar } from "../../components/ai/AIAssistantSidebar";
+import { AIProviderSettings } from "../../components/ai/AIProviderSettings";
+import { SearchBar } from "../../components/overlays/SearchBar";
+import { SemanticFolders } from "../../components/SemanticFolders";
+import { ShortcutsHelp } from "../../components/overlays/ShortcutsHelp";
+import TTSSpeaker from "../../components/TTSSpeaker";
+import { chatWithAI, checkOllamaConnection, type ChatMessage } from "../../services/aiService";
+import { ragService } from "../../services/ragService";
+import { useAIStore } from "../../stores/aiStore";
+import { useUIStore } from "../../stores/uiStore";
+import { useEditorStore } from "../../stores/editorStore";
+import { useAIUIStore } from "../../stores/aiUIStore";
+import { getEditorRef } from "../editorAccess";
+import {
+  applyContent,
+  handleAiAction,
+  handleFindNext,
+  handleReplace,
+  handleReplaceAll,
+  indexActiveDocument,
+} from "./handlers";
+
+/**
+ * Host component for the `ai` plugin. It owns the AI assistant / search UI and
+ * the side-effects that used to live in `App.tsx` (semantic + regex search
+ * highlighting, Ollama connection check, chat auto-scroll). State and the
+ * shared handlers live in `aiUIStore` / `handlers.ts` so the editor tree can
+ * read the same values without prop-drilling.
+ */
+export function AIHost() {
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const chatImageInputRef = useRef<HTMLInputElement>(null);
+  const chatAbortControllerRef = useRef<AbortController | null>(null);
+
+  const {
+    chatHistory,
+    serviceConfigs,
+    apiKeys,
+    ollamaStatus,
+    setOllamaStatus,
+    setAvailableModels,
+  } = useAIStore();
+
+  const { showSemanticFolders, setSemanticFolders } = useUIStore();
+
+  const {
+    findText,
+    setFindText,
+    replaceText,
+    setReplaceText,
+    isCaseSensitive,
+    setIsCaseSensitive,
+    isWholeWord,
+    setIsWholeWord,
+    isSemantic,
+    setIsSemantic,
+    searchIndex,
+    matchCount,
+    currentMatchIndex,
+    setMatchCount,
+    setCurrentMatchIndex,
+    setSearchIndex,
+    semanticResults,
+    setSemanticResults,
+    aiPrompt,
+    setAiPrompt,
+    chatAttachedImages,
+    setChatAttachedImages,
+    aiSettingsTab,
+    setAiSettingsTab,
+    showShortcuts,
+    setShowShortcuts,
+  } = useAIUIStore();
+
+  const activePage = useEditorStore(
+    (s) => s.pages.find((p) => p.id === s.activeFocusedPageId) || s.pages[0],
+  );
+  const markdown = activePage?.content || "";
+
+  // Search highlighting (regex + semantic via RAG).
+  useEffect(() => {
+    if (!findText) {
+      setMatchCount(0);
+      setCurrentMatchIndex(0);
+      setSearchIndex(-1);
+      setSemanticResults([]);
+      return;
+    }
+
+    if (isSemantic) {
+      const performSemanticSearch = async () => {
+        try {
+          const embeddingOptions = {
+            provider: serviceConfigs.embeddings.provider,
+            apiKey:
+              apiKeys?.[
+                serviceConfigs.embeddings.provider as keyof typeof apiKeys
+              ],
+            model: serviceConfigs.embeddings.model,
+          };
+          const results = await ragService.searchDetailed(
+            findText,
+            10,
+            0.2,
+            embeddingOptions,
+          );
+          const docMatches = results.filter((r) => r.source === "document");
+          setMatchCount(docMatches.length);
+          setSemanticResults(results);
+
+          if (docMatches.length > 0 && searchIndex === -1) {
+            setCurrentMatchIndex(0);
+          } else if (docMatches.length === 0) {
+            setCurrentMatchIndex(0);
+            setSearchIndex(-1);
+          }
+        } catch (error) {
+          console.error("Semantic search failed:", error);
+          setMatchCount(0);
+        }
+      };
+
+      performSemanticSearch();
+      return;
+    }
+
+    const flags = isCaseSensitive ? "g" : "gi";
+    let pattern = findText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (isWholeWord) pattern = `\\b${pattern}\\b`;
+
+    try {
+      const regex = new RegExp(pattern, flags);
+      const matches = [...markdown.matchAll(regex)];
+      setMatchCount(matches.length);
+
+      const idx = matches.findIndex((m) => m.index === searchIndex);
+      if (idx !== -1) {
+        setCurrentMatchIndex(idx + 1);
+      } else if (matches.length > 0 && searchIndex === -1) {
+        setCurrentMatchIndex(0);
+      } else if (matches.length === 0) {
+        setCurrentMatchIndex(0);
+        setSearchIndex(-1);
+      }
+    } catch {
+      setMatchCount(0);
+      setCurrentMatchIndex(0);
+    }
+  }, [
+    findText,
+    markdown,
+    isCaseSensitive,
+    isWholeWord,
+    isSemantic,
+    searchIndex,
+    serviceConfigs,
+    apiKeys,
+  ]);
+
+  // Ollama connection check.
+  useEffect(() => {
+    const anyOllama = Object.values(serviceConfigs).some(
+      (c) => c.provider === "ollama",
+    );
+
+    if (anyOllama) {
+      setOllamaStatus({ ...ollamaStatus, loading: true });
+      const activeOllamaModel =
+        Object.values(serviceConfigs).find((c) => c.provider === "ollama")
+          ?.model || "mistral";
+      checkOllamaConnection(activeOllamaModel).then((res) => {
+        setOllamaStatus({
+          loading: false,
+          connected: res.success,
+          model: res.model || "",
+          error: res.error,
+        });
+        if (res.allModels) setAvailableModels(res.allModels);
+      });
+    } else {
+      setOllamaStatus({
+        loading: false,
+        connected: false,
+        model: "",
+      });
+    }
+  }, [serviceConfigs]);
+
+  // Keep the chat scrolled to the latest message.
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatHistory]);
+
+  const handleAiGenerate = useCallback(async () => {
+    if (!aiPrompt.trim() && chatAttachedImages.length === 0) return;
+
+    if (chatAbortControllerRef.current) {
+      chatAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    chatAbortControllerRef.current = abortController;
+
+    const embeddingOptions = {
+      provider: serviceConfigs.embeddings.provider,
+      apiKey:
+        apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
+      model: serviceConfigs.embeddings.model,
+    };
+    indexActiveDocument();
+
+    const ai = useAIStore.getState();
+    const userMessage: ChatMessage = {
+      role: "user",
+      parts: [{ text: aiPrompt }],
+      images: chatAttachedImages.length > 0 ? chatAttachedImages : undefined,
+    };
+    const historyWithUser = [...ai.chatHistory, userMessage];
+    ai.setChatHistory(historyWithUser);
+    setAiPrompt("");
+    setChatAttachedImages([]);
+    ai.setGenerating(true);
+    ai.setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "" }] }]);
+
+    const state = useEditorStore.getState();
+    const page =
+      state.pages.find((p) => p.id === state.activeFocusedPageId) ||
+      state.pages[0];
+    if (!page) return;
+    const cursorContext = getEditorRef(page.id)?.getCursorContext() || "";
+
+    try {
+      let fullResponse = "";
+      await chatWithAI(historyWithUser, page.content, {
+        personalInstructions: ai.personalInstructions,
+        model: ai.serviceConfigs.chat.model,
+        provider: ai.serviceConfigs.chat.provider,
+        apiKeys: ai.apiKeys,
+        providerConfigs: ai.providerConfigs,
+        signal: abortController.signal,
+        onChunk: (chunk) => {
+          fullResponse += chunk;
+          ai.setChatHistory((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last && last.role === "model") {
+              next[next.length - 1] = {
+                ...last,
+                parts: [{ text: fullResponse }],
+              };
+            }
+            return next;
+          });
+        },
+        cursorContext,
+        embeddingOptions,
+      });
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        console.log("Chat aborted by user");
+        chatAbortControllerRef.current = null;
+        useAIStore.getState().setGenerating(false);
+        return;
+      }
+      console.error("AI Generation failed:", error);
+      const errorMessage = `Error: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      ai.setChatHistory((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = {
+          role: "model",
+          parts: [{ text: errorMessage }],
+        };
+        return next;
+      });
+    } finally {
+      useAIStore.getState().setGenerating(false);
+      chatAbortControllerRef.current = null;
+    }
+  }, [aiPrompt, chatAttachedImages, serviceConfigs, apiKeys]);
+
+  const stopAiGenerate = useCallback(() => {
+    if (chatAbortControllerRef.current) {
+      chatAbortControllerRef.current.abort();
+    }
+  }, []);
+
+  const handleChatImageUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files) return;
+
+      Array.from(files).forEach((file: File) => {
+        if (!file.type.startsWith("image/")) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result as string;
+          if (dataUrl) {
+            const current = useAIUIStore.getState().chatAttachedImages;
+            setChatAttachedImages([...current, dataUrl]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      if (chatImageInputRef.current) chatImageInputRef.current.value = "";
+    },
+    [],
+  );
+
+  const formatChatInput = useCallback(
+    (type: "bold" | "italic" | "list") => {
+      if (!chatInputRef.current) return;
+      const { selectionStart, selectionEnd } = chatInputRef.current;
+      const text = aiPrompt;
+      const selected = text.substring(selectionStart, selectionEnd);
+      let formatted = "";
+      let cursorOffset = 0;
+
+      switch (type) {
+        case "bold":
+          formatted = `**${selected}**`;
+          cursorOffset = 2;
+          break;
+        case "italic":
+          formatted = `*${selected}*`;
+          cursorOffset = 1;
+          break;
+        case "list":
+          formatted = `\n- ${selected}`;
+          cursorOffset = 3;
+          break;
+      }
+
+      const newText =
+        text.substring(0, selectionStart) +
+        formatted +
+        text.substring(selectionEnd);
+      setAiPrompt(newText);
+
+      setTimeout(() => {
+        if (chatInputRef.current) {
+          chatInputRef.current.focus();
+          const newPos =
+            selectionStart + cursorOffset + (selected ? selected.length : 0);
+          chatInputRef.current.setSelectionRange(newPos, newPos);
+        }
+      }, 0);
+    },
+    [aiPrompt],
+  );
+
+  return (
+    <>
+      <AIAssistantSidebar
+        chatScrollRef={chatScrollRef}
+        chatInputRef={chatInputRef}
+        chatImageInputRef={chatImageInputRef}
+        aiPrompt={aiPrompt}
+        setAiPrompt={setAiPrompt}
+        chatAttachedImages={chatAttachedImages}
+        setChatAttachedImages={setChatAttachedImages}
+        handleAiGenerate={handleAiGenerate}
+        handleChatImageUpload={handleChatImageUpload}
+        formatChatInput={formatChatInput}
+        applyContent={applyContent}
+        onAction={handleAiAction}
+        stopAiGenerate={stopAiGenerate}
+      />
+
+      <AIProviderSettings
+        aiSettingsTab={aiSettingsTab}
+        setAiSettingsTab={setAiSettingsTab}
+      />
+
+      <SearchBar
+        findText={findText}
+        setFindText={setFindText}
+        replaceText={replaceText}
+        setReplaceText={setReplaceText}
+        matchCount={matchCount}
+        currentMatchIndex={currentMatchIndex}
+        isCaseSensitive={isCaseSensitive}
+        setIsCaseSensitive={setIsCaseSensitive}
+        isWholeWord={isWholeWord}
+        setIsWholeWord={setIsWholeWord}
+        isSemantic={isSemantic}
+        setIsSemantic={setIsSemantic}
+        semanticResults={semanticResults}
+        handleFindNext={handleFindNext}
+        handleReplace={handleReplace}
+        handleReplaceAll={handleReplaceAll}
+        setSearchIndex={setSearchIndex}
+      />
+
+      <AnimatePresence>
+        {showSemanticFolders && (
+          <motion.div
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            className="absolute right-0 top-0 bottom-0 z-[100] w-[320px] shadow-2xl"
+          >
+            <div className="h-full relative">
+              <button
+                onClick={() => setSemanticFolders(false)}
+                className="absolute top-4 -left-12 p-2 bg-minimal-bg border border-minimal-border rounded-full hover:text-red-500 transition-colors shadow-lg z-[110]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <SemanticFolders
+                onJump={(text) => {
+                  if (activePage) {
+                    getEditorRef(activePage.id)?.scrollToText(text);
+                  }
+                }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <TTSSpeaker
+        editorRef={{
+          current: activePage ? getEditorRef(activePage.id) || null : null,
+        } as any}
+      />
+
+      <ShortcutsHelp
+        showShortcuts={showShortcuts}
+        setShowShortcuts={setShowShortcuts}
+      />
+    </>
+  );
+}

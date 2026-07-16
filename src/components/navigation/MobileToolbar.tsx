@@ -2,19 +2,23 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset, PenTool, Quote, List, Table } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
+import { useEditorStore } from '../../stores/editorStore';
+import { getEditorRef } from '../../plugins/editorAccess';
+import { insertText } from '../../plugins/ai/handlers';
 
 interface MobileToolbarProps {
-  editorRef: React.RefObject<any>;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  insertText: (before: string, after: string) => void;
 }
 
 export const MobileToolbar: React.FC<MobileToolbarProps> = ({
-  editorRef,
-  fileInputRef,
-  insertText
+  fileInputRef
 }) => {
   const { setAIAssistant, setTTS, showTTS } = useUIStore();
+  const { activeFocusedPageId, pages } = useEditorStore();
+  const activePage = pages.find((p) => p.id === activeFocusedPageId) || pages[0];
+  const editorRef: any = {
+    current: activePage ? getEditorRef(activePage.id) : null,
+  };
 
   return (
     <motion.div
