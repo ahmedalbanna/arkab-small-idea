@@ -141,19 +141,42 @@ export class PluginRegistry {
   }
 
   /** Tear down every initialized plugin in reverse order. */
-  destroyAll(): void {
+  destroyAll(): string[] {
     const order = this.resolveOrder().reverse();
     for (const id of order) {
       const entry = this.entries.get(id)!;
-      if (entry.initialized && !entry.destroyed && entry.plugin.destroy) {
-        try {
-          entry.plugin.destroy();
-        } catch (err) {
-          console.error(`Failed to destroy plugin "${id}":`, err);
+      if (entry.initialized && !entry.destroyed) {
+        if (entry.plugin.destroy) {
+          try {
+            entry.plugin.destroy();
+          } catch (err) {
+            console.error(`Failed to destroy plugin "${id}":`, err);
+          }
         }
+        // Mark as torn down even when no `destroy` hook exists, so the
+        // lifecycle bookkeeping (and verifyCleanup) stays accurate.
         entry.destroyed = true;
       }
     }
+    return this.verifyCleanup();
+  }
+
+  /**
+   * Report ids of plugins that were initialized but never destroyed — a sign
+   * of a violated cleanup contract (resources left allocated). Called
+   * automatically by `destroyAll`; logs a warning when any leak is detected.
+   */
+  verifyCleanup(): string[] {
+    const leaked: string[] = [];
+    for (const [id, entry] of this.entries) {
+      if (entry.initialized && !entry.destroyed) leaked.push(id);
+    }
+    if (leaked.length > 0) {
+      console.warn(
+        `[plugins] Potential resource leak: plugins initialized but not destroyed: ${leaked.join(", ")}`,
+      );
+    }
+    return leaked;
   }
 
   /**
@@ -166,11 +189,13 @@ export class PluginRegistry {
     const entry = this.entries.get(id);
     if (!entry) return;
     entry.plugin.enabled = false;
-    if (entry.initialized && !entry.destroyed && entry.plugin.destroy) {
-      try {
-        entry.plugin.destroy();
-      } catch (err) {
-        console.error(`Failed to destroy plugin "${id}":`, err);
+    if (entry.initialized && !entry.destroyed) {
+      if (entry.plugin.destroy) {
+        try {
+          entry.plugin.destroy();
+        } catch (err) {
+          console.error(`Failed to destroy plugin "${id}":`, err);
+        }
       }
       entry.destroyed = true;
     }

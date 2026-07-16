@@ -147,7 +147,18 @@ export interface PluginContext {
 /**
  * A feature module. `getSchemaContribution` runs before the editor is built
  * (so it can inject nodes/marks); `init` runs afterwards with the final
- * schema and registration hooks. `destroy` must release any resources.
+ * schema and registration hooks.
+ *
+ * ## Cleanup contract
+ * Any plugin that allocates resources in `init` — timers, intervals, event
+ * listeners, store subscriptions, web workers, IndexedDB handles, DOM nodes —
+ * MUST release them in `destroy`. The registry guarantees `destroy` is invoked
+ * exactly once per lifecycle: immediately when the plugin is disabled (toggled
+ * off) and again on full teardown (`destroyAll`, e.g. editor unmount). Plugins
+ * must therefore make `destroy` idempotent and re-entrant-safe so a
+ * disable→enable→destroy cycle cannot double-free or leak. After teardown,
+ * `verifyCleanup()` reports any plugin left initialized without a matching
+ * destroy as a potential leak.
  */
 export interface InkPlugin {
   id: string;
@@ -164,5 +175,10 @@ export interface InkPlugin {
   dependencies?: string[];
   getSchemaContribution?(): SchemaContribution | Promise<SchemaContribution>;
   init(ctx: PluginContext): void | Promise<void>;
+  /**
+   * Release every resource allocated in `init`. Must be idempotent: the
+   * registry may call it on disable and again on teardown. Omit only for
+   * plugins that allocate nothing (pure schema/registration contributors).
+   */
   destroy?(): void;
 }
