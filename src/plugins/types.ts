@@ -122,6 +122,8 @@ export interface PluginContext {
   registerCommand(cmd: EditorCommand): void;
   registerOverlay(overlay: PluginOverlay): void;
   registerSetting(setting: PluginSettingDef): void;
+  /** Register an app-level React host component that runs the plugin's hooks/effects. */
+  registerHost(host: ComponentType<any>): void;
 }
 
 /**

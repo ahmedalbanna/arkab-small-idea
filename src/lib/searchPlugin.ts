@@ -2,6 +2,7 @@ import { Node } from "prosemirror-model";
 import { Plugin, PluginKey, Transaction, EditorState } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { cn } from "./utils";
+import { ragService } from "../services/ragService";
 
 export const searchPluginKey = new PluginKey("search");
 
@@ -131,7 +132,6 @@ class SearchIndex {
         return [];
       }
 
-      const { ragService } = await import("../services/ragService");
       const results = await ragService.searchDetailed(
         query,
         10,

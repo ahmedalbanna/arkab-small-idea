@@ -27,6 +27,7 @@ function fakeContext(): PluginContext {
     registerCommand: () => {},
     registerOverlay: () => {},
     registerSetting: () => {},
+    registerHost: () => {},
   };
 }
 

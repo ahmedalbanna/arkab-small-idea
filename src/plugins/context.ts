@@ -1,5 +1,6 @@
 import type { Plugin, PluginKey } from "prosemirror-state";
 import type { Schema } from "prosemirror-model";
+import type { ComponentType } from "react";
 import { useEditorStore } from "../stores/editorStore";
 import { useUIStore } from "../stores/uiStore";
 import { useAIStore } from "../stores/aiStore";
@@ -26,6 +27,8 @@ export interface ContextCollectors {
   commands: EditorCommand[];
   overlays: PluginOverlay[];
   settings: PluginSettingDef[];
+  /** App-level React host components that run plugin hooks/effects. */
+  hosts: ComponentType<any>[];
 }
 
 export function createCollectors(): ContextCollectors {
@@ -36,6 +39,7 @@ export function createCollectors(): ContextCollectors {
     commands: [],
     overlays: [],
     settings: [],
+    hosts: [],
   };
 }
 
@@ -77,6 +81,9 @@ export function buildPluginContext(
     },
     registerSetting(setting) {
       collectors.settings.push(setting);
+    },
+    registerHost(host) {
+      collectors.hosts.push(host);
     },
   };
 }

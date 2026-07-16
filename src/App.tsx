@@ -19,8 +19,9 @@ import { useUIStore } from "./stores/uiStore";
 import { useAIStore } from "./stores/aiStore";
 import { useSettingsStore } from "./stores/settingsStore";
 import type { LoadedPlugins } from "./plugins";
-import { AppApiContext, type AppApi } from "./plugins/appContext";
+import { PluginProvider, type AppApi } from "./plugins/appContext";
 import { RegisteredOverlays } from "./components/overlays/RegisteredOverlays";
+import { RegisteredHosts } from "./components/overlays/RegisteredHosts";
 
 // Components
 import { MobileMenu } from "./components/navigation/MobileMenu";
@@ -158,19 +159,6 @@ export default function App() {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const [chatAttachedImages, setChatAttachedImages] = useState<string[]>([]);
 
-  useEffect(() => {
-    import("./services/embeddingService").then(({ vectorStore }) => {
-      vectorStore.init().then(() => {
-        useUIStore
-          .getState()
-          .setIndexedCounts(
-            vectorStore.getChunks().length,
-            vectorStore.getEpisodes().length,
-          );
-      });
-    });
-  }, []);
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -273,42 +261,6 @@ export default function App() {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [chatHistory]);
-
-  // Auto-snapshot every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(
-      () => {
-        if (activePage) addSnapshot(activePage.id, markdown);
-      },
-      5 * 60 * 1000,
-    );
-
-    return () => clearInterval(interval);
-  }, [activePage, markdown, addSnapshot]);
-
-  // Debounced RAG indexing
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const embeddingOptions = {
-        provider: serviceConfigs.embeddings.provider,
-        apiKey:
-          apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
-        model: serviceConfigs.embeddings.model,
-      };
-      ragService.indexDocument(markdown, embeddingOptions);
-    }, 5000);
-
-    return () => clearTimeout(timeout);
-  }, [markdown, serviceConfigs.embeddings, apiKeys]);
-
-  // Snapshot on document close
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (activePage) addSnapshot(activePage.id, markdown);
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [activePage, markdown, addSnapshot]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -802,17 +754,24 @@ export default function App() {
   const [overlayPlugins, setOverlayPlugins] = useState<
     LoadedPlugins["collectors"]["overlays"] | null
   >(null);
+  const [hostPlugins, setHostPlugins] = useState<
+    LoadedPlugins["collectors"]["hosts"] | null
+  >(null);
   const handleEditorLoaded = useCallback((loaded: LoadedPlugins) => {
     if (!overlayPluginsRef.current) {
       overlayPluginsRef.current = loaded;
       setOverlayPlugins(loaded.collectors.overlays);
+      setHostPlugins(loaded.collectors.hosts);
     }
   }, []);
 
   if (!hasHydrated) return null;
 
   return (
-    <AppApiContext.Provider value={appApi}>
+    <PluginProvider
+      appApi={appApi}
+      pluginContext={overlayPluginsRef.current?.context ?? null}
+    >
       <div
         dir={direction}
       className={cn(
@@ -953,8 +912,9 @@ export default function App() {
         } as any} 
       />
 
+      <RegisteredHosts hosts={hostPlugins ?? []} />
       <RegisteredOverlays overlays={overlayPlugins ?? []} />
     </div>
-    </AppApiContext.Provider>
+    </PluginProvider>
   );
 }

@@ -29,6 +29,7 @@ function captureInit(plugin: {
     registerCommand: () => {},
     registerOverlay: (o) => overlays.push(o),
     registerSetting: () => {},
+    registerHost: () => {},
   } as PluginContext);
   return { prosePlugins, overlays };
 }
