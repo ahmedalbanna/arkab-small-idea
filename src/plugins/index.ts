@@ -26,6 +26,7 @@ import { documentPlugin } from "./document";
 import { editorUIPlugin } from "./editorUI";
 import { aiPlugin } from "./ai";
 import { createCollabPlugin, type CollabPluginOptions } from "./collab";
+import { validateDisabledPlugins } from "./pluginToggleMigration";
 
 /**
  * The active plugin set. As features are extracted into plugins (later
@@ -86,8 +87,11 @@ export async function loadPlugins(
     registry.register(plugin);
   }
 
-  // Apply the persisted enable/disable state on the shared plugin instances.
-  const disabled = new Set(options?.disabled ?? []);
+  // Apply the persisted enable/disable state, dropping ids that aren't part of
+  // the live registry so stale/removed/renamed plugins can't break startup.
+  const disabled = new Set(
+    validateDisabledPlugins(options?.disabled, registry),
+  );
   for (const plugin of pluginModules) {
     plugin.enabled = !disabled.has(plugin.id);
   }

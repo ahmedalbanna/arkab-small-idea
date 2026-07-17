@@ -63,6 +63,11 @@ export function useSetPluginEnabled(): (
   const ctx = useContext(PluginRegistryContext);
   return useCallback(
     (id: string, enabled: boolean) => {
+      // Always persist the user's preference; it is keyed by id and reconciled
+      // against the live registry in `loadPlugins` (validateDisabledPlugins),
+      // so a stale/renamed id can never break startup. Applying to the registry
+      // is a no-op when the id isn't present (e.g. editor not yet loaded), so
+      // we never drop a legitimate toggle.
       useSettingsStore.getState().setPluginEnabled(id, enabled);
       const registry = ctx?.registry ?? null;
       if (registry) {

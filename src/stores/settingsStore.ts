@@ -1,5 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  migratePluginToggles,
+  PLUGIN_TOGGLES_VERSION,
+} from '../plugins/pluginToggleMigration';
 
 interface SettingsState {
   theme: 'light' | 'dark' | 'system' | 'andalusia' | 'cosmos' | 'parchment' | 'tokyo';
@@ -71,6 +75,21 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'ink-quill-settings',
+      version: PLUGIN_TOGGLES_VERSION,
+      // Reconcile persisted plugin toggles to the current schema on load:
+      // coerce the shape and apply any legacy id renames so old storage keeps
+      // working after a plugin is renamed. Unknown (removed) ids are pruned at
+      // runtime by `validateDisabledPlugins` when the editor builds.
+      migrate: (persisted: Record<string, unknown> | undefined, version: number) => {
+        const state = persisted ?? {};
+        return {
+          ...state,
+          disabledPlugins: migratePluginToggles(
+            state.disabledPlugins,
+            version ?? 0,
+          ),
+        };
+      },
     }
   )
 );
