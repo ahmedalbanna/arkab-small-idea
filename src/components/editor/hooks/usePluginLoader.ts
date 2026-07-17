@@ -1,6 +1,10 @@
 import { useEffect, useState, type RefObject } from "react";
 import type { EditorView } from "prosemirror-view";
-import { loadPlugins, type LoadedPlugins } from "../../../plugins";
+import {
+  loadPlugins,
+  onPluginsChanged,
+  type LoadedPlugins,
+} from "../../../plugins";
 import type { CollabPluginOptions } from "../../../plugins/collab";
 import { useSetPluginRegistry } from "../../../plugins/registryContext";
 import { useSettingsStore } from "../../../stores/settingsStore";
@@ -20,6 +24,14 @@ export function usePluginLoader(
   collab?: CollabPluginOptions,
 ): LoadedPlugins | null {
   const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
+
+  // Bumped by dev hot-reload so the effect below re-runs `loadPlugins` and the
+  // editor is rebuilt with the updated plugin code (no full page reload).
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  useEffect(() => {
+    return onPluginsChanged(() => setReloadNonce((n) => n + 1));
+  }, []);
 
   // Publish this editor's registry as the active one so the app shell (e.g.
   // the settings UI) can invoke plugin lifecycle methods without a module
@@ -51,7 +63,7 @@ export function usePluginLoader(
     return () => {
       cancelled = true;
     };
-  }, [pluginSignature, viewRef, onLoaded]);
+  }, [pluginSignature, viewRef, onLoaded, reloadNonce]);
 
   // Keep the active-registry context in sync with the latest load result.
   useEffect(() => {

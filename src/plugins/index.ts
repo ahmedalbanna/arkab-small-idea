@@ -30,30 +30,80 @@ import { validateDisabledPlugins } from "./pluginToggleMigration";
 
 /**
  * The active plugin set. As features are extracted into plugins (later
- * phases) they are registered here. Order does not matter — dependency
- * resolution handles initialization order, except `corePlugin` which is
- * intentionally first so its base editor plugins lead the plugin list.
+ * phases) they are registered here. Returned from a function (not a constant
+ * array) so dev hot-reload picks up new module exports — each call re-reads the
+ * live `InkPlugin` bindings. Order does not matter — dependency resolution
+ * handles initialization order, except `corePlugin` which is intentionally
+ * first so its base editor plugins lead the plugin list.
  */
-const pluginModules: InkPlugin[] = [
-  // Core editor ProseMirror plugins (history, keymaps, input rules, ...).
-  corePlugin,
-  // Editor ProseMirror plugins & node views (extracted in phase 1).
-  highlightPluginInstance,
-  draftPlugin,
-  searchPlugin,
-  headingPlugin,
-  mathPlugin,
-  imagePlugin,
-  scribblePlugin,
-  diagramPlugin,
-  // UI plugins (overlays + table helpers).
-  tablesPlugin,
-  statusBarPlugin,
-  tocPlugin,
-  documentPlugin,
-  editorUIPlugin,
-  aiPlugin,
-];
+export function buildPluginModules(): InkPlugin[] {
+  return [
+    // Core editor ProseMirror plugins (history, keymaps, input rules, ...).
+    corePlugin,
+    // Editor ProseMirror plugins & node views (extracted in phase 1).
+    highlightPluginInstance,
+    draftPlugin,
+    searchPlugin,
+    headingPlugin,
+    mathPlugin,
+    imagePlugin,
+    scribblePlugin,
+    diagramPlugin,
+    // UI plugins (overlays + table helpers).
+    tablesPlugin,
+    statusBarPlugin,
+    tocPlugin,
+    documentPlugin,
+    editorUIPlugin,
+    aiPlugin,
+  ];
+}
+
+/**
+ * Dev-only hot-reload signaling. When any plugin module is hot-updated by Vite,
+ * `notifyPluginsChanged` wakes the editor loader so it rebuilds the plugin set
+ * and the ProseMirror view without a full page reload. No-op outside dev/HMR.
+ */
+const pluginReloadListeners = new Set<() => void>();
+
+export function onPluginsChanged(listener: () => void): () => void {
+  pluginReloadListeners.add(listener);
+  return () => {
+    pluginReloadListeners.delete(listener);
+  };
+}
+
+export function notifyPluginsChanged(): void {
+  pluginReloadListeners.forEach((l) => l());
+}
+
+if (import.meta.hot && import.meta.env.DEV) {
+  // Accept updates to any plugin entry module so editing a plugin's code (or
+  // its deps) triggers a targeted editor rebuild instead of a full page reload.
+  import.meta.hot.accept(
+    [
+      "./core",
+      "./highlight",
+      "./draft",
+      "./heading",
+      "./search",
+      "./math",
+      "./image",
+      "./scribble",
+      "./diagram",
+      "./tables",
+      "./statusbar",
+      "./toc",
+      "./document",
+      "./editorUI",
+      "./ai",
+      "./collab",
+    ],
+    () => {
+      notifyPluginsChanged();
+    },
+  );
+}
 
 export interface LoadedPlugins {
   registry: PluginRegistry;
@@ -83,7 +133,7 @@ export async function loadPlugins(
     registry.register(createCollabPlugin(options.collab));
   }
 
-  for (const plugin of pluginModules) {
+  for (const plugin of buildPluginModules()) {
     registry.register(plugin);
   }
 
@@ -92,7 +142,7 @@ export async function loadPlugins(
   const disabled = new Set(
     validateDisabledPlugins(options?.disabled, registry),
   );
-  for (const plugin of pluginModules) {
+  for (const plugin of buildPluginModules()) {
     plugin.enabled = !disabled.has(plugin.id);
   }
 
@@ -126,7 +176,7 @@ export function getPluginList(): {
   name: string;
   essential: boolean;
 }[] {
-  return pluginModules.map((p) => ({
+  return buildPluginModules().map((p) => ({
     id: p.id,
     name: p.name,
     essential: !!p.essential,
