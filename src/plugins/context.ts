@@ -17,6 +17,15 @@ import type {
   EditorCommand,
 } from "./types";
 import type { EditorCommandBus } from "./editorCommandBus";
+import { pluginLogger } from "./logger";
+import {
+  editorCommandSchema,
+  toolbarItemSchema,
+  pluginOverlaySchema,
+  pluginSettingSchema,
+  nodeViewRegistrationSchema,
+  formatIssues,
+} from "./contributionSchemas";
 
 /**
  * Mutable collectors that plugins push into during `init`. After all plugins
@@ -46,6 +55,32 @@ export function createCollectors(): ContextCollectors {
 }
 
 /**
+ * Validate a plugin contribution against its Zod schema. On failure, emit a
+ * structured error (attributed to the plugin currently initializing, if known)
+ * and skip the contribution so one malformed item can't break editor startup.
+ * On success, push it into the collector.
+ */
+function validateAndCollect<T>(
+  schema: { safeParse: (v: unknown) => { success: boolean; error?: { issues: any[] } } },
+  kind: string,
+  value: unknown,
+  collector: T[],
+  ctx: PluginContext,
+): void {
+  const result = schema.safeParse(value);
+  if (!result.success) {
+    const pluginId = (ctx as { pluginId?: string }).pluginId;
+    pluginLogger.error(pluginId ?? "*", "contribution:invalid", `Invalid ${kind} contribution`, {
+      kind,
+      id: (value as { id?: string })?.id,
+      issues: formatIssues(result.error.issues),
+    });
+    return;
+  }
+  collector.push(value as T);
+}
+
+/**
  * Builds the `PluginContext` handed to each plugin. The schema is final at
  * this point; registration hooks simply append to the shared collectors so
  * the host (editor + app shell) can materialize them after `initAll`.
@@ -63,7 +98,12 @@ export function buildPluginContext(
     settings: useSettingsStore,
   };
 
-  return {
+  // Declared with `let` so the registration hooks (defined inside the object
+  // literal) can close over it. The registry stamps `pluginId` onto the object
+  // during `initAll` so validation errors are attributed to the right plugin.
+  let context: PluginContext;
+
+  context = {
     editor,
     commandBus,
     stores,
@@ -72,19 +112,49 @@ export function buildPluginContext(
       collectors.prosePlugins.push({ plugin, key });
     },
     registerNodeView(reg) {
-      collectors.nodeViews.push(reg);
+      validateAndCollect(
+        nodeViewRegistrationSchema,
+        "nodeView",
+        reg,
+        collectors.nodeViews,
+        context,
+      );
     },
     registerToolbarItem(item) {
-      collectors.toolbarItems.push(item);
+      validateAndCollect(
+        toolbarItemSchema,
+        "toolbarItem",
+        item,
+        collectors.toolbarItems,
+        context,
+      );
     },
     registerCommand(cmd) {
-      collectors.commands.push(cmd);
+      validateAndCollect(
+        editorCommandSchema,
+        "command",
+        cmd,
+        collectors.commands,
+        context,
+      );
     },
     registerOverlay(overlay) {
-      collectors.overlays.push(overlay);
+      validateAndCollect(
+        pluginOverlaySchema,
+        "overlay",
+        overlay,
+        collectors.overlays,
+        context,
+      );
     },
     registerSetting(setting) {
-      collectors.settings.push(setting);
+      validateAndCollect(
+        pluginSettingSchema,
+        "setting",
+        setting,
+        collectors.settings,
+        context,
+      );
     },
     registerHost(host) {
       collectors.hosts.push(host);
@@ -96,6 +166,8 @@ export function buildPluginContext(
     commands: [],
     settings: [],
   };
+
+  return context;
 }
 
 /** Helper to merge several schema contributions into one. */

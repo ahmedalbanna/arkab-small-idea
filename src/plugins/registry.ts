@@ -1,5 +1,6 @@
 import type { InkPlugin, SchemaContribution } from "./types";
 import { pluginLogger } from "./logger";
+import { schemaContributionSchema, formatIssues } from "./contributionSchemas";
 
 /** Internal bookkeeping for a registered plugin. */
 interface RegisteredEntry {
@@ -114,6 +115,14 @@ export class PluginRegistry {
     for (const plugin of this.getEnabled()) {
       if (!plugin.getSchemaContribution) continue;
       const contribution = await plugin.getSchemaContribution();
+      const result = schemaContributionSchema.safeParse(contribution);
+      if (!result.success) {
+        pluginLogger.error(plugin.id, "contribution:invalid", "Invalid schema contribution", {
+          kind: "schema",
+          issues: formatIssues(result.error.issues),
+        });
+        continue;
+      }
       merged.nodes = { ...merged.nodes, ...contribution.nodes };
       merged.marks = { ...merged.marks, ...contribution.marks };
       merged.patchNodes = { ...merged.patchNodes, ...contribution.patchNodes };
@@ -142,6 +151,10 @@ export class PluginRegistry {
       if (entry.plugin.enabled === false) continue;
       pluginLogger.debug(id, "init:start", "Initializing plugin");
       const startedAt = performance.now();
+      // Stamp the plugin id onto the shared context so registration-time
+      // contribution validation can attribute errors to the right plugin,
+      // then clear it so a later (or nested) plugin can't inherit it.
+      (context as { pluginId?: string }).pluginId = id;
       try {
         await entry.plugin.init(context);
         entry.initialized = true;
@@ -153,6 +166,8 @@ export class PluginRegistry {
           error: err instanceof Error ? err.message : String(err),
         });
         throw err;
+      } finally {
+        (context as { pluginId?: string }).pluginId = undefined;
       }
     }
   }
