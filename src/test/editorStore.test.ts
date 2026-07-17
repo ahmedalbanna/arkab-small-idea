@@ -5,7 +5,7 @@ import { snapshotService } from '../services/snapshotService';
 // Mock snapshotService
 vi.mock('../services/snapshotService', () => ({
   snapshotService: {
-    saveSnapshot: vi.fn().mockImplementation((content) => Promise.resolve({
+    saveSnapshot: vi.fn().mockImplementation((pageId, content) => Promise.resolve({
       id: 'test-id',
       timestamp: Date.now(),
       content,
@@ -56,7 +56,7 @@ describe('editorStore', () => {
     await addSnapshot('default', 'Snapshot content');
     expect(useEditorStore.getState().pages[0].snapshots.length).toBe(1);
     expect(useEditorStore.getState().pages[0].snapshots[0].content).toBe('Snapshot content');
-    expect(snapshotService.saveSnapshot).toHaveBeenCalledWith('Snapshot content', undefined);
+    expect(snapshotService.saveSnapshot).toHaveBeenCalledWith('default', 'Snapshot content', undefined);
   });
 
   it('should set word goal for a page', () => {

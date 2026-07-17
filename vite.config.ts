@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       workbox: {
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 5MB
+        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024, // 20MB
       },
       manifest: {
         name: 'Ink & Quill',
