@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useId, useRef, useState } from "react";
 import { EditorState, Selection, TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { DOMSerializer } from "prosemirror-model";
@@ -105,6 +105,12 @@ interface Props {
     docId: string;
     username?: string;
   };
+  /**
+   * Stable id scoping this editor's menu UI (side menu, bubble menu, context
+   * menu, slash menu) so multiple editors on screen don't share one global
+   * menu. When omitted a stable id is generated for this instance.
+   */
+  editorId?: string;
   /** Called once, after this editor's plugins have finished loading. */
   onLoaded?: (loaded: LoadedPlugins) => void;
 }
@@ -165,10 +171,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         currentMatchIndex: 0,
       },
       collab,
+      editorId,
       onLoaded,
     },
     ref,
   ) => {
+    // Stable id that scopes this editor's menu state. A generated id keeps
+    // single-editor / test usage working without an explicit prop.
+    const generatedEditorId = useId();
+    const myEditorId = editorId ?? generatedEditorId;
+
     const containerRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView>(null);
@@ -271,7 +283,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     const [isCopied, setIsCopied] = useState(false);
 
     // --- Composed hooks (single-responsibility slices) -------------------
-    const loaded = usePluginLoader(viewRef, onLoaded, collab);
+    const loaded = usePluginLoader(viewRef, onLoaded, collab, myEditorId);
     const { editorSchema, parseMarkdownDoc } = useMarkdownSerializer(loaded);
     useEditorView({
       editorRef,
@@ -286,6 +298,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       value,
       latestProps,
       slashMenu,
+      editorId: myEditorId,
       setSlashMenu,
       setContextMenu,
       isUpdatingFromProps,
@@ -388,7 +401,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         </ErrorBoundary>
 
         <AnimatePresence>
-          {bubbleMenu.show && (
+          {bubbleMenu.show && bubbleMenu.editorId === myEditorId && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -838,7 +851,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         </AnimatePresence>
 
         <AnimatePresence>
-          {slashMenu.show && (
+          {slashMenu.show && slashMenu.editorId === myEditorId && (
             <SlashMenu
               x={slashMenu.x}
               y={slashMenu.y}
@@ -855,7 +868,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         </AnimatePresence>
 
         <AnimatePresence>
-          {sideMenu.show && !bubbleMenu.show && (
+          {sideMenu.show && sideMenu.editorId === myEditorId && (bubbleMenu.editorId !== myEditorId || !bubbleMenu.show) && (
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
@@ -879,6 +892,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                       show: true,
                       pos: sideMenu.pos + 1,
                       query: "",
+                      editorId: myEditorId,
                     });
                   }
                 }}
@@ -923,7 +937,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         </AnimatePresence>
 
         <AnimatePresence>
-          {contextMenu.show && (
+          {contextMenu.show && contextMenu.editorId === myEditorId && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

@@ -33,6 +33,11 @@ export interface AppStores {
  * editor can be rebuilt (e.g. schema changes) without breaking plugins.
  */
 export interface EditorAPI {
+  /** Stable id that scopes this editor's menu UI state (side menu, bubble
+   * menu, context menu, slash menu) so multiple editors on screen don't share
+   * a single global menu. Optional for isolated/test environments; when absent
+   * the menus are not editor-scoped. */
+  editorId?: string;
   /** The live view, or `null` before the editor mounts. */
   getView(): EditorView | null;
   /** Whether the editor view has been created. */

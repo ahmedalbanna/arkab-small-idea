@@ -23,6 +23,7 @@ export function usePluginLoader(
   viewRef: RefObject<EditorView | null>,
   onLoaded?: (loaded: LoadedPlugins) => void,
   collab?: CollabPluginOptions,
+  editorId: string = "",
 ): LoadedPlugins | null {
   const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
 
@@ -52,6 +53,7 @@ export function usePluginLoader(
   useEffect(() => {
     let cancelled = false;
     const editorApi = {
+      editorId,
       getView: () => viewRef.current,
       isReady: () => viewRef.current !== null,
       focus: () => viewRef.current?.focus(),

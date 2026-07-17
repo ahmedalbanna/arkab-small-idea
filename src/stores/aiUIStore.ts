@@ -18,6 +18,8 @@ export interface SideMenuState {
   show: boolean;
   pos: number;
   nodeName?: string;
+  /** Id of the editor this menu belongs to (scopes it to one editor). */
+  editorId: string;
 }
 
 /** Right-click context menu positioned over the editor. */
@@ -26,6 +28,8 @@ export interface ContextMenuState {
   y: number;
   show: boolean;
   pos: number;
+  /** Id of the editor this menu belongs to (scopes it to one editor). */
+  editorId: string;
 }
 
 /** Selection bubble menu positioned over the current selection. */
@@ -33,6 +37,8 @@ export interface BubbleMenuState {
   x: number;
   y: number;
   show: boolean;
+  /** Id of the editor this menu belongs to (scopes it to one editor). */
+  editorId: string;
 }
 
 /** Slash command menu triggered by typing `/`. */
@@ -42,6 +48,8 @@ export interface SlashMenuState {
   show: boolean;
   pos: number;
   query: string;
+  /** Id of the editor this menu belongs to (scopes it to one editor). */
+  editorId: string;
 }
 
 /**
@@ -151,15 +159,15 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   showFileActions: false,
   setShowFileActions: (v) => set({ showFileActions: v }),
 
-  sideMenu: { y: 0, show: false, pos: 0 },
+  sideMenu: { y: 0, show: false, pos: 0, editorId: "" },
   setSideMenu: (v) =>
     set((s) => ({ sideMenu: typeof v === "function" ? v(s.sideMenu) : v })),
-  contextMenu: { x: 0, y: 0, show: false, pos: 0 },
+  contextMenu: { x: 0, y: 0, show: false, pos: 0, editorId: "" },
   setContextMenu: (v) =>
     set((s) => ({
       contextMenu: typeof v === "function" ? v(s.contextMenu) : v,
     })),
-  bubbleMenu: { x: 0, y: 0, show: false },
+  bubbleMenu: { x: 0, y: 0, show: false, editorId: "" },
   setBubbleMenu: (v) =>
     set((s) => ({
       bubbleMenu: typeof v === "function" ? v(s.bubbleMenu) : v,
@@ -170,7 +178,7 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   setActiveFormats: (v) => set({ activeFormats: v }),
   commandPaletteOpen: false,
   setCommandPaletteOpen: (v) => set({ commandPaletteOpen: v }),
-  slashMenu: { x: 0, y: 0, show: false, pos: 0, query: "" },
+  slashMenu: { x: 0, y: 0, show: false, pos: 0, query: "", editorId: "" },
   setSlashMenu: (v) =>
     set((s) => ({ slashMenu: typeof v === "function" ? v(s.slashMenu) : v })),
 

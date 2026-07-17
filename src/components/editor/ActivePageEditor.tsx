@@ -376,6 +376,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
           ref={(el) => {
             editorRefs.current[id] = el;
           }}
+          editorId={id}
           value={page.content}
           onChange={(c) => setPageContent(id, c)}
           onKeyDown={handleKeyDown}

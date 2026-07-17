@@ -39,9 +39,9 @@ function resolve(plugins: (Plugin | (() => Plugin))[]): Plugin[] {
 afterEach(() => {
   setAiActionHandler(null);
   useAIUIStore.setState({
-    sideMenu: { y: 0, show: false, pos: 0 },
-    bubbleMenu: { x: 0, y: 0, show: false },
-    contextMenu: { x: 0, y: 0, show: false, pos: 0 },
+    sideMenu: { y: 0, show: false, pos: 0, editorId: "" },
+    bubbleMenu: { x: 0, y: 0, show: false, editorId: "" },
+    contextMenu: { x: 0, y: 0, show: false, pos: 0, editorId: "" },
     showAiPopover: false,
   });
 });
@@ -101,6 +101,51 @@ describe("editorUI plugin", () => {
       clientY: 10,
     } as any);
     expect(setSideMenu).toHaveBeenCalled();
+  });
+
+  it("scopes menu state by editor id so concurrent editors don't share menus", () => {
+    const registered: (Plugin | (() => Plugin))[] = [];
+    const ctx = {
+      ...fakeContext(),
+      editor: {
+        getView: () => null,
+        isReady: () => false,
+        focus: () => {},
+        editorId: "editor-A",
+      },
+      registerProsePlugin: (p: any) => registered.push(p),
+    };
+    editorUIPlugin.init(ctx as any);
+    const plugins = resolve(registered);
+    const sideMenuPlugin = plugins.find(
+      (p) => p.props?.handleDOMEvents?.mousemove,
+    );
+    const view: any = {
+      posAtCoords: () => ({ pos: 5 }),
+      state: {
+        doc: {
+          resolve: () => ({
+            depth: 2,
+            node: () => ({ type: { name: "heading" } }),
+            before: () => 0,
+          }),
+        },
+      },
+      coordsAtPos: () => ({ top: 100 }),
+      dom: { getBoundingClientRect: () => ({ top: 0 }) },
+    };
+    (sideMenuPlugin!.props!.handleDOMEvents!.mousemove as any)(view, {
+      clientX: 10,
+      clientY: 10,
+    } as any);
+
+    // The menu is stamped with the owning editor's id.
+    const side = useAIUIStore.getState().sideMenu;
+    expect(side.show).toBe(true);
+    expect(side.editorId).toBe("editor-A");
+
+    // Another editor gate on its own id must ignore this menu.
+    expect(side.show && side.editorId === "editor-B").toBe(false);
   });
 });
 

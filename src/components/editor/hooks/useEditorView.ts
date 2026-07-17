@@ -24,6 +24,7 @@ interface EditorViewParams {
   latestProps: MutableRefObject<any>;
   /** Stale snapshot captured at editor build time (mirrors prior closure). */
   slashMenu: SlashMenuState;
+  editorId: string;
   setSlashMenu: (
     v: SlashMenuState | ((prev: SlashMenuState) => SlashMenuState),
   ) => void;
@@ -57,6 +58,7 @@ export function useEditorView({
   value,
   latestProps,
   slashMenu,
+  editorId,
   setSlashMenu,
   setContextMenu,
   isUpdatingFromProps,
@@ -230,6 +232,7 @@ export function useEditorView({
                   show: true,
                   pos: selection.from + 1, // Start query AFTER the slash
                   query: "",
+                  editorId,
                 });
               }
             }

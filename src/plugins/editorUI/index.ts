@@ -20,6 +20,10 @@ export const editorUIPlugin: InkPlugin = {
   essential: true,
   init(ctx: PluginContext) {
     const schema = ctx.schema;
+    // Scope this editor's menu UI so multiple editors on screen don't share a
+    // single global menu (selecting text / typing `/` / right-click in one
+    // must not pop menus in the others).
+    const editorId = ctx.editor.editorId ?? "";
     let sideMenuHideTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // Toolbar items — editor-shell toggles surfaced in the app toolbar.
@@ -77,6 +81,7 @@ export const editorUIPlugin: InkPlugin = {
                         show: true,
                         pos: blockPos,
                         nodeName: blockNode.type.name,
+                        editorId,
                       });
                     }
                   }
@@ -117,6 +122,7 @@ export const editorUIPlugin: InkPlugin = {
                 y: event.clientY - (editorRect?.top || 0),
                 show: true,
                 pos: pos ? pos.pos : view.state.selection.from,
+                editorId,
               });
               return true;
             },
@@ -215,6 +221,7 @@ export const editorUIPlugin: InkPlugin = {
                   x: left - editorRect.left,
                   y: start.top - editorRect.top - 45,
                   show: true,
+                  editorId,
                 });
               }
             },
