@@ -3,10 +3,12 @@ import { aiPlugin } from "../plugins/ai";
 import { AIHost } from "../plugins/ai/AIHost";
 import { useAIUIStore } from "../stores/aiUIStore";
 import type { PluginContext } from "../plugins/types";
+import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
 
 function fakeContext(): PluginContext {
   return {
     editor: { getView: () => null, isReady: () => false, focus: () => {} },
+    commandBus: defaultEditorCommandBus,
     stores: {} as any,
     schema: {} as any,
     registerProsePlugin: () => {},

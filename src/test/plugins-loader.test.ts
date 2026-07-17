@@ -48,7 +48,11 @@ describe("loadPlugins (phase 1 wiring)", () => {
     // typewriter toolbar buttons; the ai plugin contributes the "/ask-ai"
     // slash command; the status-bar plugin contributes its visibility setting.
     const toolbarIds = loaded.collectors.toolbarItems.map((t) => t.id).sort();
-    expect(toolbarIds).toEqual(["focus-mode", "typewriter"]);
+    expect(toolbarIds).toEqual([
+      "command-palette",
+      "focus-mode",
+      "typewriter",
+    ]);
 
     const slashIds = loaded.collectors.commands
       .filter((c) => c.slash)
@@ -61,8 +65,9 @@ describe("loadPlugins (phase 1 wiring)", () => {
     expect(settingKeys).toContain("status-bar.visible");
 
     // The same contributions are exposed on the resolved PluginContext.
-    expect(loaded.context.toolbarItems).toHaveLength(2);
+    expect(loaded.context.toolbarItems).toHaveLength(3);
     expect(loaded.context.commands.some((c) => c.id === "ai-ask")).toBe(true);
+    expect(loaded.context.commands.some((c) => c.id === "bold")).toBe(true);
     expect(
       loaded.context.settings.some((s) => s.pluginId === "status-bar"),
     ).toBe(true);

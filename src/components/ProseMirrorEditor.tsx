@@ -63,7 +63,9 @@ import { useMarkdownSync } from "./editor/hooks/useMarkdownSync";
 import { useFormatting } from "./editor/hooks/useFormatting";
 import { useImperativeEditorApi } from "./editor/hooks/useImperativeEditorApi";
 import { useAIStreaming } from "./editor/hooks/useAIStreaming";
+import { CommandPalette } from "./editor/CommandPalette";
 import type { LoadedPlugins } from "../plugins";
+import type { EditorCommand } from "../plugins/types";
 
 interface Props {
   value: string;
@@ -231,6 +233,8 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     const setContextMenu = useAIUIStore((s) => s.setContextMenu);
     const sideMenu = useAIUIStore((s) => s.sideMenu);
     const setSideMenu = useAIUIStore((s) => s.setSideMenu);
+    const commandPaletteOpen = useAIUIStore((s) => s.commandPaletteOpen);
+    const setCommandPaletteOpen = useAIUIStore((s) => s.setCommandPaletteOpen);
 
     // Mirror the per-page typewriter/focus-mode props into the store so the
     // `editorUI` plugin's typewriter/focus-mode ProseMirror plugins can read
@@ -241,6 +245,28 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       setIsTypewriter(isTypewriter);
       setIsFocusMode(isFocusMode);
     }, [isTypewriter, isFocusMode, setIsTypewriter, setIsFocusMode]);
+
+    // Open the command palette with the editor-standard shortcut.
+    useEffect(() => {
+      const handler = (e: KeyboardEvent) => {
+        if (
+          (e.metaKey || e.ctrlKey) &&
+          e.shiftKey &&
+          e.key.toLowerCase() === "p"
+        ) {
+          e.preventDefault();
+          setCommandPaletteOpen(true);
+        }
+      };
+      window.addEventListener("keydown", handler);
+      return () => window.removeEventListener("keydown", handler);
+    }, [setCommandPaletteOpen]);
+
+    // Run a palette command through the live plugin context and close the palette.
+    const handleRunCommand = (cmd: EditorCommand) => {
+      if (loaded?.context) cmd.run(loaded.context);
+      setCommandPaletteOpen(false);
+    };
 
     const [isCopied, setIsCopied] = useState(false);
 
@@ -1101,6 +1127,14 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
             </motion.div>
           )}
         </AnimatePresence>
+
+        {commandPaletteOpen && (
+          <CommandPalette
+            commands={loaded?.context.commands ?? []}
+            onRun={handleRunCommand}
+            onClose={() => setCommandPaletteOpen(false)}
+          />
+        )}
       </div>
     );
   },

@@ -5,6 +5,7 @@ import {
   onPluginsChanged,
   type LoadedPlugins,
 } from "../../../plugins";
+import { useEditorCommandBus } from "../../../plugins/editorCommandContext";
 import type { CollabPluginOptions } from "../../../plugins/collab";
 import { useSetPluginRegistry } from "../../../plugins/registryContext";
 import { useSettingsStore } from "../../../stores/settingsStore";
@@ -24,6 +25,10 @@ export function usePluginLoader(
   collab?: CollabPluginOptions,
 ): LoadedPlugins | null {
   const [loaded, setLoaded] = useState<LoadedPlugins | null>(null);
+
+  // The editor's command bus — threaded into the plugin context so commands can
+  // dispatch through the single editor command language.
+  const commandBus = useEditorCommandBus();
 
   // Bumped by dev hot-reload so the effect below re-runs `loadPlugins` and the
   // editor is rebuilt with the updated plugin code (no full page reload).
@@ -54,6 +59,7 @@ export function usePluginLoader(
     loadPlugins(editorApi, {
       disabled: useSettingsStore.getState().disabledPlugins,
       collab,
+      commandBus,
     }).then((result) => {
       if (!cancelled) {
         setLoaded(result);
@@ -63,7 +69,7 @@ export function usePluginLoader(
     return () => {
       cancelled = true;
     };
-  }, [pluginSignature, viewRef, onLoaded, reloadNonce]);
+  }, [pluginSignature, viewRef, onLoaded, reloadNonce, commandBus]);
 
   // Keep the active-registry context in sync with the latest load result.
   useEffect(() => {

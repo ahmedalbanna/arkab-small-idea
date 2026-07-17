@@ -11,6 +11,7 @@ import type { NodeSpec, MarkSpec, Schema } from "prosemirror-model";
 import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 import type { ComponentType } from "react";
 
+import type { EditorCommandBus } from "./editorCommandBus";
 import type { useEditorStore } from "../stores/editorStore";
 import type { useUIStore } from "../stores/uiStore";
 import type { useAIStore } from "../stores/aiStore";
@@ -114,6 +115,8 @@ export interface PluginSettingDef {
  */
 export interface PluginContext {
   editor: EditorAPI;
+  /** The editor's command bus — the single typed command language for the editor. */
+  commandBus: EditorCommandBus;
   stores: AppStores;
   schema: Schema;
   registerProsePlugin(plugin: Plugin | (() => Plugin), key?: PluginKey): void;

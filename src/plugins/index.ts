@@ -9,6 +9,7 @@ import {
 } from "./context";
 import { buildEditorSchema } from "./editor/schema";
 import type { EditorAPI, InkPlugin, PluginContext, SchemaContribution } from "./types";
+import { defaultEditorCommandBus } from "./editorCommandBus";
 
 import { corePlugin } from "./core";
 import { highlightPluginInstance } from "./highlight";
@@ -24,6 +25,7 @@ import { statusBarPlugin } from "./statusbar";
 import { tocPlugin } from "./toc";
 import { documentPlugin } from "./document";
 import { editorUIPlugin } from "./editorUI";
+import { editorCommandsPlugin } from "./editorCommands";
 import { aiPlugin } from "./ai";
 import { createCollabPlugin, type CollabPluginOptions } from "./collab";
 import { validateDisabledPlugins } from "./pluginToggleMigration";
@@ -55,6 +57,7 @@ export function buildPluginModules(): InkPlugin[] {
     tocPlugin,
     documentPlugin,
     editorUIPlugin,
+    editorCommandsPlugin,
     aiPlugin,
   ];
 }
@@ -121,7 +124,11 @@ export interface LoadedPlugins {
  */
 export async function loadPlugins(
   editor: EditorAPI,
-  options?: { disabled?: string[]; collab?: CollabPluginOptions },
+  options?: {
+    disabled?: string[];
+    collab?: CollabPluginOptions;
+    commandBus?: import("./editorCommandBus").EditorCommandBus;
+  },
 ): Promise<LoadedPlugins> {
   const registry = new PluginRegistry();
 
@@ -149,7 +156,12 @@ export async function loadPlugins(
   const collectors = createCollectors();
   const contributions = await registry.collectSchemaContributions();
   const schema = buildEditorSchema(contributions);
-  const context = buildPluginContext(schema, collectors, editor);
+  const context = buildPluginContext(
+    schema,
+    collectors,
+    editor,
+    options?.commandBus ?? defaultEditorCommandBus,
+  );
 
   await registry.initAll(async () => ({ schema, context }));
 

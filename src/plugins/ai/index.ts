@@ -77,6 +77,25 @@ export const aiPlugin: InkPlugin = {
       },
     });
 
+    // AI editing actions surfaced in the command palette. Each acts on the
+    // current selection via the same handler the toolbar/keymap use.
+    for (const [id, label, action] of [
+      ["ai-improve", "AI: Improve Writing", "improve"],
+      ["ai-fix-grammar", "AI: Fix Grammar", "fix-grammar"],
+      ["ai-summarize", "AI: Summarize", "summarize"],
+      ["ai-expand", "AI: Expand", "expand"],
+      ["ai-rewrite", "AI: Rewrite Section", "rewrite"],
+    ] as const) {
+      ctx.registerCommand({
+        id,
+        label,
+        run: () => {
+          runAiAction(action);
+          return true;
+        },
+      });
+    }
+
     ctx.registerProsePlugin(() =>
       keymap({
         "Mod-j": (state, dispatch) =>

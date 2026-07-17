@@ -97,6 +97,8 @@ interface AIUIState {
   setShowAiPopover: (v: boolean) => void;
   activeFormats: Record<string, boolean>;
   setActiveFormats: (v: Record<string, boolean>) => void;
+  commandPaletteOpen: boolean;
+  setCommandPaletteOpen: (v: boolean) => void;
   slashMenu: SlashMenuState;
   setSlashMenu: (v: Updatable<SlashMenuState>) => void;
 
@@ -166,6 +168,8 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   setShowAiPopover: (v) => set({ showAiPopover: v }),
   activeFormats: {},
   setActiveFormats: (v) => set({ activeFormats: v }),
+  commandPaletteOpen: false,
+  setCommandPaletteOpen: (v) => set({ commandPaletteOpen: v }),
   slashMenu: { x: 0, y: 0, show: false, pos: 0, query: "" },
   setSlashMenu: (v) =>
     set((s) => ({ slashMenu: typeof v === "function" ? v(s.slashMenu) : v })),

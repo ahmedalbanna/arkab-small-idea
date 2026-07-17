@@ -65,6 +65,10 @@ export function useFormatting({
         setBlockType(editorSchema.nodes.heading, { level: 3 })(state, dispatch);
       if (type === "quote")
         wrapInBlock(editorSchema.nodes.blockquote)(state, dispatch);
+      if (type === "paragraph")
+        setBlockType(editorSchema.nodes.paragraph)(state, dispatch);
+      if (type === "numbered")
+        wrapInList(editorSchema.nodes.ordered_list)(state, dispatch);
       if (type === "alignLeft") setAlign("left");
       if (type === "alignCenter") setAlign("center");
       if (type === "alignRight") setAlign("right");

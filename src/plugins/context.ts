@@ -16,6 +16,7 @@ import type {
   ToolbarItem,
   EditorCommand,
 } from "./types";
+import type { EditorCommandBus } from "./editorCommandBus";
 
 /**
  * Mutable collectors that plugins push into during `init`. After all plugins
@@ -53,6 +54,7 @@ export function buildPluginContext(
   schema: Schema,
   collectors: ContextCollectors,
   editor: EditorAPI,
+  commandBus: EditorCommandBus,
 ): PluginContext {
   const stores = {
     editor: useEditorStore,
@@ -63,6 +65,7 @@ export function buildPluginContext(
 
   return {
     editor,
+    commandBus,
     stores,
     schema,
     registerProsePlugin(plugin, key) {

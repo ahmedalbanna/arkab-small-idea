@@ -21,6 +21,7 @@ function captureInit(plugin: {
   const overlays: unknown[] = [];
   plugin.init?.({
     editor: fakeEditor() as any,
+    commandBus: {} as any,
     stores: {} as any,
     schema: {} as any,
     registerProsePlugin: (p) => prosePlugins.push(p),

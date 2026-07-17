@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { PluginRegistry } from "../plugins/registry";
 import type { InkPlugin, PluginContext, SchemaContribution } from "../plugins/types";
 import type { Schema } from "prosemirror-model";
+import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
 
 function makePlugin(
   id: string,
@@ -19,6 +20,7 @@ function makePlugin(
 function fakeContext(): PluginContext {
   return {
     editor: { getView: () => null, isReady: () => false, focus: () => {} },
+    commandBus: defaultEditorCommandBus,
     stores: {} as any,
     schema: {} as Schema,
     registerProsePlugin: () => {},
