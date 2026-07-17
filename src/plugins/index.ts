@@ -10,6 +10,7 @@ import {
 import { buildEditorSchema } from "./editor/schema";
 import type { EditorAPI, InkPlugin, PluginContext, SchemaContribution } from "./types";
 import { defaultEditorCommandBus } from "./editorCommandBus";
+import { pluginLogger } from "./logger";
 
 import { corePlugin } from "./core";
 import { highlightPluginInstance } from "./highlight";
@@ -130,56 +131,84 @@ export async function loadPlugins(
     commandBus?: import("./editorCommandBus").EditorCommandBus;
   },
 ): Promise<LoadedPlugins> {
-  const registry = new PluginRegistry();
+  const startedAt = performance.now();
+  pluginLogger.info("*", "load:start", "Loading editor plugins", {
+    disabled: options?.disabled ?? [],
+    collabEnabled: !!options?.collab?.enabled,
+  });
 
-  // Collaboration is registered (when enabled) ahead of the static plugin set
-  // so its ProseMirror plugins (ySync, yCursor, yUndo, keymap) lead the editor
-  // plugin list — matching the previous ordering where collab was prepended
-  // inline. This also routes its setup/teardown through the registry lifecycle.
-  if (options?.collab?.enabled) {
-    registry.register(createCollabPlugin(options.collab));
+  try {
+    const registry = new PluginRegistry();
+
+    // Collaboration is registered (when enabled) ahead of the static plugin set
+    // so its ProseMirror plugins (ySync, yCursor, yUndo, keymap) lead the editor
+    // plugin list — matching the previous ordering where collab was prepended
+    // inline. This also routes its setup/teardown through the registry lifecycle.
+    if (options?.collab?.enabled) {
+      registry.register(createCollabPlugin(options.collab));
+    }
+
+    for (const plugin of buildPluginModules()) {
+      registry.register(plugin);
+    }
+
+    // Apply the persisted enable/disable state, dropping ids that aren't part of
+    // the live registry so stale/removed/renamed plugins can't break startup.
+    const disabled = new Set(
+      validateDisabledPlugins(options?.disabled, registry),
+    );
+    for (const plugin of buildPluginModules()) {
+      plugin.enabled = !disabled.has(plugin.id);
+    }
+
+    const collectors = createCollectors();
+    const contributions = await registry.collectSchemaContributions();
+    const schema = buildEditorSchema(contributions);
+    pluginLogger.debug("*", "schema:built", "Editor schema built", {
+      nodes: Object.keys(schema.nodes).length,
+      marks: Object.keys(schema.marks).length,
+    });
+    const context = buildPluginContext(
+      schema,
+      collectors,
+      editor,
+      options?.commandBus ?? defaultEditorCommandBus,
+    );
+
+    await registry.initAll(async () => ({ schema, context }));
+
+    // Resolve the collected contributions into the concrete ProseMirror plugins
+    // and node-view map the editor consumes.
+    context.editorPlugins = collectors.prosePlugins.map((entry) =>
+      typeof entry.plugin === "function" ? entry.plugin() : entry.plugin,
+    ) as Plugin[];
+    context.nodeViews = Object.fromEntries(
+      collectors.nodeViews.map((n) => [n.name, n.view as NodeViewConstructor]),
+    ) as Record<string, NodeViewConstructor>;
+
+    // Surface the resolved UI contributions so the app shell renders them.
+    context.toolbarItems = collectors.toolbarItems;
+    context.commands = collectors.commands;
+    context.settings = collectors.settings;
+
+    const durationMs = Math.round(performance.now() - startedAt);
+    pluginLogger.info("*", "load:done", "Editor plugins loaded", {
+      plugins: registry.getEnabled().length,
+      commands: context.commands.length,
+      toolbarItems: context.toolbarItems.length,
+      nodeViews: Object.keys(context.nodeViews).length,
+      prosePlugins: context.editorPlugins.length,
+      durationMs,
+    });
+
+    return { registry, collectors, context, schema, contributions };
+  } catch (err) {
+    pluginLogger.error("*", "load:error", "Failed to load editor plugins", {
+      error: err instanceof Error ? err.message : String(err),
+      durationMs: Math.round(performance.now() - startedAt),
+    });
+    throw err;
   }
-
-  for (const plugin of buildPluginModules()) {
-    registry.register(plugin);
-  }
-
-  // Apply the persisted enable/disable state, dropping ids that aren't part of
-  // the live registry so stale/removed/renamed plugins can't break startup.
-  const disabled = new Set(
-    validateDisabledPlugins(options?.disabled, registry),
-  );
-  for (const plugin of buildPluginModules()) {
-    plugin.enabled = !disabled.has(plugin.id);
-  }
-
-  const collectors = createCollectors();
-  const contributions = await registry.collectSchemaContributions();
-  const schema = buildEditorSchema(contributions);
-  const context = buildPluginContext(
-    schema,
-    collectors,
-    editor,
-    options?.commandBus ?? defaultEditorCommandBus,
-  );
-
-  await registry.initAll(async () => ({ schema, context }));
-
-  // Resolve the collected contributions into the concrete ProseMirror plugins
-  // and node-view map the editor consumes.
-  context.editorPlugins = collectors.prosePlugins.map((entry) =>
-    typeof entry.plugin === "function" ? entry.plugin() : entry.plugin,
-  ) as Plugin[];
-  context.nodeViews = Object.fromEntries(
-    collectors.nodeViews.map((n) => [n.name, n.view as NodeViewConstructor]),
-  ) as Record<string, NodeViewConstructor>;
-
-  // Surface the resolved UI contributions so the app shell renders them.
-  context.toolbarItems = collectors.toolbarItems;
-  context.commands = collectors.commands;
-  context.settings = collectors.settings;
-
-  return { registry, collectors, context, schema, contributions };
 }
 
 /** Metadata for every known plugin, for building the Settings UI. */

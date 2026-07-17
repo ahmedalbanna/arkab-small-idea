@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PluginRegistry } from "../plugins/registry";
+import { addPluginLogSink, type PluginLogEntry } from "../plugins/logger";
 import type { InkPlugin } from "../plugins/types";
 
 function makePlugin(
@@ -82,16 +83,25 @@ describe("PluginRegistry cleanup contract", () => {
     expect(intervalId).not.toBeNull();
   });
 
-  it("verifyCleanup flags an initialized plugin that was never destroyed", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const registry = new PluginRegistry();
-    await initRegistry(registry, [
-      makePlugin({ id: "leaky", name: "Leaky", version: "1", init: () => {} }),
-    ]);
+  it("verifyCleanup logs a structured warning for an initialized plugin that was never destroyed", async () => {
+    const entries: PluginLogEntry[] = [];
+    const unsub = addPluginLogSink((e) => entries.push(e));
+    try {
+      const registry = new PluginRegistry();
+      await initRegistry(registry, [
+        makePlugin({ id: "leaky", name: "Leaky", version: "1", init: () => {} }),
+      ]);
 
-    // Intentionally skip destroyAll — the detector must surface the leak.
-    const leaked = registry.verifyCleanup();
-    expect(leaked).toContain("leaky");
-    expect(warn).toHaveBeenCalled();
+      // Intentionally skip destroyAll — the detector must surface the leak.
+      const leaked = registry.verifyCleanup();
+      expect(leaked).toContain("leaky");
+
+      const leakEntry = entries.find((e) => e.event === "leak");
+      expect(leakEntry).toBeTruthy();
+      expect(leakEntry!.level).toBe("warn");
+      expect(leakEntry!.meta).toEqual({ leaked: ["leaky"] });
+    } finally {
+      unsub();
+    }
   });
 });

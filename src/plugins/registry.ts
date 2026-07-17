@@ -1,4 +1,5 @@
 import type { InkPlugin, SchemaContribution } from "./types";
+import { pluginLogger } from "./logger";
 
 /** Internal bookkeeping for a registered plugin. */
 interface RegisteredEntry {
@@ -31,6 +32,7 @@ export class PluginRegistry {
       initialized: false,
       destroyed: false,
     });
+    pluginLogger.debug(plugin.id, "register", "Plugin registered");
   }
 
   unregister(id: string): void {
@@ -83,6 +85,9 @@ export class PluginRegistry {
       const cycle = [...this.entries.keys()].filter(
         (id) => !order.includes(id),
       );
+      pluginLogger.error("*", "resolve:cycle", "Cyclic plugin dependency detected", {
+        cycle,
+      });
       throw new Error(`Cyclic plugin dependency detected: ${cycle.join(", ")}`);
     }
 
@@ -135,29 +140,53 @@ export class PluginRegistry {
     for (const id of this.resolveOrder()) {
       const entry = this.entries.get(id)!;
       if (entry.plugin.enabled === false) continue;
-      await entry.plugin.init(context);
-      entry.initialized = true;
+      pluginLogger.debug(id, "init:start", "Initializing plugin");
+      const startedAt = performance.now();
+      try {
+        await entry.plugin.init(context);
+        entry.initialized = true;
+        pluginLogger.debug(id, "init:done", "Plugin initialized", {
+          durationMs: Math.round(performance.now() - startedAt),
+        });
+      } catch (err) {
+        pluginLogger.error(id, "init:error", "Plugin failed to initialize", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
     }
   }
 
   /** Tear down every initialized plugin in reverse order. */
   destroyAll(): string[] {
     const order = this.resolveOrder().reverse();
+    let destroyedCount = 0;
     for (const id of order) {
       const entry = this.entries.get(id)!;
       if (entry.initialized && !entry.destroyed) {
+        pluginLogger.debug(id, "destroy:start", "Tearing down plugin");
+        const startedAt = performance.now();
         if (entry.plugin.destroy) {
           try {
             entry.plugin.destroy();
           } catch (err) {
-            console.error(`Failed to destroy plugin "${id}":`, err);
+            pluginLogger.error(id, "destroy:error", "Plugin failed to destroy", {
+              error: err instanceof Error ? err.message : String(err),
+            });
           }
         }
         // Mark as torn down even when no `destroy` hook exists, so the
         // lifecycle bookkeeping (and verifyCleanup) stays accurate.
         entry.destroyed = true;
+        destroyedCount++;
+        pluginLogger.debug(id, "destroy:done", "Plugin torn down", {
+          durationMs: Math.round(performance.now() - startedAt),
+        });
       }
     }
+    pluginLogger.info("*", "destroy:all", "All plugins torn down", {
+      destroyed: destroyedCount,
+    });
     return this.verifyCleanup();
   }
 
@@ -172,9 +201,9 @@ export class PluginRegistry {
       if (entry.initialized && !entry.destroyed) leaked.push(id);
     }
     if (leaked.length > 0) {
-      console.warn(
-        `[plugins] Potential resource leak: plugins initialized but not destroyed: ${leaked.join(", ")}`,
-      );
+      pluginLogger.warn("*", "leak", "Plugins initialized but not destroyed", {
+        leaked,
+      });
     }
     return leaked;
   }
@@ -188,13 +217,16 @@ export class PluginRegistry {
   disable(id: string): void {
     const entry = this.entries.get(id);
     if (!entry) return;
+    pluginLogger.info(id, "disable", "Plugin disabled at runtime");
     entry.plugin.enabled = false;
     if (entry.initialized && !entry.destroyed) {
       if (entry.plugin.destroy) {
         try {
           entry.plugin.destroy();
         } catch (err) {
-          console.error(`Failed to destroy plugin "${id}":`, err);
+          pluginLogger.error(id, "disable:error", "Plugin failed to destroy", {
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       }
       entry.destroyed = true;
@@ -205,6 +237,7 @@ export class PluginRegistry {
   enable(id: string): void {
     const entry = this.entries.get(id);
     if (!entry) return;
+    pluginLogger.info(id, "enable", "Plugin re-enabled (rebuild required)");
     entry.plugin.enabled = true;
     entry.initialized = false;
     entry.destroyed = false;
