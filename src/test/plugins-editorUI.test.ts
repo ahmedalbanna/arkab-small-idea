@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { editorUIPlugin } from "../plugins/editorUI";
-import { aiPlugin, selectBlockAndOpenPopover } from "../plugins/ai";
 import {
-  setInlineAiActionHandler,
-  runInlineAiAction,
-} from "../plugins/ai/inlineDraftBridge";
+  aiPlugin,
+  selectBlockAndOpenPopover,
+  setAiActionHandler,
+  runAiAction,
+} from "../plugins/ai";
 import { useAIUIStore } from "../stores/aiUIStore";
 import type { PluginContext } from "../plugins/types";
 import type { Plugin } from "prosemirror-state";
@@ -34,7 +35,7 @@ function resolve(plugins: (Plugin | (() => Plugin))[]): Plugin[] {
 }
 
 afterEach(() => {
-  setInlineAiActionHandler(null);
+  setAiActionHandler(null);
   useAIUIStore.setState({
     sideMenu: { y: 0, show: false, pos: 0 },
     bubbleMenu: { x: 0, y: 0, show: false },
@@ -134,14 +135,14 @@ describe("ai plugin keymap", () => {
 });
 
 describe("inline draft bridge", () => {
-  it("routes runInlineAiAction to the registered handler and stops when cleared", () => {
+  it("routes runAiAction to the registered handler and stops when cleared", () => {
     const handler = vi.fn();
-    setInlineAiActionHandler(handler as any);
-    runInlineAiAction("improve");
+    setAiActionHandler(handler);
+    runAiAction("improve");
     expect(handler).toHaveBeenCalledWith("improve");
 
-    setInlineAiActionHandler(null);
-    runInlineAiAction("summarize");
+    setAiActionHandler(null);
+    runAiAction("summarize");
     expect(handler).toHaveBeenCalledTimes(1);
   });
 });

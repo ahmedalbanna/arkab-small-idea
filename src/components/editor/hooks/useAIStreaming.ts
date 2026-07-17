@@ -15,7 +15,7 @@ import {
   processAIAction,
   type AIAssistantAction,
 } from "../../../services/aiService";
-import { setInlineAiActionHandler } from "../../../plugins/ai/inlineDraftBridge";
+import { setAiActionHandler } from "../../../plugins/ai";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { PluginContext, EditorCommand } from "../../../plugins/types";
 import type { SlashMenuState } from "../../../stores/aiUIStore";
@@ -437,10 +437,8 @@ export function useAIStreaming({
   const handleAIActionRef = useRef(handleAIAction);
   handleAIActionRef.current = handleAIAction;
   useEffect(() => {
-    setInlineAiActionHandler((a) =>
-      handleAIActionRef.current(a as AIAssistantAction),
-    );
-    return () => setInlineAiActionHandler(null);
+    setAiActionHandler((a) => handleAIActionRef.current(a as AIAssistantAction));
+    return () => setAiActionHandler(null);
   }, []);
 
   return {

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { AIAssistantAction } from "../services/aiService";
 
 export type AISettingsTab = "chat" | "actions" | "semantic" | "embeddings";
 
@@ -105,6 +106,15 @@ interface AIUIState {
   setIsTypewriter: (v: boolean) => void;
   isFocusMode: boolean;
   setIsFocusMode: (v: boolean) => void;
+
+  // Inline AI draft executor. The streaming implementation lives in the
+  // `useAIStreaming` hook (coupled to the editor's draft state) and is
+  // published here so the `ai` plugin's keymap can invoke it without a module
+  // global. `null` when no editor is mounted.
+  aiActionHandler: ((action: AIAssistantAction) => void) | null;
+  setAiActionHandler: (
+    handler: ((action: AIAssistantAction) => void) | null,
+  ) => void;
 }
 
 export const useAIUIStore = create<AIUIState>((set) => ({
@@ -164,4 +174,7 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   setIsTypewriter: (v) => set({ isTypewriter: v }),
   isFocusMode: false,
   setIsFocusMode: (v) => set({ isFocusMode: v }),
+
+  aiActionHandler: null,
+  setAiActionHandler: (handler) => set({ aiActionHandler: handler }),
 }));

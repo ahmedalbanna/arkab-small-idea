@@ -2,8 +2,8 @@ import { keymap } from "prosemirror-keymap";
 import { Plugin, TextSelection } from "prosemirror-state";
 import type { EditorState, Transaction } from "prosemirror-state";
 import type { InkPlugin, PluginContext } from "../types";
+import type { AIAssistantAction } from "../../services/aiService";
 import { AIHost } from "./AIHost";
-import { runInlineAiAction } from "./inlineDraftBridge";
 import { useAIUIStore } from "../../stores/aiUIStore";
 
 /**
@@ -29,6 +29,25 @@ export function selectBlockAndOpenPopover(
   }
   useAIUIStore.getState().setShowAiPopover(true);
   return true;
+}
+
+/**
+ * Inline AI draft handler bridge. The streaming executor is implemented in the
+ * `useAIStreaming` hook (coupled to the editor component's draft state) and is
+ * published here via `setAiActionHandler`. The plugin's keymap invokes it
+ * through `runAiAction`, so the AI capability is declared at the plugin level
+ * (and removed when the plugin is disabled) while the implementation stays in
+ * the hook. Backed by `aiUIStore` — there is deliberately no module-global
+ * handler, matching the registry/context pattern used elsewhere.
+ */
+export function setAiActionHandler(
+  handler: ((action: AIAssistantAction) => void) | null,
+): void {
+  useAIUIStore.getState().setAiActionHandler(handler);
+}
+
+export function runAiAction(action: AIAssistantAction): void {
+  useAIUIStore.getState().aiActionHandler?.(action);
 }
 
 /**
@@ -68,7 +87,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runInlineAiAction("improve");
+            runAiAction("improve");
             return true;
           }
           return false;
@@ -77,7 +96,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runInlineAiAction("summarize");
+            runAiAction("summarize");
             return true;
           }
           return false;
@@ -86,7 +105,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runInlineAiAction("fix-grammar");
+            runAiAction("fix-grammar");
             return true;
           }
           return false;
