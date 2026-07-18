@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, type MutableRefObject, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type MutableRefObject,
+  type RefObject,
+} from "react";
 import { EditorState, PluginKey } from "prosemirror-state";
 import { DOMSerializer, Slice, type Schema, type Node } from "prosemirror-model";
 import { EditorView } from "prosemirror-view";
@@ -6,7 +12,10 @@ import { cn } from "../../../lib/utils";
 import { searchPluginKey } from "../../../plugins/search";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { LoadedPlugins } from "../../../plugins";
-import type { SlashMenuState, ContextMenuState } from "../../../stores/aiUIStore";
+import type {
+  SlashMenuState,
+  ContextMenuState,
+} from "../../../stores/aiUIStore";
 
 interface EditorViewParams {
   editorRef: RefObject<HTMLDivElement | null>;
@@ -63,14 +72,34 @@ export function useEditorView({
   setContextMenu,
   isUpdatingFromProps,
 }: EditorViewParams): void {
-  // Close menus on outside click
+  // `dispatchTransaction` (below) closes over this value; the view is only
+  // rebuilt when `loaded` changes, so we mirror the live `slashMenu` prop in a
+  // ref to avoid acting on a stale snapshot of the menu state.
+  const slashMenuRef = useRef(slashMenu);
+  slashMenuRef.current = slashMenu;
+
+  // Close menus on outside click. The menu state is a single shared slot keyed
+  // by `editorId`, so we only dismiss the menu this editor actually owns —
+  // clicking outside editor A must not close editor B's menu (which may be the
+  // one currently showing because it opened last).
   useEffect(() => {
     const handleClick = () => {
-      setContextMenu((prev) => ({ ...prev, show: false }));
+      setContextMenu((prev) =>
+        prev.editorId === editorId ? { ...prev, show: false } : prev,
+      );
+      setSlashMenu((prev) =>
+        prev.editorId === editorId
+          ? { ...prev, show: false, query: "" }
+          : prev,
+      );
+      // The bubble menu is selection-driven: the `editorUI` plugin shows it when
+      // the selection is non-empty and hides it when empty. We must NOT force-close
+      // it here, otherwise a `click` (e.g. finishing a text selection) would hide
+      // it even though text is still selected, with nothing re-showing it.
     };
     window.addEventListener("click", handleClick);
     return () => window.removeEventListener("click", handleClick);
-  }, [setContextMenu]);
+  }, [setContextMenu, setSlashMenu, editorId]);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -153,24 +182,27 @@ export function useEditorView({
         const newState = this.state.apply(tr);
         this.updateState(newState);
 
-        // Slash menu query detection
-        if (slashMenu.show) {
+        // Slash menu query detection. Read the live menu state (via the ref) and
+        // only act on the menu this editor owns, so a sibling editor's slash
+        // menu isn't affected by this editor's transactions.
+        const liveSlash = slashMenuRef.current;
+        if (liveSlash.show && liveSlash.editorId === editorId) {
           const { selection, doc } = newState;
           // Check if the trigger slash is still there
           const charBefore = doc.textBetween(
-            Math.max(0, slashMenu.pos - 1),
-            Math.max(0, slashMenu.pos),
+            Math.max(0, liveSlash.pos - 1),
+            Math.max(0, liveSlash.pos),
           );
 
           // If cursor moves before the slash, slash is deleted, or selection is not empty, hide menu
           if (
-            selection.from < slashMenu.pos ||
+            selection.from < liveSlash.pos ||
             charBefore !== "/" ||
             !selection.empty
           ) {
             setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
           } else {
-            const text = doc.textBetween(slashMenu.pos, selection.from);
+            const text = doc.textBetween(liveSlash.pos, selection.from);
             // Limit query length or check for spaces to hide menu
             if (text.includes(" ") || text.length > 50) {
               setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));

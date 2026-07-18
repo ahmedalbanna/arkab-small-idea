@@ -5,6 +5,7 @@ import { createRef } from "react";
 import ProseMirrorEditor from "../components/ProseMirrorEditor";
 import type { EditorRef } from "../components/ProseMirrorEditor";
 import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
+import { useAIUIStore } from "../stores/aiUIStore";
 
 // The embedding service instantiates a `Worker` (and `VectorStore`, which uses
 // IndexedDB) at module load. Those browser APIs aren't available under the test
@@ -145,5 +146,118 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
       const html = ref.current?.getHtml() ?? "";
       expect(html).toContain("Some");
     });
+  });
+
+  it("closes the slash menu when its trigger is removed or the cursor leaves", async () => {
+    const onChange = vi.fn();
+    const ref = createRef<EditorRef>();
+
+    render(<ProseMirrorEditor ref={ref} value="Hello" onChange={onChange} editorId="ed-1" />);
+
+    await waitFor(() =>
+      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
+    );
+
+    // Simulate the menu having been opened by typing "/" at the start.
+    act(() => {
+      useAIUIStore.getState().setSlashMenu({
+        show: true,
+        pos: 1,
+        query: "",
+        x: 0,
+        y: 0,
+        editorId: "ed-1",
+      });
+    });
+    expect(useAIUIStore.getState().slashMenu.show).toBe(true);
+
+    // A document change (here via the imperative API) goes through
+    // `dispatchTransaction`, which must read the *live* menu state and close it
+    // once the trigger slash is gone / the cursor has moved away.
+    act(() => {
+      ref.current?.setMarkdown("Hello world");
+    });
+
+    await waitFor(() => {
+      expect(useAIUIStore.getState().slashMenu.show).toBe(false);
+    });
+  });
+
+  it("closes the owning editor's slash menu when clicking outside it", async () => {
+    const onChange = vi.fn();
+
+    const { container: containerA } = render(
+      <ProseMirrorEditor value="" onChange={onChange} editorId="ed-A" />,
+    );
+    const { container: containerB } = render(
+      <ProseMirrorEditor value="" onChange={onChange} editorId="ed-B" />,
+    );
+
+    await waitFor(() =>
+      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
+    );
+
+    // Open the slash menu owned by editor A (it owns the shared slot).
+    act(() => {
+      useAIUIStore.getState().setSlashMenu({
+        show: true,
+        pos: 1,
+        query: "",
+        x: 0,
+        y: 0,
+        editorId: "ed-A",
+      });
+    });
+    expect(useAIUIStore.getState().slashMenu.editorId).toBe("ed-A");
+
+    // Clicking inside editor B is "outside editor A", so A's (owning) menu
+    // closes — and only the owning editor's handler is authorized to close it.
+    const targetInsideB = containerB.querySelector(".ProseMirror") as HTMLElement;
+    act(() => {
+      targetInsideB.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(useAIUIStore.getState().slashMenu.show).toBe(false);
+  });
+
+  it("keeps the bubble menu open on click while text is selected", async () => {
+    const onChange = vi.fn();
+
+    const { container } = render(
+      <ProseMirrorEditor value="" onChange={onChange} editorId="ed-1" />,
+    );
+
+    await waitFor(() =>
+      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
+    );
+
+    // Simulate a non-empty selection having opened the bubble menu.
+    act(() => {
+      useAIUIStore.getState().setBubbleMenu({
+        show: true,
+        x: 0,
+        y: 0,
+        editorId: "ed-1",
+      });
+      // A context menu opened at the same time should still be dismissable.
+      useAIUIStore.getState().setContextMenu({
+        show: true,
+        x: 0,
+        y: 0,
+        pos: 0,
+        editorId: "ed-1",
+      });
+    });
+    expect(useAIUIStore.getState().bubbleMenu.show).toBe(true);
+    expect(useAIUIStore.getState().contextMenu.show).toBe(true);
+
+    // Clicking (e.g. finishing a text selection) must NOT force-close the bubble
+    // menu — the selection-driven plugin owns its visibility. The context menu,
+    // which is not selection-driven, should still close.
+    const target = container.querySelector(".ProseMirror") as HTMLElement;
+    act(() => {
+      target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(useAIUIStore.getState().bubbleMenu.show).toBe(true);
+    expect(useAIUIStore.getState().contextMenu.show).toBe(false);
   });
 });
