@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { type ChatMessage } from '../services/aiService';
+import { idbStorage } from '../lib/idbStorage';
 
 interface AIState {
   chatHistory: ChatMessage[];
@@ -134,6 +135,7 @@ export const useAIStore = create<AIState>()(
     }),
     {
       name: 'ink-quill-ai-storage',
+      storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
         personalInstructions: state.personalInstructions,
         selectedModel: state.selectedModel,

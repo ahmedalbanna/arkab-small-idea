@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { idbStorage } from '../lib/idbStorage';
 
 interface UIState {
   isSuperZen: boolean;
@@ -120,6 +121,7 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: 'ink-quill-ui-storage',
+      storage: createJSONStorage(() => idbStorage),
     }
   )
 );

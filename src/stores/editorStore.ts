@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { snapshotService, type Snapshot } from '../services/snapshotService';
 import type { SemanticCluster } from '../services/semanticService';
+import { idbStorage } from '../lib/idbStorage';
 
 export interface Page {
   id: string;
@@ -139,6 +140,7 @@ export const useEditorStore = create<EditorState>()(
     }),
     {
       name: 'ink-quill-editor-storage-v2',
+      storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
         pages: state.pages.map(({ snapshots, ...p }) => p),
         activePageIds: state.activePageIds,

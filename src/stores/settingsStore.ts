@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   migratePluginToggles,
   PLUGIN_TOGGLES_VERSION,
 } from '../plugins/pluginToggleMigration';
+import { idbStorage } from '../lib/idbStorage';
 
 interface SettingsState {
   theme: 'light' | 'dark' | 'system' | 'andalusia' | 'cosmos' | 'parchment' | 'tokyo';
@@ -75,6 +76,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'ink-quill-settings',
+      storage: createJSONStorage(() => idbStorage),
       version: PLUGIN_TOGGLES_VERSION,
       // Reconcile persisted plugin toggles to the current schema on load:
       // coerce the shape and apply any legacy id renames so old storage keeps
