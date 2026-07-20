@@ -9,9 +9,14 @@
 
 export * from "./types";
 export * from "./commands/commandBus";
+export * from "./commands/executor";
+export * from "./shortcuts/shortcuts";
 export * from "./serialization/markdown";
 export * from "./operations";
+export { CoreEditor } from "./CoreEditor";
+export type { StateListener } from "./CoreEditor";
 export { slugify } from "./util/slugify";
+export { countWords } from "./util/words";
 
 // NOTE: `CoreEditor` (the controller that wires these operations into a live,
 // state-owning instance with undo/redo, shortcuts and draft persistence) is

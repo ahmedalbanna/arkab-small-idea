@@ -1,5 +1,6 @@
-import type { Schema } from "prosemirror-model";
+import type { Schema, Node } from "prosemirror-model";
 import type { Plugin } from "prosemirror-state";
+import type { EditorCommandAction } from "./commands/commandBus";
 
 /**
  * Public type surface for the headless core (`@core`).
@@ -45,15 +46,22 @@ export interface StorageAdapter {
 }
 
 /**
- * A keyboard shortcut registered with the core. `keys` uses the ProseMirror
- * keymap syntax (e.g. `"Mod-b"`, `"Shift-Mod-z"`). The core compiles registered
- * shortcuts into a ProseMirror keymap plugin; the actual DOM key listening
- * happens at the view boundary.
+ * A keyboard shortcut exposed by the core. `combo` uses ProseMirror keymap
+ * syntax (e.g. `"Mod-B"`, `"Shift-Mod-Z"`). `command` is the editor command
+ * type it triggers. Keeping this as plain data — no callbacks — lets the core
+ * compute the catalog and match key events without coupling to the DOM or any
+ * command executor; the UI binds the resolved `command` to the executor.
  */
 export interface Shortcut {
   id?: string;
-  keys: string;
-  action: () => void;
+  /** Human-readable label, e.g. "Bold". */
+  label: string;
+  /** Key combination, e.g. "Mod-B". */
+  combo: string;
+  /** The editor command this shortcut triggers. */
+  command: EditorCommandAction;
+  description?: string;
+  category?: string;
 }
 
 /**
@@ -72,6 +80,13 @@ export interface CoreConfig {
   initialMarkdown?: string;
   /** Persistence adapter. When omitted, draft operations become no-ops. */
   storage?: StorageAdapter;
+  /**
+   * Post-process applied to every parsed markdown document (e.g. converting
+   * diagram code blocks to `diagram` nodes). Kept optional so the core stays
+   * free of the browser-coupled diagram-rendering adapters; the UI injects
+   * `diagramTransform` here.
+   */
+  postProcess?: (doc: Node) => Node;
 }
 
 /** Marker helper: a no-op storage adapter used when none is configured. */

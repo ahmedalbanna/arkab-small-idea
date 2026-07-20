@@ -1,7 +1,8 @@
-import type { Schema } from "prosemirror-model";
+import type { Schema, Node } from "prosemirror-model";
 import type { Plugin } from "prosemirror-state";
 import type { NodeViewConstructor } from "prosemirror-view";
 import { PluginRegistry } from "./registry";
+import { CoreEditor } from "@core/CoreEditor";
 import {
   buildPluginContext,
   createCollectors,
@@ -114,6 +115,8 @@ export interface LoadedPlugins {
   collectors: ContextCollectors;
   context: PluginContext;
   schema: Schema;
+  /** The headless editor controller owning the document state. */
+  core: CoreEditor;
   /** Resolve the final schema contributions actually used. */
   contributions: SchemaContribution;
 }
@@ -129,6 +132,12 @@ export async function loadPlugins(
     disabled?: string[];
     collab?: CollabPluginOptions;
     commandBus?: import("./editorCommandBus").EditorCommandBus;
+    /**
+     * Post-process applied to parsed markdown documents (e.g. converting
+     * diagram code blocks to `diagram` nodes). Supplied by the UI so the core
+     * never imports the browser-coupled diagram adapters directly.
+     */
+    postProcess?: (doc: Node) => Node;
   },
 ): Promise<LoadedPlugins> {
   const startedAt = performance.now();
@@ -191,6 +200,15 @@ export async function loadPlugins(
     context.commands = collectors.commands;
     context.settings = collectors.settings;
 
+    // Build the headless core controller from the resolved schema + plugins.
+    // It owns the document `EditorState`; the React view (Phase 6) will attach
+    // to `core.getState()` and route user input back through `core.apply`.
+    const core = new CoreEditor({
+      schema,
+      prosePlugins: context.editorPlugins,
+      postProcess: options?.postProcess,
+    });
+
     const durationMs = Math.round(performance.now() - startedAt);
     pluginLogger.info("*", "load:done", "Editor plugins loaded", {
       plugins: registry.getEnabled().length,
@@ -201,7 +219,7 @@ export async function loadPlugins(
       durationMs,
     });
 
-    return { registry, collectors, context, schema, contributions };
+    return { registry, collectors, context, schema, core, contributions };
   } catch (err) {
     pluginLogger.error("*", "load:error", "Failed to load editor plugins", {
       error: err instanceof Error ? err.message : String(err),
