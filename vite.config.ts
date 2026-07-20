@@ -32,6 +32,10 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
+        // More specific alias must precede the generic '@' prefix alias so
+        // imports like '@core/commands/commandBus' resolve to src/core and are
+        // not captured by the broader '@' -> repo-root mapping.
+        '@core': path.resolve(__dirname, 'src/core'),
         '@': path.resolve(__dirname, '.'),
       },
     },
