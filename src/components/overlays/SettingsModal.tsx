@@ -172,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
               {/* Headings Section */}
               <section className="space-y-4">
                 <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Editor Headings</h4>
-                
+
                 <div className="flex items-center justify-between p-3 bg-minimal-sidebar/50 border border-minimal-border rounded-xl">
                   <div className="space-y-0.5">
                     <label className="text-[10px] font-bold text-minimal-text uppercase">Automatic Numbering</label>

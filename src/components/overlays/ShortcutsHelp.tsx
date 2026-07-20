@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Keyboard, X } from 'lucide-react';
-import { useUIStore } from '../../stores/uiStore';
 
 interface ShortcutsHelpProps {
   showShortcuts: boolean;
@@ -68,7 +67,7 @@ export const ShortcutsHelp: React.FC<ShortcutsHelpProps> = ({
                 <div className="space-y-1.5">
                   {[
                     { keys: 'Ctrl + F', desc: 'Find & Replace' },
-                    
+
                     { keys: 'Ctrl + Shift + T', desc: 'Toggle Typewriter Mode' },
                     { keys: 'Ctrl + /', desc: 'Show Shortcuts (this dialog)' },
                   ].map(s => (

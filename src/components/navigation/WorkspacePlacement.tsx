@@ -1,42 +1,37 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
-import { 
-  Library, 
-  Layers, 
-  BookOpen, 
-  Search, 
-  Plus, 
-  Copy, 
-  Trash2, 
-  Edit3, 
-  X, 
-  BookmarkCheck, 
-  CheckCircle2, 
-  ArrowRightLeft, 
+import {
+  Library,
+  Layers,
+  BookOpen,
+  Search,
+  Plus,
+  Copy,
+  Trash2,
+  Edit3,
+  X, ArrowRightLeft,
   GripVertical,
   Target,
-  Clock,
-  Sparkles,
-  ArrowUpRight
+  Clock, ArrowUpRight
 } from 'lucide-react';
 import { useEditorStore, Page } from '../../stores/editorStore';
 import { useUIStore } from '../../stores/uiStore';
 import { cn } from '../../lib/utils';
 
 export const WorkspacePlacement: React.FC = () => {
-  const { 
-    pages, 
-    activePageIds, 
-    togglePageOpen, 
-    removePage, 
-    addPage, 
+  const {
+    pages,
+    activePageIds,
+    togglePageOpen,
+    removePage,
+    addPage,
     reorderPages,
     setPageSettings,
     setPageContent
   } = useEditorStore();
-  
+
   const { showPages, setPagesMenu, direction } = useUIStore();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleInput, setTitleInput] = useState('');
@@ -45,7 +40,7 @@ export const WorkspacePlacement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'placement' | 'sequence'>('placement');
 
   // Filtered pages based on search query
-  const filteredPages = pages.filter(page => 
+  const filteredPages = pages.filter(page =>
     page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     page.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -78,7 +73,7 @@ export const WorkspacePlacement: React.FC = () => {
 
   const getStatus = (page: Page) => {
     const wc = getWordCount(page.content);
-    if (wc === 0) return { label: 'Empty', color: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20', ar: 'فارغ' };
+    if (wc === 0) return { label: 'Empty', color: 'bg-minimal-muted/10 text-minimal-muted border-minimal-muted/20', ar: 'فارغ' };
     if (page.wordGoal > 0) {
       if (wc >= page.wordGoal) return { label: 'Complete', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', ar: 'مكتمل' };
       return { label: 'Drafting', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', ar: 'مسودة' };
@@ -94,7 +89,7 @@ export const WorkspacePlacement: React.FC = () => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={() => setPagesMenu(false)}
-        className="fixed inset-0 bg-zinc-950/30 backdrop-blur-sm z-[110]"
+        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[110]"
       />
 
       {/* Sidebar Drawer */}
@@ -118,12 +113,12 @@ export const WorkspacePlacement: React.FC = () => {
               </h3>
             </div>
             <p className="text-[10px] text-minimal-muted leading-relaxed font-serif max-w-[280px]">
-              {direction === 'rtl' 
+              {direction === 'rtl'
                 ? 'نظّم فصول مخطوطتك ووزّعها بدقة بين منصة الكتابة النشطة ورفوف الحفظ كمرجع.'
                 : 'Place, classify, and arrange your chapters between the active writing desk and storage shelves.'}
             </p>
           </div>
-          <button 
+          <button
             onClick={() => setPagesMenu(false)}
             className="p-2 hover:bg-minimal-border rounded-full hover:text-red-500 transition-colors shadow-sm"
           >
@@ -171,7 +166,7 @@ export const WorkspacePlacement: React.FC = () => {
               className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl pl-10 pr-4 py-2.5 text-xs text-minimal-text placeholder:text-minimal-muted/70 outline-none focus:border-minimal-accent/40 transition-colors"
             />
             {searchQuery && (
-              <button 
+              <button
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-minimal-border rounded"
               >
@@ -212,7 +207,7 @@ export const WorkspacePlacement: React.FC = () => {
                           {direction === 'rtl' ? 'المنصة فارغة تماماً' : 'Desk is Empty'}
                         </p>
                         <p className="text-[9px] text-minimal-muted mt-1 leading-normal max-w-[240px] mx-auto">
-                          {direction === 'rtl' 
+                          {direction === 'rtl'
                             ? 'انقر على الفصول أدناه في الرفوف لوضعها على طاولة العمل والبدء بالكتابة.'
                             : 'Click "Place on Desk" on the storage shelves below to load chapters for editing.'}
                         </p>
@@ -222,7 +217,7 @@ export const WorkspacePlacement: React.FC = () => {
                         {activePages.map((page) => {
                           const status = getStatus(page);
                           const wc = getWordCount(page.content);
-                          
+
                           return (
                             <motion.div
                               key={page.id}
@@ -245,7 +240,7 @@ export const WorkspacePlacement: React.FC = () => {
                                       className="border border-minimal-accent rounded px-1.5 py-0.5 text-xs text-minimal-text bg-minimal-sidebar outline-none"
                                     />
                                   ) : (
-                                    <h4 
+                                    <h4
                                       onDoubleClick={() => handleStartRename(page)}
                                       className="text-xs font-bold text-minimal-text truncate hover:text-minimal-accent cursor-pointer flex items-center gap-1.5"
                                       title="Double click to rename"
@@ -254,16 +249,16 @@ export const WorkspacePlacement: React.FC = () => {
                                       <Edit3 className="w-3 h-3 text-minimal-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </h4>
                                   )}
-                                  
+
                                   <span className={cn("text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border shrink-0", status.color)}>
                                     {direction === 'rtl' ? status.ar : status.label}
                                   </span>
                                 </div>
-                                
+
                                 <p className="text-[9px] text-minimal-muted truncate italic font-serif">
                                   {page.content.replace(/[#*`>_\n]/g, '').substring(0, 50) || '...'}
                                 </p>
-                                
+
                                 <div className="flex items-center gap-3 mt-2 text-[9px] font-mono text-minimal-muted">
                                   <span className="flex items-center gap-1">
                                     <Target className="w-3 h-3 text-minimal-muted/65" />
@@ -343,7 +338,7 @@ export const WorkspacePlacement: React.FC = () => {
                                     className="border border-minimal-accent rounded px-1.5 py-0.5 text-xs text-minimal-text bg-minimal-sidebar outline-none"
                                   />
                                 ) : (
-                                  <h4 
+                                  <h4
                                     onDoubleClick={() => handleStartRename(page)}
                                     className="text-xs font-bold text-minimal-text truncate cursor-pointer hover:text-minimal-accent flex items-center gap-1.5"
                                     title="Double click to rename"
@@ -352,7 +347,7 @@ export const WorkspacePlacement: React.FC = () => {
                                     <Edit3 className="w-3 h-3 text-minimal-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                                   </h4>
                                 )}
-                                
+
                                 <span className={cn("text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border shrink-0", status.color)}>
                                   {direction === 'rtl' ? status.ar : status.label}
                                 </span>
@@ -365,7 +360,7 @@ export const WorkspacePlacement: React.FC = () => {
                               <div className="flex items-center gap-3 mt-1.5 text-[9px] font-mono text-minimal-muted">
                                 <span>{wc} {direction === 'rtl' ? 'كلمة' : 'w'}</span>
                                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button 
+                                  <button
                                     onClick={() => handleDuplicate(page)}
                                     className="hover:text-minimal-accent"
                                     title="Duplicate Chapter"
@@ -373,7 +368,7 @@ export const WorkspacePlacement: React.FC = () => {
                                     <Copy className="w-3 h-3" />
                                   </button>
                                   {pages.length > 1 && (
-                                    <button 
+                                    <button
                                       onClick={() => {
                                         if (window.confirm(direction === 'rtl' ? 'هل أنت متأكد من حذف هذا الفصل نهائياً؟' : 'Are you sure you want to delete this chapter permanently?')) {
                                           removePage(page.id);
@@ -413,7 +408,7 @@ export const WorkspacePlacement: React.FC = () => {
                 className="space-y-4"
               >
                 <div className="p-3 bg-minimal-sidebar border border-minimal-border rounded-2xl text-[9px] text-minimal-muted leading-relaxed">
-                  {direction === 'rtl' 
+                  {direction === 'rtl'
                     ? 'اسحب وأسقط لترتيب الفصول الفعلي داخل المخطوطة الكلية. سيؤدي هذا لتغيير تسلسلهما الرقمي ومؤشر الترتيب مباشرة.'
                     : 'Drag and drop any chapter node vertically to define the master sequence of your manuscript. This modifies document order dynamically.'}
                 </div>
@@ -435,7 +430,7 @@ export const WorkspacePlacement: React.FC = () => {
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <GripVertical className="w-3.5 h-3.5 text-minimal-muted shrink-0 group-hover:text-minimal-text transition-colors" />
-                        
+
                         <div className="w-6 h-6 rounded-lg bg-minimal-sidebar border border-minimal-border flex items-center justify-center text-[10px] font-mono font-bold text-minimal-muted shrink-0">
                           {String(index + 1).padStart(2, '0')}
                         </div>

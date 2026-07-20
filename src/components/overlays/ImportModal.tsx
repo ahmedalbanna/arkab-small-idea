@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { useUIStore } from '../../stores/uiStore';
 import { importFile } from '../../services/importService';
 
@@ -81,7 +80,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport }) => {
           {/* Content */}
           <div className="p-8">
             {!selectedFile ? (
-              <div 
+              <div
                 onClick={() => fileInputRef.current?.click()}
                 className="group border-2 border-dashed border-minimal-border rounded-2xl p-12 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-minimal-accent transition-all bg-minimal-sidebar/20 hover:bg-minimal-accent/5"
               >
@@ -112,7 +111,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport }) => {
                       {(selectedFile.size / 1024).toFixed(1)} KB • {selectedFile.name.split('.').pop()?.toUpperCase()}
                     </p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setSelectedFile(null)}
                     className="p-2 text-minimal-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                   >
@@ -124,14 +123,14 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport }) => {
                   <p className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest mb-2 px-1">Import Options</p>
                   <div className="flex items-start gap-3 p-3 bg-minimal-bg rounded-xl border border-minimal-border/50">
                     <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5" />
-                    <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    <p className="text-[11px] text-minimal-muted leading-relaxed">
                       Importing this file will replace the content of your current open document. Make sure you have a snapshot if you want to recover previous work.
                     </p>
                   </div>
                 </div>
 
                 {error && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-2xl border border-red-100"
@@ -142,7 +141,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport }) => {
                 )}
 
                 {success && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="flex items-center gap-3 p-4 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100"

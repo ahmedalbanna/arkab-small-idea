@@ -434,7 +434,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
               provider: serviceConfigs.embeddings.provider,
               apiKey:
                 apiKeys?.[
-                  serviceConfigs.embeddings.provider as keyof typeof apiKeys
+                serviceConfigs.embeddings.provider as keyof typeof apiKeys
                 ],
               model: serviceConfigs.embeddings.model,
             },

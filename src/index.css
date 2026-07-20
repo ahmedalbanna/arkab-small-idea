@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+
 :root {
   --minimal-bg: #ffffff;
   --minimal-sidebar: #fafafa;
@@ -12,7 +13,7 @@
   --minimal-accent-rgb: 52, 152, 219;
   --minimal-font: "Inter", sans-serif;
   --heading-color: #000000;
-  
+
   /* Dynamic Editor Variables */
   --editor-font-size: clamp(1rem, 0.5vw + 0.9rem, 1.125rem);
   --editor-line-height: clamp(1.5, 2vw + 1.2, 1.8);
@@ -34,7 +35,8 @@
 .heading-chevron {
   position: absolute;
   left: -28px;
-  top: 0.5em; /* Align roughly with the first line of text */
+  top: 0.5em;
+  /* Align roughly with the first line of text */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -145,7 +147,7 @@
 @theme {
   --font-sans: var(--minimal-font);
   --font-mono: "Courier Prime", "Courier New", Courier, monospace;
-  
+
   --color-minimal-bg: var(--minimal-bg);
   --color-minimal-sidebar: var(--minimal-sidebar);
   --color-minimal-border: var(--minimal-border);
@@ -158,24 +160,37 @@
 .headings-numbered {
   counter-reset: h1;
 }
-.headings-numbered h1 { counter-reset: h2; }
+
+.headings-numbered h1 {
+  counter-reset: h2;
+}
+
 .headings-numbered h1::before {
   counter-increment: h1;
   content: counter(h1) ". ";
   @apply mr-2 opacity-50 font-mono text-[0.8em];
 }
-.headings-numbered h2 { counter-reset: h3; }
+
+.headings-numbered h2 {
+  counter-reset: h3;
+}
+
 .headings-numbered h2::before {
   counter-increment: h2;
   content: counter(h1) "." counter(h2) " ";
   @apply mr-2 opacity-50 font-mono text-[0.8em];
 }
-.headings-numbered h3 { counter-reset: h4; }
+
+.headings-numbered h3 {
+  counter-reset: h4;
+}
+
 .headings-numbered h3::before {
   counter-increment: h3;
   content: counter(h1) "." counter(h2) "." counter(h3) " ";
   @apply mr-2 opacity-50 font-mono text-[0.8em];
 }
+
 .headings-numbered h4::before {
   counter-increment: h4;
   content: counter(h1) "." counter(h2) "." counter(h3) "." counter(h4) " ";
@@ -190,48 +205,64 @@
   line-height: var(--editor-line-height);
 }
 
-.markdown-body h1, .ProseMirror h1 { 
-  @apply mt-16 mb-8 font-black tracking-tight border-b-2 border-minimal-border pb-6; 
+.markdown-body h1,
+.ProseMirror h1 {
+  @apply mt-16 mb-8 font-black tracking-tight border-b-2 border-minimal-border pb-6;
   font-size: var(--fluid-h1);
   line-height: 1.1;
   color: var(--heading-color);
 }
-.markdown-body h2, .ProseMirror h2 { 
-  @apply mt-20 mb-8 font-extrabold tracking-tight border-b border-minimal-border/50 pb-4; 
+
+.markdown-body h2,
+.ProseMirror h2 {
+  @apply mt-20 mb-8 font-extrabold tracking-tight border-b border-minimal-border/50 pb-4;
   font-size: var(--fluid-h2);
   line-height: 1.2;
   color: var(--heading-color);
 }
-.markdown-body h3, .ProseMirror h3 { 
-  @apply mt-14 mb-6 font-bold tracking-tight; 
+
+.markdown-body h3,
+.ProseMirror h3 {
+  @apply mt-14 mb-6 font-bold tracking-tight;
   font-size: var(--fluid-h3);
   line-height: 1.3;
   color: var(--heading-color);
 }
-.markdown-body h4, .ProseMirror h4 { 
-  @apply mt-10 mb-4 font-bold tracking-tight; 
+
+.markdown-body h4,
+.ProseMirror h4 {
+  @apply mt-10 mb-4 font-bold tracking-tight;
   font-size: var(--fluid-h4);
   line-height: 1.4;
   color: var(--heading-color);
 }
-.markdown-body p { 
-  @apply mb-6; 
+
+.markdown-body p {
+  @apply mb-6;
   color: var(--minimal-text);
   font-size: var(--editor-font-size);
   line-height: var(--editor-line-height);
 }
 
-.markdown-body ul { @apply list-disc ps-8 mb-6 space-y-2; }
-.markdown-body ol { @apply list-decimal ps-8 mb-6 space-y-2; }
-.markdown-body li { @apply ps-2 font-medium; }
-
-.markdown-body code { 
-  @apply bg-minimal-accent/5 px-2 py-0.5 rounded border border-minimal-accent/20 font-mono text-sm text-minimal-accent font-semibold transition-colors hover:bg-minimal-accent/10; 
+.markdown-body ul {
+  @apply list-disc ps-8 mb-6 space-y-2;
 }
 
-.markdown-body pre { 
+.markdown-body ol {
+  @apply list-decimal ps-8 mb-6 space-y-2;
+}
+
+.markdown-body li {
+  @apply ps-2 font-medium;
+}
+
+.markdown-body code {
+  @apply bg-minimal-accent/5 px-2 py-0.5 rounded border border-minimal-accent/20 font-mono text-sm text-minimal-accent font-semibold transition-colors hover:bg-minimal-accent/10;
+}
+
+.markdown-body pre {
   @apply bg-zinc-900 shadow-2xl text-zinc-100 p-6 rounded-2xl my-10 overflow-x-auto font-mono text-[13px] leading-relaxed border border-zinc-700/50 relative;
-  background-image: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
+  background-image: linear-gradient(to bottom right, rgba(255, 255, 255, 0.05), transparent);
 }
 
 .markdown-body pre::after {
@@ -239,29 +270,33 @@
   @apply absolute inset-0 rounded-2xl border border-white/5 pointer-events-none;
 }
 
-.markdown-body blockquote { 
-  @apply border-l-8 border-minimal-accent/30 bg-minimal-sidebar/50 pl-6 py-4 italic text-minimal-muted my-8 rounded-r-lg; 
+.markdown-body blockquote {
+  @apply border-l-8 border-minimal-accent/30 bg-minimal-sidebar/50 pl-6 py-4 italic text-minimal-muted my-8 rounded-r-lg;
 }
 
-.markdown-body table { 
-  @apply w-full border-collapse my-10 overflow-hidden rounded-lg border-2 border-minimal-border shadow-sm; 
+.markdown-body table {
+  @apply w-full border-collapse my-10 overflow-hidden rounded-lg border-2 border-minimal-border shadow-sm;
 }
-.markdown-body th, .markdown-body td { 
-  @apply border border-minimal-border p-4 text-start; 
+
+.markdown-body th,
+.markdown-body td {
+  @apply border border-minimal-border p-4 text-start;
 }
-.markdown-body th { 
-  @apply bg-minimal-sidebar font-bold text-minimal-text border-b-2 border-minimal-border; 
+
+.markdown-body th {
+  @apply bg-minimal-sidebar font-bold text-minimal-text border-b-2 border-minimal-border;
 }
+
 .markdown-body tr:nth-child(even) {
   @apply bg-minimal-sidebar/30;
 }
 
-.markdown-body a { 
-  @apply text-minimal-accent font-semibold underline decoration-minimal-accent/20 underline-offset-4 decoration-2 hover:decoration-minimal-accent hover:text-minimal-accent/80 hover:-translate-y-[1px] inline-block transition-all duration-300; 
+.markdown-body a {
+  @apply text-minimal-accent font-semibold underline decoration-minimal-accent/20 underline-offset-4 decoration-2 hover:decoration-minimal-accent hover:text-minimal-accent/80 hover:-translate-y-[1px] inline-block transition-all duration-300;
 }
 
-.markdown-body img { 
-  @apply max-w-full h-auto rounded-2xl shadow-lg my-10 border border-minimal-border; 
+.markdown-body img {
+  @apply max-w-full h-auto rounded-2xl shadow-lg my-10 border border-minimal-border;
 }
 
 /* ProseMirror Styles */
@@ -279,18 +314,38 @@
   }
 }
 
-.ProseMirror p { 
-  @apply mb-6; 
+.ProseMirror p {
+  @apply mb-6;
   font-size: var(--editor-font-size);
   line-height: var(--editor-line-height);
-  color: var(--minimal-text); 
+  color: var(--minimal-text);
 }
-.ProseMirror strong { @apply text-minimal-text font-bold; color: #1a567e; }
-.ProseMirror em { @apply italic text-minimal-muted/80; }
-.ProseMirror ul { @apply list-disc ps-8 mb-6 space-y-2; }
-.ProseMirror ol { @apply list-decimal ps-8 mb-6 space-y-2; }
-.ProseMirror li { @apply ps-2 font-medium; }
-.ProseMirror img { @apply max-w-full h-auto rounded-xl shadow-md my-8 border border-minimal-border block mx-auto transition-all duration-300; }
+
+.ProseMirror strong {
+  @apply text-minimal-text font-bold;
+  color: #1a567e;
+}
+
+.ProseMirror em {
+  @apply italic text-minimal-muted/80;
+}
+
+.ProseMirror ul {
+  @apply list-disc ps-8 mb-6 space-y-2;
+}
+
+.ProseMirror ol {
+  @apply list-decimal ps-8 mb-6 space-y-2;
+}
+
+.ProseMirror li {
+  @apply ps-2 font-medium;
+}
+
+.ProseMirror img {
+  @apply max-w-full h-auto rounded-xl shadow-md my-8 border border-minimal-border block mx-auto transition-all duration-300;
+}
+
 .ProseMirror .ProseMirror-selectednode {
   @apply ring-2 ring-minimal-accent ring-offset-4 ring-offset-minimal-bg rounded-lg;
 }
@@ -336,9 +391,17 @@
   @apply mt-3 w-full max-w-[500px] bg-transparent border-none outline-none text-[12px] text-minimal-muted/60 font-medium placeholder:text-minimal-muted/30 italic transition-all;
 }
 
-.image-node-view-container[data-align="left"] .image-caption-input { @apply text-start; }
-.image-node-view-container[data-align="center"] .image-caption-input { @apply text-center; }
-.image-node-view-container[data-align="right"] .image-caption-input { @apply text-end; }
+.image-node-view-container[data-align="left"] .image-caption-input {
+  @apply text-start;
+}
+
+.image-node-view-container[data-align="center"] .image-caption-input {
+  @apply text-center;
+}
+
+.image-node-view-container[data-align="right"] .image-caption-input {
+  @apply text-end;
+}
 
 .image-caption-input:focus {
   @apply text-minimal-text text-minimal-accent/80;
@@ -390,17 +453,31 @@
   @apply text-[10px] mt-1;
 }
 
-.ProseMirror blockquote { @apply border-s-8 border-minimal-accent/30 bg-minimal-sidebar/50 ps-6 py-4 italic text-minimal-muted my-8 rounded-e-lg; }
-.ProseMirror a { @apply text-minimal-accent underline decoration-minimal-accent/30 underline-offset-2; }
-.ProseMirror pre { @apply bg-zinc-900 shadow-2xl text-zinc-100 p-8 rounded-2xl my-10 overflow-x-auto font-mono text-[13px] leading-relaxed border border-zinc-700/50 relative; background-image: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent); }
+.ProseMirror blockquote {
+  @apply border-s-8 border-minimal-accent/30 bg-minimal-sidebar/50 ps-6 py-4 italic text-minimal-muted my-8 rounded-e-lg;
+}
+
+.ProseMirror a {
+  @apply text-minimal-accent underline decoration-minimal-accent/30 underline-offset-2;
+}
+
+.ProseMirror pre {
+  @apply bg-zinc-900 shadow-2xl text-zinc-100 p-8 rounded-2xl my-10 overflow-x-auto font-mono text-[13px] leading-relaxed border border-zinc-700/50 relative;
+  background-image: linear-gradient(to bottom right, rgba(255, 255, 255, 0.05), transparent);
+}
+
 .ProseMirror .hljs-container::before {
   content: attr(data-language);
   @apply absolute top-0 end-6 px-3 py-1 bg-zinc-800 text-[10px] font-bold text-zinc-400 uppercase rounded-b border border-t-0 border-zinc-700/50 tracking-widest z-[10];
 }
+
 .ProseMirror pre[data-language]::before {
   display: none;
 }
-.ProseMirror code { @apply bg-minimal-accent/5 px-2 py-0.5 rounded border border-minimal-accent/20 font-mono text-sm text-minimal-accent font-semibold transition-colors hover:bg-minimal-accent/10; }
+
+.ProseMirror code {
+  @apply bg-minimal-accent/5 px-2 py-0.5 rounded border border-minimal-accent/20 font-mono text-sm text-minimal-accent font-semibold transition-colors hover:bg-minimal-accent/10;
+}
 
 /* AI Draft Styles */
 .ai-draft-generating {
@@ -416,22 +493,86 @@
 }
 
 @keyframes ai-pulse {
-  0%, 100% { opacity: 1; border-color: #3b82f6; }
-  50% { opacity: .5; border-color: transparent; }
+
+  0%,
+  100% {
+    opacity: 1;
+    border-color: #3b82f6;
+  }
+
+  50% {
+    opacity: .5;
+    border-color: transparent;
+  }
 }
 
 /* Syntax Highlighting */
-.hljs-comment, .hljs-quote { color: #94a3b8; font-style: italic; }
-.hljs-keyword, .hljs-selector-tag, .hljs-addition { color: #f472b6; font-weight: 600; }
-.hljs-number, .hljs-string, .hljs-meta .hljs-meta-string, .hljs-literal, .hljs-doctag, .hljs-regexp { color: #4ade80; }
-.hljs-attribute, .hljs-attr, .hljs-variable, .hljs-template-variable, .hljs-class .hljs-title, .hljs-type { color: #fbbf24; }
-.hljs-symbol, .hljs-bullet, .hljs-subst, .hljs-meta, .hljs-selector-id, .hljs-selector-class, .hljs-link { color: #38bdf8; }
-.hljs-built_in, .hljs-deletion { color: #fb7185; }
-.hljs-formula { background: #fee2e2; }
-.hljs-emphasis { font-style: italic; }
-.hljs-strong { font-weight: bold; }
-.hljs-params { color: #cbd5e1; }
-.hljs-title, .hljs-section { color: #818cf8; }
+.hljs-comment,
+.hljs-quote {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition {
+  color: #f472b6;
+  font-weight: 600;
+}
+
+.hljs-number,
+.hljs-string,
+.hljs-meta .hljs-meta-string,
+.hljs-literal,
+.hljs-doctag,
+.hljs-regexp {
+  color: #4ade80;
+}
+
+.hljs-attribute,
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-class .hljs-title,
+.hljs-type {
+  color: #fbbf24;
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-subst,
+.hljs-meta,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-link {
+  color: #38bdf8;
+}
+
+.hljs-built_in,
+.hljs-deletion {
+  color: #fb7185;
+}
+
+.hljs-formula {
+  background: #fee2e2;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-params {
+  color: #cbd5e1;
+}
+
+.hljs-title,
+.hljs-section {
+  color: #818cf8;
+}
 
 .ProseMirror-focused {
   @apply outline-none;
@@ -440,24 +581,31 @@
 .ProseMirror hr {
   @apply border-t-2 border-minimal-border my-10;
 }
+
 .ProseMirror table {
   @apply w-full border-collapse my-8 border-2 border-minimal-border rounded-lg overflow-hidden;
 }
-.ProseMirror th, .ProseMirror td {
+
+.ProseMirror th,
+.ProseMirror td {
   @apply border border-minimal-border p-3 text-start min-w-[100px] relative;
   font-size: 14px;
 }
+
 .ProseMirror th {
   @apply bg-minimal-sidebar font-bold text-minimal-text border-b-2 border-minimal-border cursor-pointer select-none transition-colors hover:bg-minimal-accent/5 pr-8;
 }
+
 .ProseMirror th::after {
   content: "↕";
   @apply absolute right-2 top-1/2 -translate-y-1/2 opacity-20 text-[10px];
 }
+
 .ProseMirror th[data-sort="asc"]::after {
   content: "↑";
   @apply opacity-100 text-minimal-accent font-bold;
 }
+
 .ProseMirror th[data-sort="desc"]::after {
   content: "↓";
   @apply opacity-100 text-minimal-accent font-bold;
@@ -476,7 +624,7 @@
   @apply absolute -left-10 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-red-50 text-red-500 opacity-0 transition-all hover:bg-red-500 hover:text-white cursor-pointer z-10 border border-red-100 shadow-sm scale-90 hover:scale-100;
 }
 
-.ProseMirror tr:hover > .table-row-delete-handle {
+.ProseMirror tr:hover>.table-row-delete-handle {
   @apply opacity-100;
 }
 
@@ -484,9 +632,11 @@
 .ProseMirror th .table-row-delete-handle {
   @apply hidden;
 }
+
 .ProseMirror .selectedCell:after {
   @apply absolute inset-0 bg-minimal-accent/10 content-[''] pointer-events-none;
 }
+
 .ProseMirror .column-resize-handle {
   @apply absolute right-[-2px] top-0 bottom-0 w-[4px] bg-minimal-accent/40 cursor-col-resize z-[10];
 }
@@ -505,13 +655,13 @@
   padding-bottom: 50vh !important;
 }
 
-.focus-mode-active .ProseMirror > * {
+.focus-mode-active .ProseMirror>* {
   opacity: 0.2;
   filter: blur(1.5px);
   transition: all 0.5s ease;
 }
 
-.focus-mode-active .ProseMirror > .is-focused-node {
+.focus-mode-active .ProseMirror>.is-focused-node {
   opacity: 1;
   filter: blur(0);
 }
@@ -574,7 +724,7 @@
   @apply opacity-100;
 }
 
-.prose-first-child-no-margin .ProseMirror > *:first-child {
+.prose-first-child-no-margin .ProseMirror>*:first-child {
   margin-top: 0 !important;
 }
 
@@ -594,6 +744,7 @@ body {
   opacity: 0;
   transform: translateY(10px);
 }
+
 .page-transition-enter-active {
   opacity: 1;
   transform: translateY(0);
@@ -604,13 +755,16 @@ body {
   width: 5px;
   height: 5px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--minimal-border);
   border-radius: 10px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--minimal-muted);
 }
@@ -657,10 +811,12 @@ body {
 .search-match-current {
   position: relative;
 }
+
 .search-match-current:hover::after {
   content: "Relevance: " attr(data-relevance);
   @apply fixed bg-zinc-800 text-white text-[9px] px-2 py-1 rounded shadow-xl border border-zinc-700 -mt-8 left-1/2 -translate-x-1/2 z-[200] pointer-events-none font-bold uppercase tracking-widest whitespace-nowrap;
 }
+
 .search-match:hover::after {
   content: "Rel: " attr(data-relevance);
   @apply absolute bg-zinc-800/90 text-white text-[8px] px-1.5 py-0.5 rounded border border-zinc-700 -mt-6 left-1/2 -translate-x-1/2 z-[200] pointer-events-none font-bold;
@@ -671,4 +827,3 @@ body {
   @apply bg-minimal-accent/20 border-b-2 border-minimal-accent/40 rounded-sm transition-all duration-150;
   text-shadow: 0 0 1px rgba(var(--color-minimal-accent), 0.1);
 }
-

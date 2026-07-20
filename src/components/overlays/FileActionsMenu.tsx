@@ -48,11 +48,11 @@ export const FileActionsMenu: React.FC<FileActionsMenuProps> = ({
         )}>
           <div className="px-3 py-1.5 border-b border-minimal-border flex items-center justify-between">
             <span className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest">File Actions</span>
-            <button 
+            <button
               onClick={() => {
                 if (window.confirm("Are you sure you want to wipe this page? This cannot be undone.")) {
-                   wipePage(pageId);
-                   setShowFileActions(false);
+                  wipePage(pageId);
+                  setShowFileActions(false);
                 }
               }}
               className="px-2 py-0.5 rounded bg-red-50 text-[9px] font-bold text-red-500 hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest"

@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Play, 
-  Pause, 
-  Square, 
-  Volume2, 
-  VolumeX, 
-  Settings2, 
-  X,
-  FastForward,
-  Rewind
+import {
+  Play,
+  Pause,
+  Square,
+  Volume2,
+  VolumeX, X
 } from 'lucide-react';
 import { useUIStore } from '../stores/uiStore';
 import { useEditorStore } from '../stores/editorStore';
@@ -22,11 +18,11 @@ interface TTSSpeakerProps {
 const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
   const { showTTS, setTTS, ttsRate, setTTSRate, setTTSHighlightRange } = useUIStore();
   const { activeFocusedPageId, pages } = useEditorStore();
-  
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  
+
   const synth = useRef<SpeechSynthesis | null>(typeof window !== 'undefined' ? window.speechSynthesis : null);
   const utterance = useRef<SpeechSynthesisUtterance | null>(null);
   const segmentsRef = useRef<{ text: string, pos: number, cumulativeIndex: number }[]>([]);
@@ -51,14 +47,14 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
       setIsPaused(false);
     } else {
       stopSpeech();
-      
+
       // Get fresh segments from the editor
       const rawSegments = editorRef.current?.getTextWithPositions() || [];
       if (rawSegments.length === 0) {
         // Fallback to activePage content if editor ref is not available or empty
         const activePage = pages.find(p => p.id === activeFocusedPageId);
         if (activePage) {
-           rawSegments.push({ text: activePage.content, pos: 1 });
+          rawSegments.push({ text: activePage.content, pos: 1 });
         }
       }
 
@@ -70,25 +66,25 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
       });
 
       const fullText = rawSegments.map(s => s.text).join(' ');
-      
+
       utterance.current = new SpeechSynthesisUtterance(fullText);
       utterance.current.rate = ttsRate;
       utterance.current.volume = isMuted ? 0 : 1;
-      
+
       utterance.current.onboundary = (event) => {
         if (event.name === 'word') {
           const charIndex = event.charIndex;
-          
+
           // Find which segment contains this charIndex
           const segmentIndex = segmentsRef.current.findIndex((s, i) => {
-            const next = segmentsRef.current[i+1];
+            const next = segmentsRef.current[i + 1];
             return charIndex >= s.cumulativeIndex && (!next || charIndex < next.cumulativeIndex);
           });
 
           if (segmentIndex !== -1) {
             const segment = segmentsRef.current[segmentIndex];
             const offsetInSegment = charIndex - segment.cumulativeIndex;
-            
+
             // Find end of the word in the segment text
             const textAfter = segment.text.substring(offsetInSegment);
             const wordMatch = textAfter.match(/^\w+/);
@@ -107,7 +103,7 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
         setIsPaused(false);
         editorRef.current?.setTTSHighlight(null);
       };
-      
+
       utterance.current.onerror = (e) => {
         console.error("Speech error:", e);
         setIsPlaying(false);
@@ -139,7 +135,7 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
       >
         <div className="bg-minimal-sidebar/90 backdrop-blur-xl border border-minimal-border px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-6 min-w-[320px]">
           {/* Close Button */}
-          <button 
+          <button
             onClick={() => { stopSpeech(); setTTS(false); }}
             className="absolute -top-2 -right-2 p-1 bg-minimal-sidebar border border-minimal-border rounded-full text-minimal-muted hover:text-minimal-accent transition-colors"
           >
@@ -150,11 +146,10 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
           <div className="flex items-center gap-3">
             <button
               onClick={togglePlay}
-              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${
-                isPlaying && !isPaused 
-                  ? 'bg-minimal-accent text-white shadow-lg shadow-minimal-accent/20' 
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${isPlaying && !isPaused
+                  ? 'bg-minimal-accent text-white shadow-lg shadow-minimal-accent/20'
                   : 'bg-minimal-bg text-minimal-text hover:bg-minimal-accent/10 border border-minimal-border'
-              }`}
+                }`}
             >
               {isPlaying && !isPaused ? <Pause size={18} fill="currentColor" /> : <Play size={18} className="translate-x-0.5" fill="currentColor" />}
             </button>
@@ -169,19 +164,19 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
 
           {/* Speed Slider */}
           <div className="flex-1 flex flex-col gap-2 min-w-[120px]">
-             <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-minimal-muted font-bold">
-               <span>Speed</span>
-               <span>{ttsRate.toFixed(1)}x</span>
-             </div>
-             <input 
-               type="range" 
-               min="0.5" 
-               max="2" 
-               step="0.1" 
-               value={ttsRate}
-               onChange={(e) => setTTSRate(parseFloat(e.target.value))}
-               className="w-full h-1.5 bg-minimal-border rounded-lg appearance-none cursor-pointer accent-minimal-accent"
-             />
+            <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-minimal-muted font-bold">
+              <span>Speed</span>
+              <span>{ttsRate.toFixed(1)}x</span>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.1"
+              value={ttsRate}
+              onChange={(e) => setTTSRate(parseFloat(e.target.value))}
+              className="w-full h-1.5 bg-minimal-border rounded-lg appearance-none cursor-pointer accent-minimal-accent"
+            />
           </div>
 
           {/* Mute Toggle */}

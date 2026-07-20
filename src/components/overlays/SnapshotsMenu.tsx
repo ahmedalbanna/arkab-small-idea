@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import { motion } from "motion/react";
 import { History, Plus, X } from "lucide-react";
 import { useEditorStore } from "../../stores/editorStore";
 import { cn } from "@/src/lib/utils";
@@ -69,47 +68,56 @@ export const SnapshotsMenu: React.FC<SnapshotsMenuProps> = ({
                 No snapshots yet
               </p>
             ) : (
-              snapshots.map((s) => (
-                <div
-                  key={s.id}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Restore this version? Your current work will be overwritten.",
-                      )
-                    ) {
-                      setMarkdown(s.content);
-                      setShowSnapshots(false);
-                    }
-                  }}
-                  className="w-full text-left p-2 hover:bg-minimal-sidebar rounded-xl transition-all border border-transparent hover:border-minimal-border group/s cursor-pointer"
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="flex justify-between items-center mb-0.5">
-                    <span className="text-[10px] font-bold text-minimal-text">
-                      {new Date(s.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSnapshots(pageId, (prev) =>
-                          prev.filter((snap) => snap.id !== s.id),
-                        );
-                      }}
-                      className="opacity-0 group-hover/s:opacity-100 p-1 hover:text-red-500 transition-all font-bold"
-                    >
-                      <X className="w-2.5 h-2.5" />
-                    </button>
+              snapshots.map((s) => {
+                const restore = () => {
+                  if (
+                    window.confirm(
+                      "Restore this version? Your current work will be overwritten.",
+                    )
+                  ) {
+                    setMarkdown(s.content);
+                    setShowSnapshots(false);
+                  }
+                };
+                return (
+                  <div
+                    key={s.id}
+                    onClick={restore}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        restore();
+                      }
+                    }}
+                    className="w-full text-left p-2 hover:bg-minimal-sidebar rounded-xl transition-all border border-transparent hover:border-minimal-border group/s cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="flex justify-between items-center mb-0.5">
+                      <span className="text-[10px] font-bold text-minimal-text">
+                        {new Date(s.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSnapshots(pageId, (prev) =>
+                            prev.filter((snap) => snap.id !== s.id),
+                          );
+                        }}
+                        className="opacity-0 group-hover/s:opacity-100 p-1 hover:text-red-500 transition-all font-bold"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                    <p className="text-[8px] text-minimal-muted truncate">
+                      {s.content.substring(0, 40)}...
+                    </p>
                   </div>
-                  <p className="text-[8px] text-minimal-muted truncate">
-                    {s.content.substring(0, 40)}...
-                  </p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

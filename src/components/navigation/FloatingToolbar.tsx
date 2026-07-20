@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, FileText, Cpu, Search, FolderRoot, Type, Target, Settings, Trash2, Languages, Zap, Command, Headset, List, Library } from 'lucide-react';
+import { Sparkles, Search, FolderRoot, Settings, Command, Headset, List, Library } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useUIStore } from '../../stores/uiStore';
 import type { PluginContext, ToolbarItem } from '../../plugins/types';
@@ -35,7 +35,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const pluginButtons = toolbarItems.filter((t) => (t.show ? t.show() : true));
 
   return (
-    <div className="fixed top-8 right-8 z-[60] flex flex-col gap-3">
+    <div className="fixed top-8 end-8 z-[60] flex flex-col gap-3">
       {[
         { id: 'ai', icon: Sparkles, active: showAIAssistant, action: () => setAIAssistant(!showAIAssistant), title: 'AI Assistant' },
         { id: 'tts', icon: Headset, active: showTTS, action: () => setTTS(!showTTS), title: 'Text to Speech' },
@@ -49,7 +49,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         { id: 'settings', icon: Settings, active: showSettings, action: () => setSettings(!showSettings), title: 'Global Settings' },
       ].map((item, idx) => {
         if (item.type === 'divider') return <div key={item.id} className="h-px bg-minimal-border/30 mx-3 my-1" />;
-        
+
         const Icon = item.icon;
         return (
           <motion.button
@@ -62,8 +62,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             onClick={item.action}
             className={cn(
               "p-3.5 backdrop-blur-md border rounded-full shadow-lg transition-all duration-300",
-              item.active 
-                ? "bg-minimal-accent border-minimal-accent text-white ring-4 ring-minimal-accent/20" 
+              item.active
+                ? "bg-minimal-accent border-minimal-accent text-white ring-4 ring-minimal-accent/20"
                 : "bg-minimal-bg/80 border-minimal-border text-minimal-muted hover:border-minimal-accent/40 hover:text-minimal-text"
             )}
             title={item.title}

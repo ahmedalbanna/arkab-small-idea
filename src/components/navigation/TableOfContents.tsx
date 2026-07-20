@@ -60,7 +60,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
             <span className="text-xs font-bold uppercase tracking-widest">Outline</span>
           </div>
           <div className="flex items-center gap-1">
-            <button 
+            <button
               onClick={() => setMaxLevel(maxLevel === 6 ? 3 : 6)}
               className={cn(
                 "p-1.5 rounded-lg transition-all text-minimal-muted hover:bg-minimal-border/50",
@@ -70,7 +70,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
             >
               <Filter size={14} className={cn(maxLevel < 6 && "fill-current")} />
             </button>
-            <button 
+            <button
               onClick={() => setTOC(false)}
               className="p-1.5 hover:bg-minimal-border/50 rounded-lg transition-colors text-minimal-muted"
             >
@@ -94,7 +94,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
                   "border border-transparent hover:border-minimal-accent/10"
                 )}
               >
-                <div 
+                <div
                   className="mt-1 flex-shrink-0 text-minimal-muted group-hover:text-minimal-accent transition-colors"
                   style={{ marginLeft: `${(heading.level - 1) * 12}px` }}
                 >
@@ -112,7 +112,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
         </div>
 
         <div className="p-3 bg-minimal-sidebar/50 border-t border-minimal-border">
-          <button 
+          <button
             onClick={refreshHeadings}
             className="w-full py-2 text-[10px] font-bold uppercase tracking-wider text-minimal-muted hover:text-minimal-accent transition-colors flex items-center justify-center gap-2"
           >

@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useId, useRef, useState } from "react";
-import { EditorState, Selection, TextSelection } from "prosemirror-state";
+import { Selection, TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { DOMSerializer } from "prosemirror-model";
 import { toggleMark } from "prosemirror-commands";
@@ -9,9 +9,7 @@ import {
   Italic,
   Link,
   Code,
-  Quote,
-  Type,
-  Underline,
+  Quote, Underline,
   Strikethrough,
   Sparkles,
   Wand2,
@@ -33,25 +31,17 @@ import {
   FileText,
   RotateCcw,
   Copy,
-  Scissors,
-  ClipboardPaste,
-  MoreVertical,
-  Plus,
+  Scissors, Plus,
   GripVertical,
   RefreshCcw,
   Check,
   Square,
-  X as XIcon,
-  Eraser,
-  PenTool,
-  Trash2,
-  Undo2,
-  Redo2,
-  Table,
+  X as XIcon, Table
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, slugify } from "../lib/utils";
 import { SlashMenu } from "./SlashMenu";
+import { FormatButton } from "./editor/menus/FormatButton";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useAIUIStore } from "../stores/aiUIStore";
 import { editorSerializer } from "./editor/hooks/useMarkdownSerializer";
@@ -408,160 +398,28 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                 top: bubbleMenu.y,
                 transform: "translateX(-50%)",
               }}
-              className="z-[100] flex items-center gap-0.5 bg-zinc-900 border border-zinc-700/50 rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-white/10"
+              className="z-[100] flex items-center gap-0.5 bg-minimal-bg border border-minimal-border rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-minimal-border"
             >
               {!isTypewriter && (
                 <>
-                  <button
-                    onClick={() => handleFormat("h1")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.h1 && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Heading 1 (#)"
-                  >
-                    <Heading1 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("h2")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.h2 && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Heading 2 (##)"
-                  >
-                    <Heading2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("h3")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.h3 && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Heading 3 (###)"
-                  >
-                    <Heading3 className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="w-px h-3 bg-white/20 mx-0.5" />
-                  <button
-                    onClick={() => handleFormat("bold")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.bold && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Bold (Mod+B)"
-                  >
-                    <Bold className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("italic")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.italic && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Italic (Mod+I)"
-                  >
-                    <Italic className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("underline")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.underline && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Underline (Mod+U)"
-                  >
-                    <Underline className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("strike")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.strike && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Strikethrough (Mod+Shift+X)"
-                  >
-                    <Strikethrough className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("quote")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.blockquote && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Quote"
-                  >
-                    <Quote className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("bullet")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.bullet && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Bullet List"
-                  >
-                    <List className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("code")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.code && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Code (Mod+E)"
-                  >
-                    <Code className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("tableify")}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
-                    title="Convert to Table"
-                  >
-                    <Table className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="w-px h-3 bg-white/20 mx-0.5" />
-                  <button
-                    onClick={() => handleFormat("alignLeft")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.alignLeft && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Align Left"
-                  >
-                    <AlignLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("alignCenter")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.alignCenter && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Align Center"
-                  >
-                    <AlignCenter className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("alignRight")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.alignRight && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Align Right"
-                  >
-                    <AlignRight className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleFormat("alignJustify")}
-                    className={cn(
-                      "p-1.5 hover:bg-white/10 rounded text-white transition-colors",
-                      activeFormats.alignJustify && "bg-minimal-accent/20 text-minimal-accent",
-                    )}
-                    title="Justify"
-                  >
-                    <Layout className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="w-px h-3 bg-white/20 mx-0.5" />
+                  <FormatButton onClick={() => handleFormat("h1")} title="Heading 1 (#)" icon={<Heading1 className="w-3.5 h-3.5" />} active={activeFormats.h1} />
+                  <FormatButton onClick={() => handleFormat("h2")} title="Heading 2 (##)" icon={<Heading2 className="w-3.5 h-3.5" />} active={activeFormats.h2} />
+                  <FormatButton onClick={() => handleFormat("h3")} title="Heading 3 (###)" icon={<Heading3 className="w-3.5 h-3.5" />} active={activeFormats.h3} />
+                  <div className="w-px h-3 bg-minimal-border mx-0.5" />
+                  <FormatButton onClick={() => handleFormat("bold")} title="Bold (Mod+B)" icon={<Bold className="w-3.5 h-3.5" />} active={activeFormats.bold} />
+                  <FormatButton onClick={() => handleFormat("italic")} title="Italic (Mod+I)" icon={<Italic className="w-3.5 h-3.5" />} active={activeFormats.italic} />
+                  <FormatButton onClick={() => handleFormat("underline")} title="Underline (Mod+U)" icon={<Underline className="w-3.5 h-3.5" />} active={activeFormats.underline} />
+                  <FormatButton onClick={() => handleFormat("strike")} title="Strikethrough (Mod+Shift+X)" icon={<Strikethrough className="w-3.5 h-3.5" />} active={activeFormats.strike} />
+                  <FormatButton onClick={() => handleFormat("quote")} title="Quote" icon={<Quote className="w-3.5 h-3.5" />} active={activeFormats.blockquote} />
+                  <FormatButton onClick={() => handleFormat("bullet")} title="Bullet List" icon={<List className="w-3.5 h-3.5" />} active={activeFormats.bullet} />
+                  <FormatButton onClick={() => handleFormat("code")} title="Code (Mod+E)" icon={<Code className="w-3.5 h-3.5" />} active={activeFormats.code} />
+                  <FormatButton onClick={() => handleFormat("tableify")} title="Convert to Table" icon={<Table className="w-3.5 h-3.5" />} />
+                  <div className="w-px h-3 bg-minimal-border mx-0.5" />
+                  <FormatButton onClick={() => handleFormat("alignLeft")} title="Align Left" icon={<AlignLeft className="w-3.5 h-3.5" />} active={activeFormats.alignLeft} />
+                  <FormatButton onClick={() => handleFormat("alignCenter")} title="Align Center" icon={<AlignCenter className="w-3.5 h-3.5" />} active={activeFormats.alignCenter} />
+                  <FormatButton onClick={() => handleFormat("alignRight")} title="Align Right" icon={<AlignRight className="w-3.5 h-3.5" />} active={activeFormats.alignRight} />
+                  <FormatButton onClick={() => handleFormat("alignJustify")} title="Justify" icon={<Layout className="w-3.5 h-3.5" />} active={activeFormats.alignJustify} />
+                  <div className="w-px h-3 bg-minimal-border mx-0.5" />
                   <button
                     onClick={() => {
                       const url = window.prompt("Enter URL:");
@@ -573,7 +431,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                         );
                       }
                     }}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className="p-1.5 hover:bg-minimal-sidebar rounded text-minimal-text transition-colors"
                     title="Link"
                   >
                     <Link className="w-3.5 h-3.5" />
@@ -595,12 +453,12 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                         }
                       }
                     }}
-                    className="p-1.5 hover:bg-white/10 rounded text-white transition-colors"
+                    className="p-1.5 hover:bg-minimal-sidebar rounded text-minimal-text transition-colors"
                     title="Insert Image"
                   >
                     <ImageIcon className="w-3.5 h-3.5" />
                   </button>
-                  <div className="w-px h-3 bg-white/20 mx-0.5" />
+                  <div className="w-px h-3 bg-minimal-border mx-0.5" />
                 </>
               )}
 
@@ -636,7 +494,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               >
                 <Maximize2 className="w-3.5 h-3.5" />
               </button>
-              <div className="w-px h-3 bg-white/20 mx-0.5" />
+              <div className="w-px h-3 bg-minimal-border mx-0.5" />
 
               <div className="relative">
                 <button
@@ -645,7 +503,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                   className={cn(
                     "p-1.5 rounded transition-all flex items-center gap-1",
                     isProcessingAI
-                      ? "text-zinc-500 cursor-not-allowed"
+                      ? "text-minimal-muted cursor-not-allowed"
                       : "hover:bg-minimal-accent/20 text-minimal-accent",
                     showAiPopover && "bg-minimal-accent/20",
                   )}
@@ -677,14 +535,14 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
                       className={cn(
-                        "absolute mb-3 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-2 flex flex-col gap-1 w-64 ring-1 ring-white/10",
+                        "absolute mb-3 left-1/2 -translate-x-1/2 bg-minimal-bg border border-minimal-border rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-2 flex flex-col gap-1 w-64 ring-1 ring-minimal-border",
                         bubbleMenu.y < 400
                           ? "top-full mt-3"
                           : "bottom-full mb-3",
                       )}
                     >
                       <div className="flex flex-col gap-1 max-h-[350px] overflow-y-auto pe-1 custom-scrollbar">
-                        <div className="px-2 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-800/50 rounded-t-lg mb-1">
+                        <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar rounded-t-lg mb-1">
                           Editing
                         </div>
                         {[
@@ -719,16 +577,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                             onClick={() =>
                               handleAIAction(item.id as AIAssistantAction)
                             }
-                            className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-lg text-left transition-colors"
+                            className="flex items-center gap-2 p-2 hover:bg-minimal-sidebar rounded-lg text-left transition-colors"
                           >
                             <item.icon className="w-3.5 h-3.5 text-minimal-accent" />
-                            <span className="text-xs text-zinc-300 font-medium">
+                            <span className="text-xs text-minimal-text font-medium">
                               {item.label}
                             </span>
                           </button>
                         ))}
 
-                        <div className="px-2 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-800/50 mt-1 mb-1">
+                        <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar mt-1 mb-1">
                           Structure
                         </div>
                         {[
@@ -763,10 +621,10 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                             onClick={() =>
                               handleAIAction(item.id as AIAssistantAction)
                             }
-                            className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-lg text-left transition-colors"
+                            className="flex items-center gap-2 p-2 hover:bg-minimal-sidebar rounded-lg text-left transition-colors"
                           >
                             <item.icon className="w-3.5 h-3.5 text-minimal-accent" />
-                            <span className="text-xs text-zinc-300 font-medium">
+                            <span className="text-xs text-minimal-text font-medium">
                               {item.label}
                             </span>
                           </button>
@@ -793,50 +651,50 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               className="z-[150] flex flex-col items-start gap-2 max-w-full"
             >
               {aiDraft.isStreaming ? (
-                <div className="flex items-center gap-2 bg-zinc-900 border border-minimal-accent/50 rounded-xl p-1.5 shadow-xl backdrop-blur-xl ring-1 ring-minimal-accent/20">
+                <div className="flex items-center gap-2 bg-minimal-bg border border-minimal-accent/50 rounded-xl p-1.5 shadow-xl backdrop-blur-xl ring-1 ring-minimal-accent/20">
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
                     <Sparkles className="w-4 h-4 text-minimal-accent" />
                   </motion.div>
                   <span className="text-xs font-semibold text-minimal-accent pr-2">AI is Writing...</span>
-                  <div className="w-px h-3 bg-zinc-700" />
+                  <div className="w-px h-3 bg-minimal-border" />
                   <button
                     onClick={() => {
-                       if (aiDraft.abortController) {
-                          aiDraft.abortController.abort();
-                       }
+                      if (aiDraft.abortController) {
+                        aiDraft.abortController.abort();
+                      }
                     }}
-                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-400 hover:bg-white/10 hover:text-red-300 rounded"
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-400 hover:bg-minimal-sidebar hover:text-red-300 rounded"
                     title="Stop AI Generation"
                   >
-                     <Square className="w-3.5 h-3.5 fill-current" /> Stop
+                    <Square className="w-3.5 h-3.5 fill-current" /> Stop
                   </button>
                 </div>
               ) : aiDraft.showActions ? (
-                <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-700/50 rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-white/10">
+                <div className="flex items-center gap-1 bg-minimal-bg border border-minimal-border rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-minimal-border">
                   <button
                     onClick={() => handleAIActionDecision("replace")}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-emerald-400 hover:bg-white/10 hover:text-emerald-300 rounded"
+                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-emerald-400 hover:bg-minimal-sidebar hover:text-emerald-300 rounded"
                   >
                     <Check className="w-3.5 h-3.5" /> Approve & Replace
                   </button>
-                  <div className="w-px h-4 bg-zinc-700" />
+                  <div className="w-px h-4 bg-minimal-border" />
                   <button
                     onClick={() => handleAIActionDecision("append")}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-minimal-accent hover:bg-white/10 hover:text-minimal-accent-hover rounded"
+                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-minimal-accent hover:bg-minimal-sidebar hover:text-minimal-accent-hover rounded"
                   >
                     <Plus className="w-3.5 h-3.5" /> Append Below
                   </button>
-                  <div className="w-px h-4 bg-zinc-700" />
+                  <div className="w-px h-4 bg-minimal-border" />
                   <button
                     onClick={() => handleAIActionDecision("retry")}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/10 hover:text-white rounded"
+                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-minimal-text hover:bg-minimal-sidebar hover:text-minimal-text rounded"
                   >
                     <RefreshCcw className="w-3.5 h-3.5" /> Regenerate
                   </button>
-                  <div className="w-px h-4 bg-zinc-700" />
+                  <div className="w-px h-4 bg-minimal-border" />
                   <button
                     onClick={() => handleAIActionDecision("cancel")}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-red-400 hover:bg-white/10 hover:text-red-300 rounded"
+                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-red-400 hover:bg-minimal-sidebar hover:text-red-300 rounded"
                   >
                     <XIcon className="w-3.5 h-3.5" /> Discard
                   </button>
@@ -943,11 +801,11 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                 left: contextMenu.x,
                 top: contextMenu.y,
               }}
-              className="z-[200] w-56 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-md"
+              className="z-[200] w-56 bg-minimal-bg border border-minimal-border rounded-xl shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-md"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col gap-1">
-                <div className="px-2 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-800/30 rounded-t-lg mb-1">
+                <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar rounded-t-lg mb-1">
                   Editing
                 </div>
                 {[
@@ -996,16 +854,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                       item.action();
                       setContextMenu((prev) => ({ ...prev, show: false }));
                     }}
-                    className="flex items-center gap-2 p-1.5 hover:bg-white/10 rounded-lg text-left transition-colors text-zinc-300"
+                    className="flex items-center gap-2 p-1.5 hover:bg-minimal-sidebar rounded-lg text-left transition-colors text-minimal-text"
                   >
                     <item.icon className="w-3.5 h-3.5" />
                     <span className="text-xs font-medium">{item.label}</span>
                   </button>
                 ))}
 
-                <div className="h-px bg-zinc-800 my-1 mx-1" />
+                <div className="h-px bg-minimal-border my-1 mx-1" />
 
-                <div className="px-2 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-800/30 mb-1">
+                <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar mb-1">
                   AI Power
                 </div>
                 {[
@@ -1040,16 +898,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                       item.action();
                       setContextMenu((prev) => ({ ...prev, show: false }));
                     }}
-                    className="flex items-center gap-2 p-1.5 hover:bg-minimal-accent/20 rounded-lg text-left transition-colors text-zinc-300"
+                    className="flex items-center gap-2 p-1.5 hover:bg-minimal-accent/20 rounded-lg text-left transition-colors text-minimal-text"
                   >
                     <item.icon className="w-3.5 h-3.5 text-minimal-accent" />
                     <span className="text-xs font-medium">{item.label}</span>
                   </button>
                 ))}
 
-                <div className="h-px bg-zinc-800 my-1 mx-1" />
+                <div className="h-px bg-minimal-border my-1 mx-1" />
 
-                <div className="px-2 py-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-800/30 mb-1">
+                <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar mb-1">
                   Clipboard
                 </div>
                 {[
@@ -1079,7 +937,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                               DOMSerializer.fromSchema(
                                 editorSchema,
                               ).serializeFragment(slice.content).textContent ||
-                                "",
+                              "",
                             ],
                             { type: "text/html" },
                           );
@@ -1127,7 +985,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                       item.action();
                       setContextMenu((prev) => ({ ...prev, show: false }));
                     }}
-                    className="flex items-center gap-2 p-1.5 hover:bg-zinc-800 rounded-lg text-left transition-colors text-zinc-400 hover:text-zinc-200"
+                    className="flex items-center gap-2 p-1.5 hover:bg-minimal-border rounded-lg text-left transition-colors text-minimal-muted hover:text-minimal-text"
                   >
                     <item.icon className="w-3.5 h-3.5" />
                     <span className="text-xs font-medium">{item.label}</span>

@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Trash2, X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { cn, useMediaQuery } from '../../lib/utils';
 
-interface MobileMenuProps {}
+interface MobileMenuProps { }
 
 export const MobileMenu: React.FC<MobileMenuProps> = () => {
   const { showMobileMenu, setMobileMenu, setAIAssistant, direction } = useUIStore();
@@ -19,7 +19,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setMobileMenu(false)}
-            className="fixed inset-0 bg-zinc-950/40 backdrop-blur-md z-[120]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-md z-[120]"
           />
           <motion.div
             initial={{ x: direction === 'rtl' ? 300 : -300, opacity: 0 }}

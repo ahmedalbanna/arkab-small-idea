@@ -69,26 +69,26 @@ export function CommandPalette({ commands, onRun, onClose }: CommandPaletteProps
       onMouseDown={onClose}
     >
       <div
-        className="w-[560px] max-w-[90vw] overflow-hidden rounded-xl border border-zinc-700/60 bg-zinc-900 shadow-2xl ring-1 ring-white/10"
+        className="w-[560px] max-w-[90vw] overflow-hidden rounded-xl border border-minimal-border bg-minimal-bg shadow-2xl ring-1 ring-minimal-border"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={onKeyDown}
       >
-        <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
-          <Search className="h-4 w-4 text-zinc-500" />
+        <div className="flex items-center gap-2 border-b border-minimal-border px-3 py-2.5">
+          <Search className="h-4 w-4 text-minimal-muted" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search commands…"
-            className="flex-1 bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+            className="flex-1 bg-transparent text-sm text-minimal-text outline-none placeholder:text-minimal-muted"
           />
-          <kbd className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">
+          <kbd className="rounded bg-minimal-sidebar px-1.5 py-0.5 text-[10px] text-minimal-muted">
             Esc
           </kbd>
         </div>
         <div className="max-h-[320px] overflow-y-auto py-1">
           {filtered.length === 0 ? (
-            <div className="px-3 py-6 text-center text-xs text-zinc-500">
+            <div className="px-3 py-6 text-center text-xs text-minimal-muted">
               No commands found
             </div>
           ) : (
@@ -105,11 +105,11 @@ export function CommandPalette({ commands, onRun, onClose }: CommandPaletteProps
                     : "hover:bg-white/5",
                 )}
               >
-                <span className="text-sm text-zinc-200">
+                <span className="text-sm text-minimal-text">
                   {cmd.label ?? cmd.id}
                 </span>
                 {cmd.key && (
-                  <kbd className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                  <kbd className="rounded bg-minimal-sidebar px-1.5 py-0.5 text-[10px] text-minimal-muted">
                     {cmd.key}
                   </kbd>
                 )}

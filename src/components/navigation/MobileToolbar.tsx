@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, Headset, PenTool, Quote, List, Table } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Bold, Italic, Heading2, Link as LinkIcon, Image as ImageIcon, Sparkles, PenTool, Quote, List, Table } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { getEditorRef } from '../../plugins/editorAccess';

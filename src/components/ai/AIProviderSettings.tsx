@@ -39,7 +39,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setAiSettings(false)}
-            className="fixed inset-0 bg-zinc-950/20 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]"
           />
           <motion.div
             initial={{ x: 400, opacity: 0 }}
@@ -74,7 +74,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                     onClick={() => setAiSettingsTab(tab)}
                     className={cn(
                       "flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all tracking-tight",
-                      aiSettingsTab === tab 
+                      aiSettingsTab === tab
                         ? "bg-minimal-bg text-minimal-accent shadow-sm"
                         : "text-minimal-muted hover:text-minimal-text"
                     )}
