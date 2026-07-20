@@ -6,6 +6,9 @@ import { useAIStore } from '../../stores/aiStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { embeddingService, EmbeddingStatus } from '../../services/embeddingService';
+import { AISettingsPopover } from '../ai/AISettingsPopover';
+import { FontSettingsPopover } from './FontSettingsPopover';
+import { ThemePopover } from './ThemePopover';
 
 /**
  * Bottom status bar. Self-contained: it derives its stats from the active
@@ -117,6 +120,17 @@ export const StatusBar: React.FC = () => {
 
         {/* Right Side: Status Indicators */}
         <div className="flex gap-4 md:gap-6 items-center">
+          {/* Editor settings — theme */}
+          <ThemePopover className="hidden md:flex" />
+
+          {/* Font settings — font family, size, line height, max width */}
+          <FontSettingsPopover className="hidden md:flex" />
+
+          {/* AI settings — models, instructions, Ollama host */}
+          <AISettingsPopover className="hidden md:flex" />
+
+          <div className="h-6 w-px bg-minimal-border hidden md:block" />
+
           {/* AI Status Group */}
           <div className="flex gap-2 items-center">
             {/* Main Model Connection */}

@@ -80,10 +80,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                     { id: 'cosmos', label: 'Deep Cosmos', desc: 'الكون الساحر', bg: '#0a0a14', accent: '#a855f7', text: 'text-purple-200' },
                     { id: 'parchment', label: 'Vintage Parchment', desc: 'الوثيقة العتيقة', bg: '#f4ece1', accent: '#d84315', text: 'text-amber-950' },
                     { id: 'tokyo', label: 'Neon Tokyo', desc: 'طوكيو النيون', bg: '#0d0e15', accent: '#ec4899', text: 'text-cyan-400' },
-                  ].map(t => (
+                  ].map(t => {
+                    const isCustom = ['andalusia', 'cosmos', 'parchment', 'tokyo'].includes(t.id);
+                    return (
                     <button
                       key={t.id}
-                      onClick={() => setTheme(t.id as any)}
+                      onClick={() => {
+                        setTheme(t.id as any);
+                        // Only auto-set heading color for custom themes that have a defined accent.
+                        // Light/Dark/System respect whatever custom color the user chose.
+                        if (isCustom) setHeadingColor(t.accent);
+                      }}
                       className={cn(
                         "relative flex flex-col justify-between p-3.5 rounded-2xl border text-left transition-all hover:scale-[1.02] active:scale-95 group cursor-pointer",
                         theme === t.id
@@ -104,10 +111,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                         {t.desc}
                       </span>
                       {theme === t.id && (
-                        <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-minimal-accent rounded-full" />
+                        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: headingColor }} />
                       )}
                     </button>
-                  ))}
+                  );
+                  })}
+                </div>
+
+                {/* Primary Theme Color — synced with selected theme, overridable */}
+                <div className="flex items-center gap-2 pt-1 px-0.5">
+                  <input
+                    type="color"
+                    value={headingColor}
+                    onChange={(e) => setHeadingColor(e.target.value)}
+                    aria-label="Primary theme color"
+                    className="w-7 h-7 rounded-lg overflow-hidden border-none cursor-pointer bg-transparent shrink-0"
+                  />
+                  <span className="text-[9px] font-bold text-minimal-muted uppercase tracking-wider">
+                    Primary Color · اللون الرئيسي
+                  </span>
+                  <span className="ms-auto font-mono text-[9px] text-minimal-muted">{headingColor}</span>
                 </div>
               </section>
 
@@ -192,20 +215,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                   </button>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-minimal-muted uppercase">Primary Theme Color</label>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="color"
-                      value={headingColor}
-                      onChange={(e) => setHeadingColor(e.target.value)}
-                      className="w-10 h-10 rounded-lg overflow-hidden border-none cursor-pointer bg-transparent"
-                    />
-                    <div className="flex-1 px-3 py-2 bg-minimal-sidebar/50 border border-minimal-border rounded-xl font-mono text-[10px] text-minimal-text uppercase">
-                      {headingColor}
-                    </div>
-                  </div>
-                </div>
+                {/* Primary color is now integrated above with the theme cards */}
               </section>
 
               {/* Features Section */}
