@@ -59,9 +59,10 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
               </div>
               <button
                 onClick={() => setAiSettings(false)}
-                className="p-2 hover:bg-minimal-border rounded-full transition-colors"
+                aria-label="Close AI settings"
+                className="rounded-full p-2 text-minimal-muted transition-colors hover:bg-minimal-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent"
               >
-                <X className="w-4 h-4 text-minimal-muted" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -73,7 +74,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                     key={tab}
                     onClick={() => setAiSettingsTab(tab)}
                     className={cn(
-                      "flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all tracking-tight",
+                      "flex-1 rounded-lg py-1.5 text-[9px] font-bold uppercase transition-all tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
                       aiSettingsTab === tab
                         ? "bg-minimal-bg text-minimal-accent shadow-sm"
                         : "text-minimal-muted hover:text-minimal-text"
@@ -101,10 +102,10 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                           if (defaultModel) setServiceModel(aiSettingsTab, defaultModel);
                         }}
                         className={cn(
-                          "py-2 px-1 rounded-xl border text-[9px] font-bold uppercase transition-all",
+                          "rounded-xl border px-1 py-2 text-[9px] font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
                           serviceConfigs[aiSettingsTab].provider === p
-                            ? "bg-minimal-accent border-minimal-accent text-white shadow-lg shadow-minimal-accent/20"
-                            : "bg-minimal-sidebar border-minimal-border text-minimal-muted hover:border-minimal-accent/30"
+                            ? "border-minimal-accent bg-minimal-accent text-white shadow-lg shadow-minimal-accent/20"
+                            : "border-minimal-border bg-minimal-sidebar text-minimal-muted hover:border-minimal-accent/30"
                         )}
                       >
                         {p}
@@ -122,7 +123,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                     <select
                       value={serviceConfigs[aiSettingsTab].model}
                       onChange={(e) => setServiceModel(aiSettingsTab, e.target.value)}
-                      className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-bold text-minimal-text outline-none focus:border-minimal-accent appearance-none cursor-pointer group-hover/model:border-minimal-accent/50 transition-all uppercase tracking-wide px-4"
+                      className="w-full appearance-none rounded-xl border border-minimal-border bg-minimal-sidebar px-4 py-3 text-xs font-bold uppercase tracking-wide text-minimal-text outline-none transition-all focus:border-minimal-accent focus-visible:ring-2 focus-visible:ring-minimal-accent cursor-pointer group-hover/model:border-minimal-accent/50"
                     >
                       {serviceConfigs[aiSettingsTab].provider === 'ollama' ? (
                         availableModels.length > 0 ? (
@@ -138,7 +139,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                         ))
                       )}
                     </select>
-                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-minimal-muted">
+                    <div className="pointer-events-none absolute inset-y-0 end-4 flex items-center text-minimal-muted">
                       <ChevronDown className="w-3.5 h-3.5" />
                     </div>
                   </div>
@@ -154,7 +155,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                         value={providerConfigs.ollama.host || '/api/ai'}
                         onChange={(e) => setOllamaHost(e.target.value)}
                         placeholder="/api/ai"
-                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none focus:border-minimal-accent transition-all"
+                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none transition-all focus:border-minimal-accent focus-visible:ring-2 focus-visible:ring-minimal-accent"
                       />
                     </div>
                   )}
@@ -167,7 +168,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                         value={apiKeys.openai}
                         onChange={(e) => setApiKey('openai', e.target.value)}
                         placeholder="sk-..."
-                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none focus:border-minimal-accent transition-all"
+                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none transition-all focus:border-minimal-accent focus-visible:ring-2 focus-visible:ring-minimal-accent"
                       />
                     </div>
                   )}
@@ -180,7 +181,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                         value={apiKeys.anthropic}
                         onChange={(e) => setApiKey('anthropic', e.target.value)}
                         placeholder="x-api-key..."
-                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none focus:border-minimal-accent transition-all"
+                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none transition-all focus:border-minimal-accent focus-visible:ring-2 focus-visible:ring-minimal-accent"
                       />
                     </div>
                   )}
@@ -193,7 +194,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                         value={apiKeys.google}
                         onChange={(e) => setApiKey('google', e.target.value)}
                         placeholder="AIza..."
-                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none focus:border-minimal-accent transition-all"
+                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none transition-all focus:border-minimal-accent focus-visible:ring-2 focus-visible:ring-minimal-accent"
                       />
                     </div>
                   )}

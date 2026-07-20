@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
-import { AIAssistantSidebar } from "../../components/ai/AIAssistantSidebar";
+import { AIAssistant } from "../../components/ai/AIAssistant";
 import { AIProviderSettings } from "../../components/ai/AIProviderSettings";
 import { SearchBar } from "../../components/overlays/SearchBar";
 import { SemanticFolders } from "../../components/SemanticFolders";
@@ -38,6 +38,7 @@ export function AIHost() {
 
   const {
     chatHistory,
+    isGenerating,
     serviceConfigs,
     apiKeys,
     ollamaStatus,
@@ -45,7 +46,8 @@ export function AIHost() {
     setAvailableModels,
   } = useAIStore();
 
-  const { showSemanticFolders, setSemanticFolders } = useUIStore();
+  const { showSemanticFolders, setSemanticFolders, showAIAssistant, setAIAssistant } = useUIStore();
+
 
   const {
     findText,
@@ -197,21 +199,96 @@ export function AIHost() {
     }
   }, [chatHistory]);
 
+  /**
+   * Stream a chat reply for a history that already ends with the user turn.
+   * Shared by normal generation and retry so behaviour stays identical.
+   */
+  const streamReply = useCallback(
+    async (historyWithUser: ChatMessage[]) => {
+      if (chatAbortControllerRef.current) {
+        chatAbortControllerRef.current.abort();
+      }
+      const abortController = new AbortController();
+      chatAbortControllerRef.current = abortController;
+
+      const embeddingOptions = {
+        provider: serviceConfigs.embeddings.provider,
+        apiKey:
+          apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
+        model: serviceConfigs.embeddings.model,
+      };
+
+      const ai = useAIStore.getState();
+      ai.setGenerating(true);
+      ai.setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "" }] }]);
+
+      const state = useEditorStore.getState();
+      const page =
+        state.pages.find((p) => p.id === state.activeFocusedPageId) ||
+        state.pages[0];
+      if (!page) {
+        ai.setGenerating(false);
+        chatAbortControllerRef.current = null;
+        return;
+      }
+      const cursorContext = getEditorRef(page.id)?.getCursorContext() || "";
+
+      try {
+        let fullResponse = "";
+        await chatWithAI(historyWithUser, page.content, {
+          personalInstructions: ai.personalInstructions,
+          model: ai.serviceConfigs.chat.model,
+          provider: ai.serviceConfigs.chat.provider,
+          apiKeys: ai.apiKeys,
+          providerConfigs: ai.providerConfigs,
+          signal: abortController.signal,
+          onChunk: (chunk) => {
+            fullResponse += chunk;
+            ai.setChatHistory((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last && last.role === "model") {
+                next[next.length - 1] = {
+                  ...last,
+                  parts: [{ text: fullResponse }],
+                };
+              }
+              return next;
+            });
+          },
+          cursorContext,
+          embeddingOptions,
+        });
+      } catch (error: any) {
+        if (error.name === "AbortError") {
+          console.log("Chat aborted by user");
+          chatAbortControllerRef.current = null;
+          useAIStore.getState().setGenerating(false);
+          return;
+        }
+        console.error("AI Generation failed:", error);
+        const errorMessage = `Error: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        ai.setChatHistory((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = {
+            role: "model",
+            parts: [{ text: errorMessage }],
+          };
+          return next;
+        });
+      } finally {
+        useAIStore.getState().setGenerating(false);
+        chatAbortControllerRef.current = null;
+      }
+    },
+    [serviceConfigs, apiKeys],
+  );
+
   const handleAiGenerate = useCallback(async () => {
     if (!aiPrompt.trim() && chatAttachedImages.length === 0) return;
 
-    if (chatAbortControllerRef.current) {
-      chatAbortControllerRef.current.abort();
-    }
-    const abortController = new AbortController();
-    chatAbortControllerRef.current = abortController;
-
-    const embeddingOptions = {
-      provider: serviceConfigs.embeddings.provider,
-      apiKey:
-        apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
-      model: serviceConfigs.embeddings.model,
-    };
     indexActiveDocument();
 
     const ai = useAIStore.getState();
@@ -224,66 +301,53 @@ export function AIHost() {
     ai.setChatHistory(historyWithUser);
     setAiPrompt("");
     setChatAttachedImages([]);
-    ai.setGenerating(true);
-    ai.setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "" }] }]);
+    await streamReply(historyWithUser);
+  }, [aiPrompt, chatAttachedImages, streamReply]);
 
-    const state = useEditorStore.getState();
-    const page =
-      state.pages.find((p) => p.id === state.activeFocusedPageId) ||
-      state.pages[0];
-    if (!page) return;
-    const cursorContext = getEditorRef(page.id)?.getCursorContext() || "";
+  const handleRetry = useCallback(() => {
+    const ai = useAIStore.getState();
+    const history = ai.chatHistory;
+    let lastUserIdx = -1;
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === "user") {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    if (lastUserIdx === -1) return;
+    const truncated = history.slice(0, lastUserIdx + 1);
+    ai.setChatHistory(truncated);
+    streamReply(truncated);
+  }, [streamReply]);
 
-    try {
-      let fullResponse = "";
-      await chatWithAI(historyWithUser, page.content, {
-        personalInstructions: ai.personalInstructions,
-        model: ai.serviceConfigs.chat.model,
-        provider: ai.serviceConfigs.chat.provider,
-        apiKeys: ai.apiKeys,
-        providerConfigs: ai.providerConfigs,
-        signal: abortController.signal,
-        onChunk: (chunk) => {
-          fullResponse += chunk;
-          ai.setChatHistory((prev) => {
-            const next = [...prev];
-            const last = next[next.length - 1];
-            if (last && last.role === "model") {
-              next[next.length - 1] = {
-                ...last,
-                parts: [{ text: fullResponse }],
-              };
-            }
-            return next;
-          });
-        },
-        cursorContext,
-        embeddingOptions,
-      });
-    } catch (error: any) {
-      if (error.name === "AbortError") {
-        console.log("Chat aborted by user");
-        chatAbortControllerRef.current = null;
-        useAIStore.getState().setGenerating(false);
+  const runAiAction = useCallback(
+    (actionId: string) => {
+      if (actionId === "brainstorm") {
+        setAiPrompt("Brainstorm 5 creative angles for this document:");
+        setTimeout(() => chatInputRef.current?.focus(), 0);
         return;
       }
-      console.error("AI Generation failed:", error);
-      const errorMessage = `Error: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
-      ai.setChatHistory((prev) => {
-        const next = [...prev];
-        next[next.length - 1] = {
-          role: "model",
-          parts: [{ text: errorMessage }],
-        };
-        return next;
-      });
-    } finally {
-      useAIStore.getState().setGenerating(false);
-      chatAbortControllerRef.current = null;
-    }
-  }, [aiPrompt, chatAttachedImages, serviceConfigs, apiKeys]);
+      handleAiAction(actionId);
+    },
+    [],
+  );
+
+  const handleDismissMessage = useCallback((index: number) => {
+    const ai = useAIStore.getState();
+    ai.setChatHistory((prev) => {
+      const next = [...prev];
+      if (index >= 0 && index < next.length) next.splice(index, 1);
+      return next;
+    });
+  }, []);
+
+  const handleReviseMessage = useCallback(
+    (text: string) => {
+      const instruction = `Revise the following text based on this instruction: "${text}". Keep the same language and meaning, improve clarity and flow.`;
+      handleAiAction("rewrite", instruction);
+    },
+    [],
+  );
 
   const stopAiGenerate = useCallback(() => {
     if (chatAbortControllerRef.current) {
@@ -355,23 +419,41 @@ export function AIHost() {
     [aiPrompt],
   );
 
+  const ollamaStatusKey: import("../../components/ai/AssistantHeader").OllamaStatus =
+    ollamaStatus.loading
+      ? "loading"
+      : ollamaStatus.connected
+        ? "ready"
+        : ollamaStatus.error
+          ? "error"
+          : "no-ollama";
+
   return (
     <>
-      <AIAssistantSidebar
-        chatScrollRef={chatScrollRef}
-        chatInputRef={chatInputRef}
-        chatImageInputRef={chatImageInputRef}
-        aiPrompt={aiPrompt}
-        setAiPrompt={setAiPrompt}
-        chatAttachedImages={chatAttachedImages}
-        setChatAttachedImages={setChatAttachedImages}
-        handleAiGenerate={handleAiGenerate}
-        handleChatImageUpload={handleChatImageUpload}
-        formatChatInput={formatChatInput}
-        applyContent={applyContent}
-        onAction={handleAiAction}
-        stopAiGenerate={stopAiGenerate}
-      />
+      {showAIAssistant && (
+        <AIAssistant
+          ollamaStatus={ollamaStatusKey}
+          aiPrompt={aiPrompt}
+          setAiPrompt={setAiPrompt}
+          chatInputRef={chatInputRef}
+          chatImageInputRef={chatImageInputRef}
+          chatAttachedImages={chatAttachedImages}
+          setChatAttachedImages={setChatAttachedImages}
+          chatHistory={chatHistory}
+          isGenerating={isGenerating}
+          scrollRef={chatScrollRef}
+          handleAiGenerate={handleAiGenerate}
+          handleChatImageUpload={handleChatImageUpload}
+          formatChatInput={formatChatInput}
+          stopAiGenerate={stopAiGenerate}
+          handleAiAction={runAiAction}
+          handleDismissMessage={handleDismissMessage}
+          handleReviseMessage={handleReviseMessage}
+          onApply={applyContent}
+          onRetry={handleRetry}
+          onClose={() => setAIAssistant(false)}
+        />
+      )}
 
       <AIProviderSettings
         aiSettingsTab={aiSettingsTab}
