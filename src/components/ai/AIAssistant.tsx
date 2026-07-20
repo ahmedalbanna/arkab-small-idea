@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { AssistantHeader, OllamaStatus } from './AssistantHeader';
 import { ChatThread } from './ChatThread';
 import { Composer } from './Composer';
@@ -35,9 +35,10 @@ const FOLLOW_UPS = [
 ];
 
 /**
- * Root AI assistant surface. Owns the minimize state and composes the header,
- * conversation thread, and composer. Behaviour is driven entirely by the props
- * supplied by AIHost (streaming, handlers, shortcuts).
+ * Root AI assistant surface. Composes the header, conversation thread, and
+ * composer. Behaviour is driven entirely by the props supplied by AIHost
+ * (streaming, handlers, shortcuts). Visibility is controlled externally
+ * (AnimatePresence in AIHost) — this component always renders its full UI.
  */
 export const AIAssistant: React.FC<AIAssistantProps> = ({
   ollamaStatus,
@@ -61,8 +62,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   onRetry,
   onClose,
 }) => {
-  const [isMinimized, setIsMinimized] = useState(false);
-
   const suggestions = useMemo(() => {
     if (isGenerating || chatHistory.length === 0) return [];
     const last = chatHistory[chatHistory.length - 1];
@@ -75,46 +74,40 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-minimal-border bg-minimal-bg shadow-2xl">
+    <div className="flex h-full w-full flex-col overflow-hidden">
       <AssistantHeader
         ollamaStatus={ollamaStatus}
-        isMinimized={isMinimized}
-        onToggleMinimize={() => setIsMinimized((v) => !v)}
         onClose={onClose}
       />
 
-      {!isMinimized && (
-        <>
-          <ChatThread
-            chatHistory={chatHistory}
-            isGenerating={isGenerating}
-            scrollRef={scrollRef}
-            suggestions={suggestions}
-            onAction={handleAiAction}
-            onTemplate={handleSuggest}
-            onApply={onApply}
-            onDismiss={handleDismissMessage}
-            onRevise={handleReviseMessage}
-            onRetry={onRetry}
-            onSuggest={handleSuggest}
-          />
-          <Composer
-            aiPrompt={aiPrompt}
-            setAiPrompt={setAiPrompt}
-            chatInputRef={chatInputRef}
-            chatImageInputRef={chatImageInputRef}
-            chatAttachedImages={chatAttachedImages}
-            setChatAttachedImages={setChatAttachedImages}
-            handleAiGenerate={handleAiGenerate}
-            handleChatImageUpload={handleChatImageUpload}
-            formatChatInput={formatChatInput}
-            stopAiGenerate={stopAiGenerate}
-            isGenerating={isGenerating}
-            isEmpty={chatHistory.length === 0}
-            onAction={handleAiAction}
-          />
-        </>
-      )}
+      <ChatThread
+        chatHistory={chatHistory}
+        isGenerating={isGenerating}
+        scrollRef={scrollRef}
+        suggestions={suggestions}
+        onAction={handleAiAction}
+        onTemplate={handleSuggest}
+        onApply={onApply}
+        onDismiss={handleDismissMessage}
+        onRevise={handleReviseMessage}
+        onRetry={onRetry}
+        onSuggest={handleSuggest}
+      />
+      <Composer
+        aiPrompt={aiPrompt}
+        setAiPrompt={setAiPrompt}
+        chatInputRef={chatInputRef}
+        chatImageInputRef={chatImageInputRef}
+        chatAttachedImages={chatAttachedImages}
+        setChatAttachedImages={setChatAttachedImages}
+        handleAiGenerate={handleAiGenerate}
+        handleChatImageUpload={handleChatImageUpload}
+        formatChatInput={formatChatInput}
+        stopAiGenerate={stopAiGenerate}
+        isGenerating={isGenerating}
+        isEmpty={chatHistory.length === 0}
+        onAction={handleAiAction}
+      />
     </div>
   );
 };

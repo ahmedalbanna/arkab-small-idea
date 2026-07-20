@@ -63,7 +63,7 @@ export const Composer: React.FC<ComposerProps> = ({
       )}
 
       <div className="flex items-end gap-1.5 p-2.5">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-row gap-0.5">
           <button
             type="button"
             onClick={() => chatImageInputRef.current?.click()}

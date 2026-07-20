@@ -144,6 +144,56 @@
   --minimal-font: "JetBrains Mono", monospace;
 }
 
+/* ── Custom theme dark variants (same accent, dark background) ── */
+
+[data-theme="andalusia-dark"] {
+  --minimal-bg: #1a1a14;
+  --minimal-sidebar: #24241e;
+  --minimal-border: #333328;
+  --minimal-text: #e0e0d0;
+  --minimal-muted: #8a8a6a;
+  --minimal-accent: #2e7d32;
+  --minimal-accent-rgb: 46, 125, 50;
+  --heading-color: #b8e6b8;
+  --minimal-font: "Amiri", serif;
+}
+
+[data-theme="cosmos-dark"] {
+  --minimal-bg: #0a0a14;
+  --minimal-sidebar: #101026;
+  --minimal-border: #1a1b3a;
+  --minimal-text: #e0e0f2;
+  --minimal-muted: #6f729e;
+  --minimal-accent: #a855f7;
+  --minimal-accent-rgb: 168, 85, 247;
+  --heading-color: #f3e8ff;
+  --minimal-font: "Cairo", sans-serif;
+}
+
+[data-theme="parchment-dark"] {
+  --minimal-bg: #1e1a16;
+  --minimal-sidebar: #28231e;
+  --minimal-border: #3a3228;
+  --minimal-text: #ddd6cc;
+  --minimal-muted: #9e8a78;
+  --minimal-accent: #d84315;
+  --minimal-accent-rgb: 216, 67, 21;
+  --heading-color: #ffccaa;
+  --minimal-font: "EB Garamond", serif;
+}
+
+[data-theme="tokyo-dark"] {
+  --minimal-bg: #0d0e15;
+  --minimal-sidebar: #131422;
+  --minimal-border: #222538;
+  --minimal-text: #22d3ee;
+  --minimal-muted: #e879f9;
+  --minimal-accent: #ec4899;
+  --minimal-accent-rgb: 236, 72, 153;
+  --heading-color: #ffffff;
+  --minimal-font: "JetBrains Mono", monospace;
+}
+
 @theme {
   --font-sans: var(--minimal-font);
   --font-mono: "Courier Prime", "Courier New", Courier, monospace;

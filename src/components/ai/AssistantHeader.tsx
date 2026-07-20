@@ -1,5 +1,5 @@
 import React from 'react';
-import { GripVertical, Minus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ModelSwitcher } from './ModelSwitcher';
 
@@ -7,8 +7,6 @@ export type OllamaStatus = 'idle' | 'loading' | 'ready' | 'error' | 'no-ollama';
 
 interface AssistantHeaderProps {
   ollamaStatus: OllamaStatus;
-  isMinimized: boolean;
-  onToggleMinimize: () => void;
   onClose: () => void;
 }
 
@@ -21,22 +19,19 @@ const STATUS_LABEL: Record<OllamaStatus, string> = {
 };
 
 /**
- * Header bar for the AI assistant: title, live provider status, inline model
- * switcher, minimize and close controls. Doubles as a drag handle.
+ * Header bar for the AI assistant: title, live provider status, and close
+ * control.
  */
 export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
   ollamaStatus,
-  isMinimized,
-  onToggleMinimize,
   onClose,
 }) => {
   const statusReady = ollamaStatus === 'ready';
   const statusError = ollamaStatus === 'error' || ollamaStatus === 'no-ollama';
 
   return (
-    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-minimal-border px-3 select-none">
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-minimal-border px-4 select-none">
       <div className="flex items-center gap-2 text-minimal-text">
-        <GripVertical className="h-4 w-4 cursor-grab text-minimal-muted active:cursor-grabbing" aria-hidden />
         <span className="text-sm font-bold tracking-tight">Intelligence</span>
         <span
           className={cn(
@@ -64,15 +59,6 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
 
       <div className="ms-auto flex items-center gap-1.5">
         <ModelSwitcher />
-        <button
-          type="button"
-          onClick={onToggleMinimize}
-          aria-label={isMinimized ? 'Expand assistant' : 'Minimize assistant'}
-          aria-pressed={isMinimized}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-minimal-muted transition-colors hover:bg-minimal-sidebar hover:text-minimal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent"
-        >
-          <Minus className="h-4 w-4" />
-        </button>
         <button
           type="button"
           onClick={onClose}

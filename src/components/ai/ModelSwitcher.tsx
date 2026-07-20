@@ -9,13 +9,15 @@ type Provider = (typeof PROVIDERS)[number];
 
 interface ModelSwitcherProps {
   className?: string;
+  /** Open the dropdown upward instead of downward (useful in a bottom bar). */
+  dropdownUp?: boolean;
 }
 
 /**
- * Compact provider/model selector living inside the assistant header.
- * Keeps local UI state in the store via setServiceProvider / setServiceModel.
+ * Compact provider/model selector. When `dropdownUp` is true the popover
+ * opens above the trigger (useful for status-bar placement).
  */
-export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ className }) => {
+export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ className, dropdownUp }) => {
   const { serviceConfigs, availableModels, setServiceProvider, setServiceModel } = useAIStore();
   const chat = serviceConfigs.chat;
   const [open, setOpen] = useState(false);
@@ -58,10 +60,10 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ className }) => {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`AI model: ${chat.model}, provider ${chat.provider}`}
-        className="flex items-center gap-1.5 rounded-full border border-minimal-border bg-minimal-sidebar px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-tight text-minimal-muted transition-colors hover:border-minimal-accent/30 hover:text-minimal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent"
+        className="flex items-center gap-1 rounded-full border border-minimal-border bg-minimal-sidebar px-2 py-1 text-[9px] font-bold uppercase tracking-tight text-minimal-muted transition-colors hover:border-minimal-accent/30 hover:text-minimal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent"
       >
         <Cpu className="h-3 w-3 text-minimal-accent" />
-        <span className="max-w-[120px] truncate">{chat.model}</span>
+        <span className="max-w-[100px] truncate">{chat.model}</span>
         <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
       </button>
 
@@ -69,7 +71,12 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ className }) => {
         <div
           role="menu"
           aria-label="Select AI provider and model"
-          className="absolute end-0 top-full z-overlay-float mt-2 w-56 origin-top-end animate-in rounded-2xl border border-minimal-border bg-minimal-bg p-2 shadow-2xl fade-in zoom-in-95 duration-150"
+          className={cn(
+            'absolute end-0 z-overlay-float w-56 origin-top-end animate-in rounded-2xl border border-minimal-border bg-minimal-bg p-2 shadow-2xl fade-in zoom-in-95 duration-150',
+            dropdownUp
+              ? 'bottom-full mb-2 origin-bottom-end'
+              : 'top-full mt-2'
+          )}
         >
           <div className="px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-minimal-muted">
             Provider

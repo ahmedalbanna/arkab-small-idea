@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { AIAssistant } from "../../components/ai/AIAssistant";
+import { cn } from "../../lib/utils";
 import { AIProviderSettings } from "../../components/ai/AIProviderSettings";
 import { SearchBar } from "../../components/overlays/SearchBar";
 import { SemanticFolders } from "../../components/SemanticFolders";
@@ -430,30 +431,44 @@ export function AIHost() {
 
   return (
     <>
-      {showAIAssistant && (
-        <AIAssistant
-          ollamaStatus={ollamaStatusKey}
-          aiPrompt={aiPrompt}
-          setAiPrompt={setAiPrompt}
-          chatInputRef={chatInputRef}
-          chatImageInputRef={chatImageInputRef}
-          chatAttachedImages={chatAttachedImages}
-          setChatAttachedImages={setChatAttachedImages}
-          chatHistory={chatHistory}
-          isGenerating={isGenerating}
-          scrollRef={chatScrollRef}
-          handleAiGenerate={handleAiGenerate}
-          handleChatImageUpload={handleChatImageUpload}
-          formatChatInput={formatChatInput}
-          stopAiGenerate={stopAiGenerate}
-          handleAiAction={runAiAction}
-          handleDismissMessage={handleDismissMessage}
-          handleReviseMessage={handleReviseMessage}
-          onApply={applyContent}
-          onRetry={handleRetry}
-          onClose={() => setAIAssistant(false)}
-        />
-      )}
+      <AnimatePresence>
+        {showAIAssistant && (
+          <motion.div
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 0.8 }}
+            className={cn(
+              'absolute end-0 inset-y-0 z-[110] flex flex-col',
+              'w-full md:w-1/2 md:min-w-[380px] md:max-w-[700px]',
+              'border-s border-minimal-border bg-minimal-bg shadow-2xl'
+            )}
+          >
+            <AIAssistant
+              ollamaStatus={ollamaStatusKey}
+              aiPrompt={aiPrompt}
+              setAiPrompt={setAiPrompt}
+              chatInputRef={chatInputRef}
+              chatImageInputRef={chatImageInputRef}
+              chatAttachedImages={chatAttachedImages}
+              setChatAttachedImages={setChatAttachedImages}
+              chatHistory={chatHistory}
+              isGenerating={isGenerating}
+              scrollRef={chatScrollRef}
+              handleAiGenerate={handleAiGenerate}
+              handleChatImageUpload={handleChatImageUpload}
+              formatChatInput={formatChatInput}
+              stopAiGenerate={stopAiGenerate}
+              handleAiAction={runAiAction}
+              handleDismissMessage={handleDismissMessage}
+              handleReviseMessage={handleReviseMessage}
+              onApply={applyContent}
+              onRetry={handleRetry}
+              onClose={() => setAIAssistant(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AIProviderSettings
         aiSettingsTab={aiSettingsTab}

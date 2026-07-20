@@ -21,7 +21,7 @@ const TEMPLATES = [
  */
 export const EmptyState: React.FC<EmptyStateProps> = ({ onTemplate }) => {
   return (
-    <div className="flex flex-col items-center px-4 pt-10 text-center">
+    <div className="flex flex-col items-center px-5 pt-8 text-center">
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-minimal-accent/10 text-minimal-accent">
         <Sparkles className="h-7 w-7" />
       </div>

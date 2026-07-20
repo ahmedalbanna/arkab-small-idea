@@ -7,7 +7,8 @@ import {
 import { idbStorage } from '../lib/idbStorage';
 
 interface SettingsState {
-  theme: 'light' | 'dark' | 'system' | 'andalusia' | 'cosmos' | 'parchment' | 'tokyo';
+  theme: 'light' | 'dark' | 'system' | 'andalusia' | 'cosmos' | 'parchment' | 'tokyo'
+    | 'andalusia-dark' | 'cosmos-dark' | 'parchment-dark' | 'tokyo-dark';
   fontSize: number;
   lineHeight: number;
   maxWidth: string;
