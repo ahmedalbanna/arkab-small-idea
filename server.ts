@@ -11,12 +11,23 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const API_ONLY = process.argv.includes("--api-only");
+  const PORT = API_ONLY ? 3001 : 3000;
 
   app.use(express.json());
 
   const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhosy:11434";
   const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:0.5b";
+
+  // CORS for Vite dev server when running standalone
+  if (API_ONLY) {
+    app.use((_req, res, next) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      next();
+    });
+  }
 
   // AI Tags Proxy (Connection check)
   app.get("/api/ai/tags", async (req, res) => {
@@ -147,23 +158,29 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+  // Vite middleware for development (skipped when using --api-only)
+  if (!API_ONLY) {
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (_req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    if (API_ONLY) {
+      console.log(`API server running on http://localhost:${PORT}`);
+    } else {
+      console.log(`Server running on http://localhost:${PORT}`);
+    }
     console.log(
       `Proxying AI requests to ${OLLAMA_HOST} using model ${OLLAMA_MODEL}`,
     );

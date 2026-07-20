@@ -40,9 +40,19 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true'
+      // HMR (Hot Module Replacement) — enabled by default.
+      // Set DISABLE_HMR=true in .env to turn it off.
+      hmr: process.env.DISABLE_HMR !== 'true',
+      // Polling-based file watching for environments where native fs events
+      // are unreliable (e.g. WSL2, Docker, network drives on Windows).
+      watch: process.env.VITE_POLL === 'true' ? { usePolling: true, interval: 500 } : undefined,
+      // Proxy API requests to the Express server when running vite standalone.
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
     },
   };
 });

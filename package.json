@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "tsx watch server.ts",
+    "dev:api": "tsx server.ts --api-only",
+    "dev:vite": "vite --port 5173",
     "build": "vite build",
     "preview": "vite preview --port 4174",
     "clean": "rm -rf dist",
