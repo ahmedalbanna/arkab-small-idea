@@ -35,7 +35,7 @@ interface AIState {
       model: string;
     };
   };
-  
+
   setServiceProvider: (service: keyof AIState['serviceConfigs'], provider: AIState['provider']) => void;
   setServiceModel: (service: keyof AIState['serviceConfigs'], model: string) => void;
   setProvider: (provider: AIState['provider'] | ((prev: AIState['provider']) => AIState['provider'])) => void;
@@ -56,21 +56,21 @@ export const useAIStore = create<AIState>()(
     (set) => ({
       chatHistory: [],
       personalInstructions: '',
-      selectedModel: 'mistral',
+      selectedModel: 'qwen2.5:0.5b',
       availableModels: [],
       isGenerating: false,
       ollamaStatus: {
         loading: false,
         connected: false,
-        model: '',
+        model: 'qwen2.5:0.5b',
       },
 
-      provider: 'google',
+      provider: 'ollama',
       serviceConfigs: {
-        chat: { provider: 'google', model: 'gemini-1.5-flash' },
-        actions: { provider: 'google', model: 'gemini-1.5-flash' },
-        semantic: { provider: 'google', model: 'gemini-1.5-flash' },
-        embeddings: { provider: 'google', model: 'text-embedding-004' }
+        chat: { provider: 'ollama', model: 'qwen2.5:0.5b' },
+        actions: { provider: 'ollama', model: 'qwen2.5:0.5b' },
+        semantic: { provider: 'pipeline', model: 'Xenova/all-MiniLM-L6-v2' },
+        embeddings: { provider: 'pipeline', model: 'Xenova/all-MiniLM-L6-v2' }
       },
       apiKeys: {
         openai: '',
@@ -86,32 +86,32 @@ export const useAIStore = create<AIState>()(
         },
       },
 
-      addMessage: (msg) => set((state) => ({ 
-        chatHistory: [...state.chatHistory, msg].slice(-100) 
+      addMessage: (msg) => set((state) => ({
+        chatHistory: [...state.chatHistory, msg].slice(-100)
       })),
       setChatHistory: (chatHistory) => set((state) => {
         const nextHistory = typeof chatHistory === 'function' ? chatHistory(state.chatHistory) : chatHistory;
-        return { 
+        return {
           chatHistory: nextHistory.slice(-100)
         };
       }),
-      setPersonalInstructions: (personalInstructions) => set((state) => ({ 
-        personalInstructions: typeof personalInstructions === 'function' ? personalInstructions(state.personalInstructions) : personalInstructions 
+      setPersonalInstructions: (personalInstructions) => set((state) => ({
+        personalInstructions: typeof personalInstructions === 'function' ? personalInstructions(state.personalInstructions) : personalInstructions
       })),
-      setSelectedModel: (selectedModel) => set((state) => ({ 
-        selectedModel: typeof selectedModel === 'function' ? selectedModel(state.selectedModel) : selectedModel 
+      setSelectedModel: (selectedModel) => set((state) => ({
+        selectedModel: typeof selectedModel === 'function' ? selectedModel(state.selectedModel) : selectedModel
       })),
-      setAvailableModels: (availableModels) => set((state) => ({ 
-        availableModels: typeof availableModels === 'function' ? availableModels(state.availableModels) : availableModels 
+      setAvailableModels: (availableModels) => set((state) => ({
+        availableModels: typeof availableModels === 'function' ? availableModels(state.availableModels) : availableModels
       })),
-      setGenerating: (isGenerating) => set((state) => ({ 
-        isGenerating: typeof isGenerating === 'function' ? isGenerating(state.isGenerating) : isGenerating 
+      setGenerating: (isGenerating) => set((state) => ({
+        isGenerating: typeof isGenerating === 'function' ? isGenerating(state.isGenerating) : isGenerating
       })),
-      setOllamaStatus: (ollamaStatus) => set((state) => ({ 
-        ollamaStatus: typeof ollamaStatus === 'function' ? ollamaStatus(state.ollamaStatus) : ollamaStatus 
+      setOllamaStatus: (ollamaStatus) => set((state) => ({
+        ollamaStatus: typeof ollamaStatus === 'function' ? ollamaStatus(state.ollamaStatus) : ollamaStatus
       })),
-      setProvider: (provider) => set((state) => ({ 
-        provider: typeof provider === 'function' ? provider(state.provider) : provider 
+      setProvider: (provider) => set((state) => ({
+        provider: typeof provider === 'function' ? provider(state.provider) : provider
       })),
       setServiceProvider: (service, provider) => set((state) => ({
         serviceConfigs: {

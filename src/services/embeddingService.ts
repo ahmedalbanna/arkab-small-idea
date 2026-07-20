@@ -199,28 +199,45 @@ export class VectorStore {
   async init() {
     if (this.isInitialized) return;
 
-    return new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, 1);
+    // No IndexedDB available (e.g. Node/tests/SSR or blocked private mode) —
+    // fall back to in-memory storage so the app still works.
+    if (typeof indexedDB === 'undefined' || typeof window === 'undefined') {
+      this.isInitialized = true;
+      return;
+    }
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        this.db = request.result;
-        this.loadFromDB().then(() => {
-          this.isInitialized = true;
-          resolve();
-        });
-      };
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open(this.dbName, 1);
 
-      request.onupgradeneeded = (event: any) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          db.createObjectStore(this.storeName, { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains(this.episodesStoreName)) {
-          db.createObjectStore(this.episodesStoreName, { keyPath: 'id' });
-        }
-      };
-    });
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          this.db = request.result;
+          this.loadFromDB()
+            .then(() => {
+              this.isInitialized = true;
+              resolve();
+            })
+            .catch(reject);
+        };
+
+        request.onupgradeneeded = (event: any) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(this.storeName)) {
+            db.createObjectStore(this.storeName, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(this.episodesStoreName)) {
+            db.createObjectStore(this.episodesStoreName, { keyPath: 'id' });
+          }
+        };
+      });
+    } catch (error) {
+      // IndexedDB failed to open (quota, private mode, corruption) — keep
+      // the vector store functional in-memory rather than crashing.
+      console.warn('VectorStore: IndexedDB unavailable, using in-memory storage.', error);
+      this.db = null;
+      this.isInitialized = true;
+    }
   }
 
   private async loadFromDB() {

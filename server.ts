@@ -15,8 +15,8 @@ async function startServer() {
 
   app.use(express.json());
 
-  const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://185.190.140.93:11434";
-  const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "gemma:2b";
+  const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhosy:11434";
+  const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:0.5b";
 
   // AI Tags Proxy (Connection check)
   app.get("/api/ai/tags", async (req, res) => {
