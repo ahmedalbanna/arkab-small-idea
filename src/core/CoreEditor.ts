@@ -172,6 +172,35 @@ export class CoreEditor {
     this.executeCommand({ type: "setMarkdown", content });
   }
 
+  /**
+   * Seed the document from markdown without recording an undo entry. Used to
+   * initialize the editor from external content (the `value` prop) before the
+   * controlled `EditorView` is built.
+   */
+  initDoc(markdown: string): void {
+    const doc = this.io.parse(markdown);
+    const tr = this._state.tr
+      .replaceWith(0, this._state.doc.content.size, doc.content)
+      .setMeta("addToHistory", false);
+    this.apply(tr);
+  }
+
+  /**
+   * Replace the whole document from markdown. By default records an undo entry;
+   * pass `{ recordHistory: false }` for controlled prop updates that shouldn't
+   * pollute the user's undo stack.
+   */
+  replaceDoc(markdown: string, opts?: { recordHistory?: boolean }): void {
+    const doc = this.io.parse(markdown);
+    const tr = this._state.tr.replaceWith(
+      0,
+      this._state.doc.content.size,
+      doc.content,
+    );
+    if (opts?.recordHistory === false) tr.setMeta("addToHistory", false);
+    this.apply(tr);
+  }
+
   // --- Draft persistence ---------------------------------------------------
 
   /** Persist the current document as a draft snapshot. */

@@ -131,23 +131,32 @@ export function useEditorView({
     // PluginContext. The editor no longer defines any ProseMirror plugins
     // inline.
     const { editorPlugins, nodeViews } = loaded.context;
+    const core = loaded.core;
 
-    // Collaboration plugins (ySync, yCursor, yUndo, keymap) are contributed by
-    // the `collab` registry plugin and surfaced through `editorPlugins`, so
-    // they lead the plugin list exactly as the previous inline wiring did.
-    const state = EditorState.create({
-      schema: editorSchema,
-      doc:
-        parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
-      plugins: [
-        // All ProseMirror plugins — collaboration (when enabled), core base
-        // plugins, feature plugins, the editor UI plugins (side menu, context
-        // menu, bubble menu, TTS highlight, typewriter, focus mode) and the AI
-        // keymap — are contributed by the plugin system and surfaced through
-        // PluginContext.editorPlugins. The editor defines none inline.
-        ...editorPlugins,
-      ],
-    });
+    // Seed the core (single source of truth) from the external value prop
+    // before building the controlled view. Wrapped so the seed doesn't echo
+    // back out as an `onChange`.
+    if (core) {
+      isUpdatingFromProps.current = true;
+      core.initDoc(value);
+      isUpdatingFromProps.current = false;
+    }
+
+    const state = core
+      ? core.getState()
+      : EditorState.create({
+          schema: editorSchema,
+          doc:
+            parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
+          plugins: [
+            // All ProseMirror plugins — collaboration (when enabled), core base
+            // plugins, feature plugins, the editor UI plugins (side menu, context
+            // menu, bubble menu, TTS highlight, typewriter, focus mode) and the AI
+            // keymap — are contributed by the plugin system and surfaced through
+            // PluginContext.editorPlugins. The editor defines none inline.
+            ...editorPlugins,
+          ],
+        });
 
     const view = new EditorView(editorRef.current, {
       state,
@@ -179,61 +188,15 @@ export function useEditorView({
         return new Slice(parseMarkdownDoc(text).content, 0, 0);
       },
       dispatchTransaction(tr) {
-        const newState = this.state.apply(tr);
-        this.updateState(newState);
-
-        // Slash menu query detection. Read the live menu state (via the ref) and
-        // only act on the menu this editor owns, so a sibling editor's slash
-        // menu isn't affected by this editor's transactions.
-        const liveSlash = slashMenuRef.current;
-        if (liveSlash.show && liveSlash.editorId === editorId) {
-          const { selection, doc } = newState;
-          // Check if the trigger slash is still there
-          const charBefore = doc.textBetween(
-            Math.max(0, liveSlash.pos - 1),
-            Math.max(0, liveSlash.pos),
-          );
-
-          // If cursor moves before the slash, slash is deleted, or selection is not empty, hide menu
-          if (
-            selection.from < liveSlash.pos ||
-            charBefore !== "/" ||
-            !selection.empty
-          ) {
-            setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
-          } else {
-            const text = doc.textBetween(liveSlash.pos, selection.from);
-            // Limit query length or check for spaces to hide menu
-            if (text.includes(" ") || text.length > 50) {
-              setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
-            } else {
-              setSlashMenu((prev) => ({ ...prev, query: text }));
-            }
-          }
-        }
-
-        // Track search metadata
-        if (latestProps.current.onSearchMetadata) {
-          const searchState = searchPluginKey.getState(newState);
-          if (searchState) {
-            const count = searchState.decorations.find().length;
-            latestProps.current.onSearchMetadata(
-              count,
-              latestProps.current.searchOptions.currentMatchIndex,
-            );
-          }
-        }
-
-        if (tr.docChanged && !isUpdatingFromProps.current) {
-          const markdown = editorSerializer.serialize(newState.doc);
-          latestProps.current.onChange(markdown);
-        }
-
-        if (!tr.selection.eq(this.state.selection)) {
-          latestProps.current.onSelectionChange?.({
-            from: tr.selection.from,
-            to: tr.selection.to,
-          });
+        // Single source of truth: route every transaction through the core.
+        // The controlled view subscribes to the core and adopts the new state
+        // (see `core.subscribe` below), so all UI side effects run uniformly
+        // for both user- and command-driven changes.
+        if (core) {
+          core.apply(tr);
+        } else {
+          const newState = this.state.apply(tr);
+          this.updateState(newState);
         }
       },
       handleKeyDown(view, event) {
@@ -379,11 +342,82 @@ export function useEditorView({
 
     viewRef.current = view;
 
+    // Keep the controlled view in sync with the core (single source of truth).
+    // This fires for BOTH user-driven transactions (which enter via
+    // dispatchTransaction -> core.apply) and command-driven transactions (which
+    // apply directly to the core), so slash-menu, search metadata, onChange and
+    // selection-change side effects run uniformly.
+    const lastSel = { from: state.selection.from, to: state.selection.to };
+    const unsub = core
+      ? core.subscribe((nextState, tr) => {
+          view.updateState(nextState);
+
+          // Slash menu query detection.
+          const liveSlash = slashMenuRef.current;
+          if (liveSlash.show && liveSlash.editorId === editorId) {
+            const { selection, doc } = nextState;
+            const charBefore = doc.textBetween(
+              Math.max(0, liveSlash.pos - 1),
+              Math.max(0, liveSlash.pos),
+            );
+            if (
+              selection.from < liveSlash.pos ||
+              charBefore !== "/" ||
+              !selection.empty
+            ) {
+              setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
+            } else {
+              const text = doc.textBetween(liveSlash.pos, selection.from);
+              if (text.includes(" ") || text.length > 50) {
+                setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
+              } else {
+                setSlashMenu((prev) => ({ ...prev, query: text }));
+              }
+            }
+          }
+
+          // Track search metadata.
+          if (latestProps.current.onSearchMetadata) {
+            const searchState = searchPluginKey.getState(nextState);
+            if (searchState) {
+              const count = searchState.decorations.find().length;
+              latestProps.current.onSearchMetadata(
+                count,
+                latestProps.current.searchOptions.currentMatchIndex,
+              );
+            }
+          }
+
+          // Emit onChange for doc changes (suppressed for programmatic updates
+          // via the `isUpdatingFromProps` guard).
+          if (tr && tr.docChanged && !isUpdatingFromProps.current) {
+            const markdown = editorSerializer.serialize(nextState.doc);
+            latestProps.current.onChange(markdown);
+          }
+
+          // Emit selection-change when the selection actually moved.
+          if (
+            tr &&
+            (tr.selection.from !== lastSel.from ||
+              tr.selection.to !== lastSel.to)
+          ) {
+            lastSel.from = tr.selection.from;
+            lastSel.to = tr.selection.to;
+            latestProps.current.onSelectionChange?.({
+              from: tr.selection.from,
+              to: tr.selection.to,
+            });
+          }
+        })
+      : () => {};
+
     return () => {
+      unsub();
       view.destroy();
       // Release plugin resources (intervals, subscriptions, listeners)
       // before the editor is rebuilt or unmounted.
       loaded.registry.destroyAll();
+      core?.destroy();
     };
   }, [loaded]); // Rebuild when plugins finish loading
 }

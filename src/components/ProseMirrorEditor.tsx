@@ -314,7 +314,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       direction,
       loaded,
     });
-    useMarkdownSync({ viewRef, value, parseMarkdownDoc, isUpdatingFromProps });
+    useMarkdownSync({ value, isUpdatingFromProps, core: loaded?.core });
     const { handleFormat } = useFormatting({
       viewRef,
       editorSchema,
@@ -323,12 +323,8 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     useImperativeEditorApi({
       ref,
       viewRef,
-      editorSchema,
-      parseMarkdownDoc,
+      core: loaded?.core,
       isUpdatingFromProps,
-      streamStartRef,
-      streamEndRef,
-      handleFormat,
     });
     const {
       aiDraft,

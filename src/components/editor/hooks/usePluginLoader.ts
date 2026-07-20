@@ -9,6 +9,7 @@ import { useEditorCommandBus } from "../../../plugins/editorCommandContext";
 import type { CollabPluginOptions } from "../../../plugins/collab";
 import { useSetPluginRegistry } from "../../../plugins/registryContext";
 import { useSettingsStore } from "../../../stores/settingsStore";
+import { diagramTransform } from "../../../lib/markdown/diagramTransform";
 
 /**
  * Loads and tears down the editor plugin set.
@@ -62,6 +63,7 @@ export function usePluginLoader(
       disabled: useSettingsStore.getState().disabledPlugins,
       collab,
       commandBus,
+      postProcess: diagramTransform,
     }).then((result) => {
       if (!cancelled) {
         setLoaded(result);
