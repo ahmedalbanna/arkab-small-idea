@@ -4,7 +4,6 @@ import {
   GripVertical,
   Target,
   Type,
-  Maximize2 as FocusOn,
   Sparkles,
   FileDown,
   X,
@@ -51,7 +50,6 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
 
   const {
     fontSize: globalFontSize,
-    lineHeight: globalLineHeight,
     enableHeadingNumbering,
   } = useSettingsStore();
 
@@ -199,22 +197,6 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
               title="Typewriter Mode"
             >
               <Type className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() =>
-                setPageSettings(id, {
-                  isFocusMode: !page.isFocusMode,
-                })
-              }
-              className={cn(
-                "p-1.5 rounded-md transition-all",
-                page.isFocusMode
-                  ? "bg-minimal-accent text-white"
-                  : "text-minimal-muted hover:text-minimal-text hover:bg-minimal-sidebar",
-              )}
-              title="Paragraph Focus Mode"
-            >
-              <FocusOn className="w-3.5 h-3.5" />
             </button>
 
             <div className="w-px h-3.5 bg-minimal-border mx-1" />
@@ -384,12 +366,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
           onChange={(c) => setPageContent(id, c)}
           onKeyDown={handleKeyDown}
           isTypewriter={page.isTypewriter}
-          isFocusMode={page.isFocusMode}
-          onToggleFocusMode={() =>
-            setPageSettings(id, { isFocusMode: !page.isFocusMode })
-          }
           fontSize={globalFontSize}
-          lineHeight={globalLineHeight}
           initialCursor={page.cursor}
           onSelectionChange={(sel) => setPageCursor(id, sel)}
           direction={direction}

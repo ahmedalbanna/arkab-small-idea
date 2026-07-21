@@ -54,20 +54,19 @@ describe("editorUI plugin", () => {
       registerProsePlugin: (p: any) => registered.push(p),
     };
     editorUIPlugin.init(ctx);
-    // side menu, context menu, bubble menu, tts highlight, typewriter, focus mode
-    expect(resolve(registered).length).toBe(6);
+    // side menu, context menu, bubble menu, tts highlight, typewriter
+    expect(resolve(registered).length).toBe(5);
   });
 
-  it("registers the focus-mode and typewriter toolbar items", () => {
+  it("registers the typewriter toolbar item", () => {
     const items: any[] = [];
     const ctx = { ...fakeContext(), registerToolbarItem: (i: any) => items.push(i) };
     editorUIPlugin.init(ctx);
     const ids = items.map((i) => i.id).sort();
-    expect(ids).toEqual(["focus-mode", "typewriter"]);
-    // Toggling is wired to the AI UI store and reflects active state.
-    const focus = items.find((i) => i.id === "focus-mode");
-    expect(typeof focus.onClick).toBe("function");
-    expect(typeof focus.isActive).toBe("function");
+    expect(ids).toEqual(["typewriter"]);
+    const tw = items.find((i) => i.id === "typewriter");
+    expect(typeof tw.onClick).toBe("function");
+    expect(typeof tw.isActive).toBe("function");
   });
 
   it("dispatches side menu state to the store on mousemove", () => {

@@ -110,12 +110,10 @@ interface AIUIState {
   slashMenu: SlashMenuState;
   setSlashMenu: (v: Updatable<SlashMenuState>) => void;
 
-  // Live editor-shell flags mirrored from ProseMirrorEditor props; read by the
-  // `editorUI` plugin's typewriter/focus-mode ProseMirror plugins.
+  // Live editor-shell flag mirrored from ProseMirrorEditor props; read by the
+  // `editorUI` plugin's typewriter ProseMirror plugin.
   isTypewriter: boolean;
   setIsTypewriter: (v: boolean) => void;
-  isFocusMode: boolean;
-  setIsFocusMode: (v: boolean) => void;
 
   // Inline AI draft executor. The streaming implementation lives in the
   // `useAIStreaming` hook (coupled to the editor's draft state) and is
@@ -184,8 +182,6 @@ export const useAIUIStore = create<AIUIState>((set) => ({
 
   isTypewriter: false,
   setIsTypewriter: (v) => set({ isTypewriter: v }),
-  isFocusMode: false,
-  setIsFocusMode: (v) => set({ isFocusMode: v }),
 
   aiActionHandler: null,
   setAiActionHandler: (handler) => set({ aiActionHandler: handler }),

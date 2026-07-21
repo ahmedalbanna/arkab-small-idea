@@ -64,10 +64,7 @@ interface Props {
   className?: string;
   placeholder?: string;
   isTypewriter?: boolean;
-  isFocusMode?: boolean;
   fontSize?: number;
-  lineHeight?: number;
-  onToggleFocusMode?: () => void;
   direction?: "ltr" | "rtl";
   personalInstructions?: string;
   selectedModel?: string;
@@ -135,10 +132,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       className,
       placeholder,
       isTypewriter,
-      isFocusMode,
-      onToggleFocusMode,
       fontSize,
-      lineHeight,
       direction = "ltr",
       personalInstructions,
       selectedModel = "mistral",
@@ -188,7 +182,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       onAiResult,
       onAiStream,
       isTypewriter,
-      isFocusMode,
       searchOptions,
       searchQuery,
       personalInstructions,
@@ -208,7 +201,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         onAiResult,
         onAiStream,
         isTypewriter,
-        isFocusMode,
         searchOptions,
         searchQuery,
         personalInstructions,
@@ -238,15 +230,12 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     const commandPaletteOpen = useAIUIStore((s) => s.commandPaletteOpen);
     const setCommandPaletteOpen = useAIUIStore((s) => s.setCommandPaletteOpen);
 
-    // Mirror the per-page typewriter/focus-mode props into the store so the
-    // `editorUI` plugin's typewriter/focus-mode ProseMirror plugins can read
-    // them live.
+    // Mirror the per-page typewriter prop into the store so the
+    // `editorUI` plugin's typewriter ProseMirror plugin can read it live.
     const setIsTypewriter = useAIUIStore((s) => s.setIsTypewriter);
-    const setIsFocusMode = useAIUIStore((s) => s.setIsFocusMode);
     useEffect(() => {
       setIsTypewriter(isTypewriter);
-      setIsFocusMode(isFocusMode);
-    }, [isTypewriter, isFocusMode, setIsTypewriter, setIsFocusMode]);
+    }, [isTypewriter, setIsTypewriter]);
 
     // Open the command palette with the editor-standard shortcut.
     useEffect(() => {
@@ -298,7 +287,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       editorRef,
       searchQuery,
       searchOptions,
-      isFocusMode,
       isTypewriter,
       placeholder,
       direction,
@@ -373,9 +361,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         style={
           {
             "--editor-font-size": fontSize ? `${fontSize}px` : undefined,
-            "--editor-line-height": lineHeight
-              ? lineHeight.toString()
-              : undefined,
           } as React.CSSProperties
         }
       >
@@ -838,14 +823,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     label: "Code Block",
                     icon: Code,
                     action: () => handleFormat("code"),
-                  },
-                  {
-                    id: "focus",
-                    label: isFocusMode
-                      ? "Disable Focus"
-                      : "Focus Active Paragraph",
-                    icon: isFocusMode ? Minimize2 : Maximize2,
-                    action: () => onToggleFocusMode?.(),
                   },
                 ].map((item) => (
                   <button

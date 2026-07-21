@@ -51,8 +51,8 @@ interface EditorViewParams {
  *
  * The view is rebuilt only when `loaded` changes (i.e. the plugin set or schema
  * changed) — all values it closes over are captured at that moment, mirroring
- * the previous inline behavior. Other prop changes (value, search, focus mode)
- * are handled by the dedicated sync hooks via transactions / `setProps`.
+ * the previous inline behavior. Other prop changes (value, search) are handled
+ * by the dedicated sync hooks via transactions / `setProps`.
  */
 export function useEditorView({
   editorRef,
@@ -127,7 +127,7 @@ export function useEditorView({
     // Plugins and node views contributed by the plugin system: core base
     // plugins, feature plugins (math, search, heading, ...), the editor UI
     // plugins (side menu, context menu, bubble menu, TTS highlight,
-    // typewriter, focus mode) and the AI keymap — all surfaced through
+    // typewriter) and the AI keymap — all surfaced through
     // PluginContext. The editor no longer defines any ProseMirror plugins
     // inline.
     const { editorPlugins, nodeViews } = loaded.context;
@@ -151,7 +151,7 @@ export function useEditorView({
           plugins: [
             // All ProseMirror plugins — collaboration (when enabled), core base
             // plugins, feature plugins, the editor UI plugins (side menu, context
-            // menu, bubble menu, TTS highlight, typewriter, focus mode) and the AI
+            // menu, bubble menu, TTS highlight, typewriter) and the AI
             // keymap — are contributed by the plugin system and surfaced through
             // PluginContext.editorPlugins. The editor defines none inline.
             ...editorPlugins,

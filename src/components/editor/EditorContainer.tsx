@@ -3,7 +3,6 @@ import {
   Plus,
   X,
   Type,
-  Maximize2 as FocusOn,
   Target,
   FileDown,
   ALargeSmall,
@@ -51,7 +50,6 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
   } = useEditorStore();
   const {
     fontSize: globalFontSize,
-    lineHeight: globalLineHeight,
     setTheme,
     setFontFamily,
     theme: globalTheme,

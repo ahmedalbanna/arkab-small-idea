@@ -1,6 +1,6 @@
 import { Plugin } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import { Focus, Type } from "lucide-react";
+import { Type } from "lucide-react";
 import type { InkPlugin, PluginContext } from "../types";
 import { useAIUIStore } from "../../stores/aiUIStore";
 import { useUIStore } from "../../stores/uiStore";
@@ -8,10 +8,10 @@ import { useUIStore } from "../../stores/uiStore";
 /**
  * Editor "shell" ProseMirror plugins that are coupled to the editor DOM but not
  * to any specific feature: hover side menu, context menu, selection bubble
- * menu, TTS highlight, typewriter scrolling, and focus mode. They dispatch
- * their UI state into `aiUIStore` (and read the quick-commands toggle from
- * `uiStore`) so the React menu components render it without the editor knowing
- * about React. Previously these were defined inline inside `ProseMirrorEditor`.
+ * menu, TTS highlight, and typewriter scrolling. They dispatch their UI state
+ * into `aiUIStore` (and read the quick-commands toggle from `uiStore`) so the
+ * React menu components render it without the editor knowing about React.
+ * Previously these were defined inline inside `ProseMirrorEditor`.
  */
 export const editorUIPlugin: InkPlugin = {
   id: "editorUI",
@@ -27,17 +27,6 @@ export const editorUIPlugin: InkPlugin = {
     let sideMenuHideTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // Toolbar items — editor-shell toggles surfaced in the app toolbar.
-    ctx.registerToolbarItem({
-      id: "focus-mode",
-      icon: Focus,
-      label: "Focus Mode",
-      group: "editor",
-      onClick: () => {
-        const s = useAIUIStore.getState();
-        s.setIsFocusMode(!s.isFocusMode);
-      },
-      isActive: () => useAIUIStore.getState().isFocusMode,
-    });
     ctx.registerToolbarItem({
       id: "typewriter",
       icon: Type,
@@ -295,45 +284,6 @@ export const editorUIPlugin: InkPlugin = {
               }
             },
           };
-        },
-      }),
-    );
-
-    // Focus mode — dims every block except the one containing the cursor.
-    ctx.registerProsePlugin(
-      new Plugin({
-        state: {
-          init() {
-            return DecorationSet.empty;
-          },
-          apply(tr, _set, _oldState, newState) {
-            if (!useAIUIStore.getState().isFocusMode) return DecorationSet.empty;
-            const { selection } = newState;
-            const $pos = selection.$from;
-            let topNodePos = 0;
-            let found = false;
-            newState.doc.forEach((node, pos) => {
-              if (found) return;
-              if (pos <= $pos.pos && pos + node.nodeSize >= $pos.pos) {
-                topNodePos = pos;
-                found = true;
-              }
-            });
-            if (!found) return DecorationSet.empty;
-            const node = newState.doc.nodeAt(topNodePos);
-            if (!node) return DecorationSet.empty;
-            const deco = Decoration.node(
-              topNodePos,
-              topNodePos + node.nodeSize,
-              { class: "is-focused-node" },
-            );
-            return DecorationSet.create(newState.doc, [deco]);
-          },
-        },
-        props: {
-          decorations(state) {
-            return this.getState(state);
-          },
         },
       }),
     );

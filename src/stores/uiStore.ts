@@ -3,7 +3,6 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { idbStorage } from '../lib/idbStorage';
 
 interface UIState {
-  isSuperZen: boolean;
   showAIAssistant: boolean;
   showSearch: boolean;
   showMobileMenu: boolean;
@@ -19,9 +18,7 @@ interface UIState {
   ttsRate: number;
   ttsHighlightRange: { from: number; to: number } | null;
   
-  toggleSuperZen: () => void;
   toggleAIAssistant: () => void;
-  setSuperZen: (show: boolean | ((prev: boolean) => boolean)) => void;
   setAIAssistant: (show: boolean | ((prev: boolean) => boolean)) => void;
   setSearch: (show: boolean | ((prev: boolean) => boolean)) => void;
   setMobileMenu: (show: boolean | ((prev: boolean) => boolean)) => void;
@@ -40,7 +37,6 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      isSuperZen: false,
       showAIAssistant: false,
       showSearch: false,
       showMobileMenu: false,
@@ -56,11 +52,7 @@ export const useUIStore = create<UIState>()(
       ttsRate: 1,
       ttsHighlightRange: null,
 
-      toggleSuperZen: () => set((state) => ({ isSuperZen: !state.isSuperZen })),
       toggleAIAssistant: () => set((state) => ({ showAIAssistant: !state.showAIAssistant })),
-      setSuperZen: (isSuperZen) => set((state) => ({ 
-        isSuperZen: typeof isSuperZen === 'function' ? isSuperZen(state.isSuperZen) : isSuperZen 
-      })),
       setAIAssistant: (showAIAssistant) => set((state) => ({ 
         showAIAssistant: typeof showAIAssistant === 'function' ? showAIAssistant(state.showAIAssistant) : showAIAssistant 
       })),

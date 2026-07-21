@@ -44,13 +44,12 @@ describe("loadPlugins (phase 1 wiring)", () => {
     expect(pmPlugins.length).toBeGreaterThanOrEqual(7);
 
     // Phase 8: plugin-driven UI is surfaced through the collectors and the
-    // resolved plugin context. The editorUI plugin contributes the focus /
-    // typewriter toolbar buttons; the ai plugin contributes the "/ask-ai"
-    // slash command; the status-bar plugin contributes its visibility setting.
+    // resolved plugin context. The editorUI plugin contributes the typewriter
+    // toolbar button; the ai plugin contributes the "/ask-ai" slash command;
+    // the status-bar plugin contributes its visibility setting.
     const toolbarIds = loaded.collectors.toolbarItems.map((t) => t.id).sort();
     expect(toolbarIds).toEqual([
       "command-palette",
-      "focus-mode",
       "typewriter",
     ]);
 
@@ -65,7 +64,7 @@ describe("loadPlugins (phase 1 wiring)", () => {
     expect(settingKeys).toContain("status-bar.visible");
 
     // The same contributions are exposed on the resolved PluginContext.
-    expect(loaded.context.toolbarItems).toHaveLength(3);
+    expect(loaded.context.toolbarItems).toHaveLength(2);
     expect(loaded.context.commands.some((c) => c.id === "ai-ask")).toBe(true);
     expect(loaded.context.commands.some((c) => c.id === "bold")).toBe(true);
     expect(

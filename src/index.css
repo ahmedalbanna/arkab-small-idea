@@ -707,27 +707,11 @@
   @apply text-minimal-muted/40 absolute pointer-events-none;
 }
 
-/* Focus Mode Styles */
-.focus-mode-active {
-  transition: all 0.5s ease;
-}
-
+/* Typewriter Mode Styles */
 .typewriter-mode {
   padding-bottom: 50vh !important;
 }
 
-.focus-mode-active .ProseMirror>* {
-  opacity: 0.2;
-  filter: blur(1.5px);
-  transition: all 0.5s ease;
-}
-
-.focus-mode-active .ProseMirror>.is-focused-node {
-  opacity: 1;
-  filter: blur(0);
-}
-
-/* Diagram Rendering Styles */
 .diagram-block {
   @apply relative my-12 block;
 }

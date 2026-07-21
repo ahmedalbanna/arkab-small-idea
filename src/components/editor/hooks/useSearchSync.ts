@@ -15,7 +15,6 @@ interface SearchSyncParams {
     currentMatchIndex: number;
     embeddingOptions?: { provider?: string; apiKey?: string; model?: string };
   };
-  isFocusMode: boolean;
   isTypewriter: boolean;
   placeholder?: string;
   direction?: "ltr" | "rtl";
@@ -23,19 +22,18 @@ interface SearchSyncParams {
 }
 
 /**
- * Pushes external search / focus-mode state into the live editor.
+ * Pushes external search / typewriter state into the live editor.
  *
  * Dispatches a no-op transaction carrying the search metadata so the search
  * plugin recomputes its decorations, and updates the editor DOM attributes
- * (placeholder, direction, typewriter/focus classes). When a match index is
- * active it scrolls the match into view.
+ * (placeholder, direction, typewriter class). When a match index is active it
+ * scrolls the match into view.
  */
 export function useSearchSync({
   viewRef,
   editorRef,
   searchQuery,
   searchOptions,
-  isFocusMode,
   isTypewriter,
   placeholder,
   direction,
@@ -46,8 +44,6 @@ export function useSearchSync({
       const tr = viewRef.current.state.tr;
       tr.setMeta("searchQuery", searchQuery);
       tr.setMeta("searchOptions", searchOptions);
-      // Explicitly trigger a decoration update for Focus Mode if it changed
-      tr.setMeta("focusModeUpdate", isFocusMode);
 
       viewRef.current.dispatch(tr);
 
@@ -56,7 +52,6 @@ export function useSearchSync({
           class: cn(
             "ProseMirror",
             isTypewriter && "typewriter-mode",
-            isFocusMode && "focus-mode-active",
           ),
           "data-placeholder": placeholder || "Start writing...",
           dir: direction,
@@ -96,7 +91,6 @@ export function useSearchSync({
     searchOptions.isWholeWord,
     direction,
     isTypewriter,
-    isFocusMode,
     placeholder,
     loaded,
     viewRef,
