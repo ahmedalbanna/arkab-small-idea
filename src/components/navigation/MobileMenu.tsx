@@ -38,7 +38,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = () => {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
               <button
                 onClick={() => { setAIAssistant(true); setMobileMenu(false); }}
                 className="w-full flex items-center gap-3 p-4 rounded-2xl bg-minimal-accent text-white shadow-lg transition-transform active:scale-95"

@@ -52,7 +52,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
       role="log"
       aria-live="polite"
       aria-label="AI conversation"
-      className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-4 py-5"
+      className="custom-scrollbar flex-1 space-y-4 overflow-y-auto px-4 py-5 scroll-smooth"
     >
       {chatHistory.map((msg, i) => (
         <MessageBubble

@@ -9,6 +9,7 @@ import { embeddingService, EmbeddingStatus } from '../../services/embeddingServi
 import { AISettingsPopover } from '../ai/AISettingsPopover';
 import { FontSettingsPopover } from './FontSettingsPopover';
 import { ThemePopover } from './ThemePopover';
+import { PluginsPopover } from './PluginsPopover';
 
 /**
  * Bottom status bar. Self-contained: it derives its stats from the active
@@ -125,6 +126,9 @@ export const StatusBar: React.FC = () => {
 
           {/* Font settings — font family, size, line height, max width */}
           <FontSettingsPopover className="hidden md:flex" />
+
+          {/* Plugins toggle */}
+          <PluginsPopover className="hidden md:flex" />
 
           {/* AI settings — models, instructions, Ollama host */}
           <AISettingsPopover className="hidden md:flex" />

@@ -801,22 +801,66 @@ body {
   transition: opacity 400ms, transform 400ms;
 }
 
+/* ── Scrollbar: Webkit (Chrome, Safari, Edge) ── */
+.custom-scrollbar {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--minimal-border) transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 2px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--minimal-border);
-  border-radius: 10px;
+  border-radius: 2px;
+  transition: background 0.2s ease, width 0.2s ease;
+  min-height: 24px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--minimal-muted);
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Subtle corner gradient for aesthetic when both scrollbars visible */
+.custom-scrollbar.scrollable-corner::-webkit-scrollbar-corner {
+  background: linear-gradient(135deg, transparent 50%, var(--minimal-border) 50%);
+}
+
+/* ── Hide-scrollbar utility (for horizontal scroll containers) ── */
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* ── Smooth scroll for the entire page ── */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .custom-scrollbar {
+    scroll-behavior: auto;
+  }
 }
 
 /* Task & Priority Decorations */

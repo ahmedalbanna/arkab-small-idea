@@ -101,7 +101,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
       transition={{ duration: 0.4, ease: "circOut" }}
       onClick={() => setActiveFocusedPageId(id)}
       className={cn(
-        "flex-shrink-0 w-[calc(100vw-4rem)] md:w-full max-w-[850px] h-full bg-minimal-bg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] rounded-xl border flex flex-col snap-center relative group mx-2 md:mx-4 first:ml-auto last:mr-auto transition-all duration-300 overflow-hidden",
+        "flex-shrink-0 w-[calc(100vw-2rem)] md:w-full max-w-[850px] h-full bg-minimal-bg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] rounded-xl border flex flex-col snap-start relative group me-1 md:me-4 transition-all duration-300 overflow-hidden",
         activeFocusedPageId === id
           ? "border-minimal-accent ring-2 ring-minimal-accent/10 shadow-[0_40px_80px_-15px_rgba(var(--minimal-accent-rgb),0.15)]"
           : "border-minimal-border",

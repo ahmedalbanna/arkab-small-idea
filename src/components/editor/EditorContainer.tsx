@@ -124,7 +124,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
       )}
     >
       {sortedActivePageIds.length === 0 ? (
-        <div className="flex-1 overflow-y-auto p-6 md:p-16 flex flex-col items-center justify-center min-h-full custom-scrollbar bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-minimal-accent/5 via-transparent to-transparent select-none">
+        <div className="flex-1 overflow-y-auto p-6 md:p-16 flex flex-col items-center justify-center min-h-full custom-scrollbar scroll-smooth bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-minimal-accent/5 via-transparent to-transparent select-none">
           <motion.div 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -298,7 +298,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
           axis="x"
           values={activePages}
           onReorder={handleReorderActivePages}
-          className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory gap-4 md:gap-8 p-4 md:p-12 custom-scrollbar bg-minimal-sidebar/50 scroll-smooth h-full"
+          className="flex-1 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory gap-4 md:gap-6 ps-2 md:ps-4 pe-4 md:pe-12 py-2 md:py-8 justify-start custom-scrollbar bg-minimal-sidebar/50 scroll-smooth h-full"
         >
           <AnimatePresence mode="popLayout" initial={false}>
             {activePages.map((page) => (
@@ -314,7 +314,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
 
           <button
             onClick={() => addPage("New Chapter")}
-            className="flex-shrink-0 w-64 h-full border-2 border-dashed border-minimal-border rounded-xl flex flex-col items-center justify-center gap-3 text-minimal-muted hover:border-minimal-accent/40 hover:text-minimal-accent hover:bg-minimal-sidebar transition-all group"
+            className="flex-shrink-0 w-[calc(100vw-2rem)] md:w-full max-w-[850px] h-full border-2 border-dashed border-minimal-border rounded-xl flex flex-col items-center justify-center gap-3 text-minimal-muted hover:border-minimal-accent/40 hover:text-minimal-accent hover:bg-minimal-sidebar transition-all group"
           >
             <div className="p-4 bg-minimal-sidebar rounded-full group-hover:rotate-180 transition-transform duration-500">
               <Plus className="w-6 h-6" />

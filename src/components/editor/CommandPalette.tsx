@@ -86,7 +86,7 @@ export function CommandPalette({ commands, onRun, onClose }: CommandPaletteProps
             Esc
           </kbd>
         </div>
-        <div className="max-h-[320px] overflow-y-auto py-1">
+        <div className="max-h-[320px] overflow-y-auto py-1 custom-scrollbar">
           {filtered.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-minimal-muted">
               No commands found
