@@ -8,7 +8,6 @@ export interface Page {
   id: string;
   title: string;
   content: string;
-  isTypewriter: boolean;
   wordGoal: number;
   fontSize?: number;
   lineHeight?: number;
@@ -24,7 +23,7 @@ interface EditorState {
   semanticClusters: SemanticCluster[];
   
   setPageContent: (id: string, content: string) => void;
-  setPageSettings: (id: string, settings: Partial<Pick<Page, 'isTypewriter' | 'wordGoal' | 'fontSize' | 'lineHeight'>>) => void;
+  setPageSettings: (id: string, settings: Partial<Pick<Page, 'wordGoal' | 'fontSize' | 'lineHeight'>>) => void;
   addPage: (title?: string, content?: string) => void;
   removePage: (id: string) => void;
   togglePageOpen: (id: string) => void;
@@ -46,7 +45,6 @@ export const useEditorStore = create<EditorState>()(
           id: 'default', 
           title: 'Chapter 1', 
           content: '# Welcome to Ink & Quill\n\nStart writing...',
-          isTypewriter: false,
           wordGoal: 0,
           fontSize: undefined,
           lineHeight: undefined,
@@ -69,7 +67,6 @@ export const useEditorStore = create<EditorState>()(
           id, 
           title, 
           content,
-          isTypewriter: false,
           wordGoal: 0,
           fontSize: undefined,
           lineHeight: undefined,

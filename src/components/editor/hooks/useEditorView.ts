@@ -8,7 +8,6 @@ import {
 import { EditorState, PluginKey } from "prosemirror-state";
 import { DOMSerializer, Slice, type Schema, type Node } from "prosemirror-model";
 import { EditorView } from "prosemirror-view";
-import { cn } from "../../../lib/utils";
 import { searchPluginKey } from "../../../plugins/search";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { LoadedPlugins } from "../../../plugins";
@@ -26,7 +25,6 @@ interface EditorViewParams {
   parseMarkdownDoc: (md: string) => Node;
   placeholder?: string;
   direction?: "ltr" | "rtl";
-  isTypewriter?: boolean;
   /** Initial markdown content used to seed the document on (re)build. */
   value: string;
   /** Latest props snapshot, kept in a ref to avoid stale closures. */
@@ -63,7 +61,6 @@ export function useEditorView({
   parseMarkdownDoc,
   placeholder,
   direction,
-  isTypewriter,
   value,
   latestProps,
   slashMenu,
@@ -161,7 +158,7 @@ export function useEditorView({
     const view = new EditorView(editorRef.current, {
       state,
       attributes: {
-        class: cn("ProseMirror", isTypewriter && "typewriter-mode"),
+        class: "ProseMirror",
         "data-placeholder": placeholder || "Start writing...",
         dir: direction,
         role: "textbox",

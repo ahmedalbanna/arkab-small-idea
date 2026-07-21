@@ -63,7 +63,6 @@ interface Props {
   onKeyDown?: (e: KeyboardEvent) => void;
   className?: string;
   placeholder?: string;
-  isTypewriter?: boolean;
   fontSize?: number;
   direction?: "ltr" | "rtl";
   personalInstructions?: string;
@@ -131,7 +130,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       onKeyDown,
       className,
       placeholder,
-      isTypewriter,
       fontSize,
       direction = "ltr",
       personalInstructions,
@@ -181,7 +179,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       onScroll,
       onAiResult,
       onAiStream,
-      isTypewriter,
       searchOptions,
       searchQuery,
       personalInstructions,
@@ -200,7 +197,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         onScroll,
         onAiResult,
         onAiStream,
-        isTypewriter,
         searchOptions,
         searchQuery,
         personalInstructions,
@@ -229,13 +225,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     const setSideMenu = useAIUIStore((s) => s.setSideMenu);
     const commandPaletteOpen = useAIUIStore((s) => s.commandPaletteOpen);
     const setCommandPaletteOpen = useAIUIStore((s) => s.setCommandPaletteOpen);
-
-    // Mirror the per-page typewriter prop into the store so the
-    // `editorUI` plugin's typewriter ProseMirror plugin can read it live.
-    const setIsTypewriter = useAIUIStore((s) => s.setIsTypewriter);
-    useEffect(() => {
-      setIsTypewriter(isTypewriter);
-    }, [isTypewriter, setIsTypewriter]);
 
     // Open the command palette with the editor-standard shortcut.
     useEffect(() => {
@@ -273,7 +262,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       parseMarkdownDoc,
       placeholder,
       direction,
-      isTypewriter,
       value,
       latestProps,
       slashMenu,
@@ -287,7 +275,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       editorRef,
       searchQuery,
       searchOptions,
-      isTypewriter,
       placeholder,
       direction,
       loaded,
@@ -385,27 +372,25 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               }}
               className="z-[100] flex items-center gap-0.5 bg-minimal-bg border border-minimal-border rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-minimal-border"
             >
-              {!isTypewriter && (
-                <>
-                  <FormatButton onClick={() => handleFormat("h1")} title="Heading 1 (#)" icon={<Heading1 className="w-3.5 h-3.5" />} active={activeFormats.h1} />
-                  <FormatButton onClick={() => handleFormat("h2")} title="Heading 2 (##)" icon={<Heading2 className="w-3.5 h-3.5" />} active={activeFormats.h2} />
-                  <FormatButton onClick={() => handleFormat("h3")} title="Heading 3 (###)" icon={<Heading3 className="w-3.5 h-3.5" />} active={activeFormats.h3} />
-                  <div className="w-px h-3 bg-minimal-border mx-0.5" />
-                  <FormatButton onClick={() => handleFormat("bold")} title="Bold (Mod+B)" icon={<Bold className="w-3.5 h-3.5" />} active={activeFormats.bold} />
-                  <FormatButton onClick={() => handleFormat("italic")} title="Italic (Mod+I)" icon={<Italic className="w-3.5 h-3.5" />} active={activeFormats.italic} />
-                  <FormatButton onClick={() => handleFormat("underline")} title="Underline (Mod+U)" icon={<Underline className="w-3.5 h-3.5" />} active={activeFormats.underline} />
-                  <FormatButton onClick={() => handleFormat("strike")} title="Strikethrough (Mod+Shift+X)" icon={<Strikethrough className="w-3.5 h-3.5" />} active={activeFormats.strike} />
-                  <FormatButton onClick={() => handleFormat("quote")} title="Quote" icon={<Quote className="w-3.5 h-3.5" />} active={activeFormats.blockquote} />
-                  <FormatButton onClick={() => handleFormat("bullet")} title="Bullet List" icon={<List className="w-3.5 h-3.5" />} active={activeFormats.bullet} />
-                  <FormatButton onClick={() => handleFormat("code")} title="Code (Mod+E)" icon={<Code className="w-3.5 h-3.5" />} active={activeFormats.code} />
-                  <FormatButton onClick={() => handleFormat("tableify")} title="Convert to Table" icon={<Table className="w-3.5 h-3.5" />} />
-                  <div className="w-px h-3 bg-minimal-border mx-0.5" />
-                  <FormatButton onClick={() => handleFormat("alignLeft")} title="Align Left" icon={<AlignLeft className="w-3.5 h-3.5" />} active={activeFormats.alignLeft} />
-                  <FormatButton onClick={() => handleFormat("alignCenter")} title="Align Center" icon={<AlignCenter className="w-3.5 h-3.5" />} active={activeFormats.alignCenter} />
-                  <FormatButton onClick={() => handleFormat("alignRight")} title="Align Right" icon={<AlignRight className="w-3.5 h-3.5" />} active={activeFormats.alignRight} />
-                  <FormatButton onClick={() => handleFormat("alignJustify")} title="Justify" icon={<Layout className="w-3.5 h-3.5" />} active={activeFormats.alignJustify} />
-                  <div className="w-px h-3 bg-minimal-border mx-0.5" />
-                  <button
+              <FormatButton onClick={() => handleFormat("h1")} title="Heading 1 (#)" icon={<Heading1 className="w-3.5 h-3.5" />} active={activeFormats.h1} />
+              <FormatButton onClick={() => handleFormat("h2")} title="Heading 2 (##)" icon={<Heading2 className="w-3.5 h-3.5" />} active={activeFormats.h2} />
+              <FormatButton onClick={() => handleFormat("h3")} title="Heading 3 (###)" icon={<Heading3 className="w-3.5 h-3.5" />} active={activeFormats.h3} />
+              <div className="w-px h-3 bg-minimal-border mx-0.5" />
+              <FormatButton onClick={() => handleFormat("bold")} title="Bold (Mod+B)" icon={<Bold className="w-3.5 h-3.5" />} active={activeFormats.bold} />
+              <FormatButton onClick={() => handleFormat("italic")} title="Italic (Mod+I)" icon={<Italic className="w-3.5 h-3.5" />} active={activeFormats.italic} />
+              <FormatButton onClick={() => handleFormat("underline")} title="Underline (Mod+U)" icon={<Underline className="w-3.5 h-3.5" />} active={activeFormats.underline} />
+              <FormatButton onClick={() => handleFormat("strike")} title="Strikethrough (Mod+Shift+X)" icon={<Strikethrough className="w-3.5 h-3.5" />} active={activeFormats.strike} />
+              <FormatButton onClick={() => handleFormat("quote")} title="Quote" icon={<Quote className="w-3.5 h-3.5" />} active={activeFormats.blockquote} />
+              <FormatButton onClick={() => handleFormat("bullet")} title="Bullet List" icon={<List className="w-3.5 h-3.5" />} active={activeFormats.bullet} />
+              <FormatButton onClick={() => handleFormat("code")} title="Code (Mod+E)" icon={<Code className="w-3.5 h-3.5" />} active={activeFormats.code} />
+              <FormatButton onClick={() => handleFormat("tableify")} title="Convert to Table" icon={<Table className="w-3.5 h-3.5" />} />
+              <div className="w-px h-3 bg-minimal-border mx-0.5" />
+              <FormatButton onClick={() => handleFormat("alignLeft")} title="Align Left" icon={<AlignLeft className="w-3.5 h-3.5" />} active={activeFormats.alignLeft} />
+              <FormatButton onClick={() => handleFormat("alignCenter")} title="Align Center" icon={<AlignCenter className="w-3.5 h-3.5" />} active={activeFormats.alignCenter} />
+              <FormatButton onClick={() => handleFormat("alignRight")} title="Align Right" icon={<AlignRight className="w-3.5 h-3.5" />} active={activeFormats.alignRight} />
+              <FormatButton onClick={() => handleFormat("alignJustify")} title="Justify" icon={<Layout className="w-3.5 h-3.5" />} active={activeFormats.alignJustify} />
+              <div className="w-px h-3 bg-minimal-border mx-0.5" />
+              <button
                     onClick={() => {
                       const url = window.prompt("Enter URL:");
                       if (url && viewRef.current) {
@@ -444,8 +429,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     <ImageIcon className="w-3.5 h-3.5" />
                   </button>
                   <div className="w-px h-3 bg-minimal-border mx-0.5" />
-                </>
-              )}
 
               <button
                 onClick={() => handleAIAction("improve")}

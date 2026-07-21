@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   Plus,
   X,
-  Type,
   Target,
   FileDown,
   ALargeSmall,

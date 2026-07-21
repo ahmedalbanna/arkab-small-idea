@@ -203,9 +203,7 @@ export function useAIStreaming({
                 to: streamEnd,
                 isGenerating: true,
               });
-              if (latestProps.current.isTypewriter) {
-                tr.scrollIntoView();
-              }
+              tr.scrollIntoView();
               curDispatch(tr);
 
               setAiDraft((prev) =>

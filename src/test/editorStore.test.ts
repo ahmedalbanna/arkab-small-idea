@@ -23,7 +23,6 @@ describe('editorStore', () => {
         id: 'default', 
         title: 'Chapter 1', 
         content: '# Welcome to Ink & Quill\n\nStart writing...',
-        isTypewriter: false,
         wordGoal: 0,
         snapshots: [],
         updatedAt: Date.now()

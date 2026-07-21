@@ -39,14 +39,6 @@ export function handleKeyDown(e: KeyboardEvent) {
       e.preventDefault();
       ui.setSearch(!ui.showSearch);
       if (!ui.showSearch) aiUI.setSearchIndex(-1);
-    } else if (e.key === "t" && e.shiftKey) {
-      e.preventDefault();
-      const page = getActivePage();
-      if (page) {
-        editor.setPageSettings(page.id, {
-          isTypewriter: !page.isTypewriter,
-        });
-      }
     } else if (e.key === "/") {
       e.preventDefault();
       aiUI.setShowShortcuts(!aiUI.showShortcuts);

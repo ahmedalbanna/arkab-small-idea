@@ -1,6 +1,5 @@
 import { useEffect, type RefObject } from "react";
 import type { EditorView } from "prosemirror-view";
-import { cn } from "../../../lib/utils";
 import type { LoadedPlugins } from "../../../plugins";
 
 interface SearchSyncParams {
@@ -15,26 +14,24 @@ interface SearchSyncParams {
     currentMatchIndex: number;
     embeddingOptions?: { provider?: string; apiKey?: string; model?: string };
   };
-  isTypewriter: boolean;
   placeholder?: string;
   direction?: "ltr" | "rtl";
   loaded: LoadedPlugins | null;
 }
 
 /**
- * Pushes external search / typewriter state into the live editor.
+ * Pushes external search state into the live editor.
  *
  * Dispatches a no-op transaction carrying the search metadata so the search
  * plugin recomputes its decorations, and updates the editor DOM attributes
- * (placeholder, direction, typewriter class). When a match index is active it
- * scrolls the match into view.
+ * (placeholder, direction). When a match index is active it scrolls the match
+ * into view.
  */
 export function useSearchSync({
   viewRef,
   editorRef,
   searchQuery,
   searchOptions,
-  isTypewriter,
   placeholder,
   direction,
   loaded,
@@ -49,10 +46,7 @@ export function useSearchSync({
 
       viewRef.current.setProps({
         attributes: {
-          class: cn(
-            "ProseMirror",
-            isTypewriter && "typewriter-mode",
-          ),
+          class: "ProseMirror",
           "data-placeholder": placeholder || "Start writing...",
           dir: direction,
         },
@@ -90,7 +84,6 @@ export function useSearchSync({
     searchOptions.isCaseSensitive,
     searchOptions.isWholeWord,
     direction,
-    isTypewriter,
     placeholder,
     loaded,
     viewRef,

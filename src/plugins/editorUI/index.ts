@@ -1,6 +1,5 @@
 import { Plugin } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import { Type } from "lucide-react";
 import type { InkPlugin, PluginContext } from "../types";
 import { useAIUIStore } from "../../stores/aiUIStore";
 import { useUIStore } from "../../stores/uiStore";
@@ -8,10 +7,10 @@ import { useUIStore } from "../../stores/uiStore";
 /**
  * Editor "shell" ProseMirror plugins that are coupled to the editor DOM but not
  * to any specific feature: hover side menu, context menu, selection bubble
- * menu, TTS highlight, and typewriter scrolling. They dispatch their UI state
- * into `aiUIStore` (and read the quick-commands toggle from `uiStore`) so the
- * React menu components render it without the editor knowing about React.
- * Previously these were defined inline inside `ProseMirrorEditor`.
+ * menu, and TTS highlight. They dispatch their UI state into `aiUIStore` (and
+ * read the quick-commands toggle from `uiStore`) so the React menu components
+ * render it without the editor knowing about React. Previously these were
+ * defined inline inside `ProseMirrorEditor`.
  */
 export const editorUIPlugin: InkPlugin = {
   id: "editorUI",
@@ -25,19 +24,6 @@ export const editorUIPlugin: InkPlugin = {
     // must not pop menus in the others).
     const editorId = ctx.editor.editorId ?? "";
     let sideMenuHideTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    // Toolbar items — editor-shell toggles surfaced in the app toolbar.
-    ctx.registerToolbarItem({
-      id: "typewriter",
-      icon: Type,
-      label: "Typewriter Scrolling",
-      group: "editor",
-      onClick: () => {
-        const s = useAIUIStore.getState();
-        s.setIsTypewriter(!s.isTypewriter);
-      },
-      isActive: () => useAIUIStore.getState().isTypewriter,
-    });
 
     // Hover side menu — shows a "+" gutter button for the block under the cursor.
     ctx.registerProsePlugin(
@@ -247,43 +233,6 @@ export const editorUIPlugin: InkPlugin = {
           decorations(state) {
             return this.getState(state);
           },
-        },
-      }),
-    );
-
-    // Typewriter scrolling — keeps the cursor vertically centered.
-    ctx.registerProsePlugin(
-      new Plugin({
-        view() {
-          return {
-            update(view) {
-              if (!useAIUIStore.getState().isTypewriter) return;
-              const { state } = view;
-              const { selection } = state;
-              if (!selection.empty) return;
-
-              // Avoid scrolling for the first few lines of a new document.
-              if (selection.from < 50) return;
-
-              const coords = view.coordsAtPos(selection.from);
-              const editorRect = view.dom.getBoundingClientRect();
-              if (!editorRect) return;
-
-              const viewportHeight = window.innerHeight;
-              const targetY = viewportHeight / 2;
-              const currentY = coords.top;
-
-              const diff = currentY - targetY;
-
-              // Only scroll if we are below the target point.
-              if (diff > 0 && Math.abs(diff) > 20) {
-                const scrollContainer = view.dom.parentElement;
-                if (scrollContainer) {
-                  scrollContainer.scrollBy({ top: diff, behavior: "smooth" });
-                }
-              }
-            },
-          };
         },
       }),
     );

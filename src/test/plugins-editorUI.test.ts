@@ -54,19 +54,8 @@ describe("editorUI plugin", () => {
       registerProsePlugin: (p: any) => registered.push(p),
     };
     editorUIPlugin.init(ctx);
-    // side menu, context menu, bubble menu, tts highlight, typewriter
-    expect(resolve(registered).length).toBe(5);
-  });
-
-  it("registers the typewriter toolbar item", () => {
-    const items: any[] = [];
-    const ctx = { ...fakeContext(), registerToolbarItem: (i: any) => items.push(i) };
-    editorUIPlugin.init(ctx);
-    const ids = items.map((i) => i.id).sort();
-    expect(ids).toEqual(["typewriter"]);
-    const tw = items.find((i) => i.id === "typewriter");
-    expect(typeof tw.onClick).toBe("function");
-    expect(typeof tw.isActive).toBe("function");
+    // side menu, context menu, bubble menu, tts highlight
+    expect(resolve(registered).length).toBe(4);
   });
 
   it("dispatches side menu state to the store on mousemove", () => {

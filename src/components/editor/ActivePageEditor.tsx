@@ -3,7 +3,6 @@ import { Reorder, useDragControls } from "motion/react";
 import {
   GripVertical,
   Target,
-  Type,
   Sparkles,
   FileDown,
   X,
@@ -182,23 +181,6 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
               )}
             </div>
 
-            <button
-              onClick={() =>
-                setPageSettings(id, {
-                  isTypewriter: !page.isTypewriter,
-                })
-              }
-              className={cn(
-                "p-1.5 rounded-md transition-all",
-                page.isTypewriter
-                  ? "bg-minimal-accent text-white"
-                  : "text-minimal-muted hover:text-minimal-text hover:bg-minimal-sidebar",
-              )}
-              title="Typewriter Mode"
-            >
-              <Type className="w-3.5 h-3.5" />
-            </button>
-
             <div className="w-px h-3.5 bg-minimal-border mx-1" />
 
             {/* Quick AI Actions */}
@@ -365,7 +347,6 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
           value={page.content}
           onChange={(c) => setPageContent(id, c)}
           onKeyDown={handleKeyDown}
-          isTypewriter={page.isTypewriter}
           fontSize={globalFontSize}
           initialCursor={page.cursor}
           onSelectionChange={(sel) => setPageCursor(id, sel)}

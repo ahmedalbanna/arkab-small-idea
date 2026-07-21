@@ -707,11 +707,6 @@
   @apply text-minimal-muted/40 absolute pointer-events-none;
 }
 
-/* Typewriter Mode Styles */
-.typewriter-mode {
-  padding-bottom: 50vh !important;
-}
-
 .diagram-block {
   @apply relative my-12 block;
 }

@@ -60,7 +60,6 @@ export const ShortcutsHelp: React.FC<ShortcutsHelpProps> = ({
                   {[
                     { keys: 'Ctrl + F', desc: 'Find & Replace' },
 
-                    { keys: 'Ctrl + Shift + T', desc: 'Toggle Typewriter Mode' },
                     { keys: 'Ctrl + /', desc: 'Show Shortcuts (this dialog)' },
                   ].map(s => (
                     <div key={s.keys + s.desc} className="flex items-center justify-between py-1.5 px-3 rounded-xl hover:bg-minimal-sidebar/50 transition-colors">
