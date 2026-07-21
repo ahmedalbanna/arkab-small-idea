@@ -1,7 +1,10 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useId, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { Z_CLASS } from '../../lib/zIndex';
+import { VARIANTS, SPRING } from '../../lib/themeTokens';
+import { useFocusTrap } from '../../lib/useFocusTrap';
 
 export interface DialogProps {
   isOpen: boolean;
@@ -12,9 +15,6 @@ export interface DialogProps {
   hideCloseButton?: boolean;
 }
 
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-
 export function Dialog({
   isOpen,
   onClose,
@@ -23,65 +23,17 @@ export function Dialog({
   className,
   hideCloseButton,
 }: DialogProps) {
-  const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  const previouslyFocused = useRef<HTMLElement | null>(null);
 
-  // Move focus into the dialog on open and restore it on close.
-  useEffect(() => {
-    if (!isOpen) return;
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const panel = panelRef.current;
-    const focusables = panel?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    (focusables && focusables.length
-      ? focusables[0]
-      : panel
-    )?.focus();
-    return () => {
-      previouslyFocused.current?.focus?.();
-    };
-  }, [isOpen]);
-
-  // Escape to close + Tab focus trap.
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const panel = panelRef.current;
-      if (!panel) return;
-      const focusables = Array.from(
-        panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      );
-      if (focusables.length === 0) {
-        e.preventDefault();
-        panel.focus();
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey) {
-        if (active === first || !panel.contains(active)) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else if (active === last || !panel.contains(active)) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  useFocusTrap({
+    containerRef: panelRef,
+    onEscape: onClose,
+    enabled: isOpen,
+  });
 
   const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === overlayRef.current) {
+    if (e.target === e.currentTarget) {
       onClose();
     }
   };
@@ -89,9 +41,13 @@ export function Dialog({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
+        <div
+          className={cn(
+            "fixed inset-0 flex items-center justify-center px-4",
+            Z_CLASS.modal,
+          )}
+        >
           <motion.div
-            ref={overlayRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -104,10 +60,8 @@ export function Dialog({
             aria-modal="true"
             aria-labelledby={title ? titleId : undefined}
             tabIndex={-1}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            {...VARIANTS.scaleIn}
+            transition={SPRING.modal}
             className={cn(
               "relative w-full max-w-md bg-minimal-bg border border-minimal-border rounded-2xl shadow-2xl p-6 flex flex-col max-h-[90vh] outline-none",
               className,
@@ -132,7 +86,7 @@ export function Dialog({
                 )}
               </div>
             )}
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 -mr-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pe-2 -me-2">
               {children}
             </div>
           </motion.div>

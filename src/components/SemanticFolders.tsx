@@ -40,7 +40,7 @@ export const SemanticFolders: React.FC<SemanticFoldersProps> = ({ onJump }) => {
   const paragraphs = content.split(/\n\n+/).filter(p => p.trim().length > 20);
 
   return (
-    <div className="flex flex-col h-full bg-minimal-sidebar border-l border-minimal-border @container">
+    <div className="flex flex-col h-full bg-minimal-sidebar border-s border-minimal-border @container">
       <div className="p-4 border-b border-minimal-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FolderRoot className="w-4 h-4 text-minimal-accent" />

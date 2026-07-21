@@ -35,9 +35,10 @@ describe("loadPlugins (phase 1 wiring)", () => {
       expect(loaded.schema.nodes[name], `schema should have "${name}"`).toBeTruthy();
     }
 
-    // UI plugins (status bar + table of contents) register overlays.
+    // The table of contents plugin registers an overlay (status bar is now
+    // part of AppShell via BottomBar, not a plugin overlay).
     const overlayIds = loaded.collectors.overlays.map((o) => o.id).sort();
-    expect(overlayIds).toContain("status-bar");
+    expect(overlayIds).not.toContain("status-bar");
     expect(overlayIds).toContain("toc");
 
     // The tables plugin contributes its ProseMirror plugins (sort + row actions).

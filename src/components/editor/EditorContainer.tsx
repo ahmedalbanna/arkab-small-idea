@@ -177,7 +177,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
               {/* Cycle Quote Trigger */}
               <button
                 onClick={() => setQuoteIndex((prev) => (prev + 1) % POETIC_QUOTES.length)}
-                className="absolute -bottom-3 right-6 px-3 py-1 bg-minimal-bg border border-minimal-border rounded-full text-[8px] font-bold text-minimal-muted hover:text-minimal-accent hover:border-minimal-accent/30 transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                className="absolute -bottom-3 end-6 px-3 py-1 bg-minimal-bg border border-minimal-border rounded-full text-[8px] font-bold text-minimal-muted hover:text-minimal-accent hover:border-minimal-accent/30 transition-all flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
               >
                 <span>مقولة أخرى (Next Quote)</span>
                 <span className="text-[10px]">✨</span>

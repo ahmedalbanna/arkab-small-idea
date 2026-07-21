@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Search, ChevronDown, X, Zap, ArrowRightLeft } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useUIStore } from "../../stores/uiStore";
+import { Z_CLASS } from "../../lib/zIndex";
 
 interface SearchBarProps {
   findText: string;
@@ -52,11 +53,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -20, opacity: 0 }}
-          className="fixed top-8 left-1/2 -translate-x-1/2 z-[110] bg-minimal-bg border border-minimal-border rounded-xl shadow-2xl p-3 flex flex-col gap-2 w-[420px] max-w-[95vw]"
+          className={cn(
+            "fixed top-8 left-1/2 -translate-x-1/2 bg-minimal-bg border border-minimal-border rounded-xl shadow-2xl p-3 flex flex-col gap-2 w-[420px] max-w-[95vw]",
+            Z_CLASS.panel,
+          )}
         >
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-minimal-sidebar rounded-lg flex items-center px-3 border border-minimal-border focus-within:border-minimal-accent transition-colors">
-              <Search className="w-3.5 h-3.5 text-minimal-muted mr-2" />
+              <Search className="w-3.5 h-3.5 text-minimal-muted me-2" />
               <input
                 type="text"
                 placeholder="Find"
@@ -70,13 +74,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 autoFocus
               />
               {findText && (
-                <div className="text-[10px] font-bold text-minimal-accent px-1.5 py-0.5 bg-minimal-accent/10 rounded mr-1">
+                  <div className="text-[10px] font-bold text-minimal-accent px-1.5 py-0.5 bg-minimal-accent/10 rounded me-1">
                   {matchCount > 0
                     ? `${currentMatchIndex || "-"} / ${matchCount}`
                     : "0 / 0"}
                 </div>
               )}
-              <div className="flex items-center gap-1 ml-2">
+              <div className="flex items-center gap-1 ms-2">
                 <button
                   onClick={() => {
                     setIsCaseSensitive(!isCaseSensitive);
@@ -166,6 +170,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               <button
                 onClick={() => setSearch(false)}
                 className="p-1.5 hover:bg-minimal-border rounded text-minimal-muted"
+                aria-label="Close search"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -180,10 +185,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               </div>
               {semanticResults.map((result, idx) => {
                 const score = result.score;
-                let gradientClass = "bg-gradient-to-r from-zinc-500/10 via-zinc-500/5 to-transparent border-zinc-300/40 dark:border-zinc-700/40";
-                let textClass = "text-zinc-700 dark:text-zinc-300";
-                let badgeClass = "text-zinc-500";
-                let leftBorderBg = "bg-zinc-400";
+                let gradientClass = "bg-gradient-to-r from-minimal-muted/10 via-minimal-muted/5 to-transparent border-minimal-border/40";
+                let textClass = "text-minimal-text";
+                let badgeClass = "text-minimal-muted";
+                let leftBorderBg = "bg-minimal-muted";
 
                 if (score >= 0.85) {
                   // High confidence - emerald gradient
@@ -215,14 +220,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                   >
                     <div
                       className={cn(
-                        "absolute left-0 top-0 bottom-0 w-1 transition-all duration-300",
+                        "absolute start-0 top-0 bottom-0 w-1 transition-all duration-300",
                         leftBorderBg
                       )}
                     />
-                    <p className={cn("text-[11px] leading-relaxed line-clamp-2 pl-2", textClass)}>
+                    <p className={cn("text-[11px] leading-relaxed line-clamp-2 ps-2", textClass)}>
                       {result.text}
                     </p>
-                    <div className="flex justify-between items-center mt-1.5 pl-2">
+                    <div className="flex justify-between items-center mt-1.5 ps-2">
                       <span className={cn("text-[9px] font-mono font-bold flex items-center gap-1", badgeClass)}>
                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
                         {(score * 100).toFixed(0)}% Match

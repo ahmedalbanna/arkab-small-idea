@@ -12,11 +12,11 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const API_ONLY = process.argv.includes("--api-only");
-  const PORT = API_ONLY ? 3001 : 3000;
+  const PORT = API_ONLY ? 3009 : 3008;
 
   app.use(express.json());
 
-  const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhosy:11434";
+  const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
   const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:0.5b";
 
   // CORS for Vite dev server when running standalone

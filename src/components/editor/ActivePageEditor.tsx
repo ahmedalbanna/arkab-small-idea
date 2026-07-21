@@ -146,9 +146,9 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
 
         <div className="flex items-center gap-0.5 md:gap-1">
           {/* Per-page controls */}
-          <div className="flex items-center bg-minimal-bg/50 rounded-lg border border-minimal-border/50 p-0.5 mr-1 md:mr-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 lg:opacity-100">
+          <div className="flex items-center bg-minimal-bg/50 rounded-lg border border-minimal-border/50 p-0.5 me-1 md:me-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 lg:opacity-100">
             {/* Word Goal Control */}
-            <div className="hidden sm:flex items-center gap-1 px-1.5 border-r border-minimal-border/50 mr-1">
+            <div className="hidden sm:flex items-center gap-1 px-1.5 border-e border-minimal-border/50 me-1">
               {isEditingGoal ? (
                 <input
                   autoFocus
@@ -235,10 +235,13 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
                 </button>
               ))}
               <div className="relative group/menu">
-                <button className="p-1.5 rounded-lg text-minimal-muted hover:text-minimal-accent hover:bg-minimal-sidebar transition-all">
+                <button
+                  className="p-1.5 rounded-lg text-minimal-muted hover:text-minimal-accent hover:bg-minimal-sidebar transition-all"
+                  aria-label="AI power tools"
+                >
                   <Sparkles className="w-3.5 h-3.5" />
                 </button>
-                <div className="absolute right-0 top-full mt-2 w-48 bg-minimal-bg border border-minimal-border shadow-2xl rounded-2xl p-2 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-[100] scale-95 group-hover/menu:scale-100 origin-top-right">
+                <div className="absolute end-0 top-full mt-2 w-48 bg-minimal-bg border border-minimal-border shadow-2xl rounded-2xl p-2 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-[100] scale-95 group-hover/menu:scale-100 origin-top-end">
                   <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest p-2 mb-1 border-b border-minimal-border/30">
                     AI Power Tools
                   </p>

@@ -18,15 +18,14 @@ import { PluginRegistryProvider } from "./plugins/registryContext";
 import { EditorCommandBusProvider } from "./plugins/editorCommandContext";
 
 // Components
+import { AppShell } from "./components/layout/AppShell";
+import { BottomBar } from "./components/layout/BottomBar";
 import { MobileMenu } from "./components/navigation/MobileMenu";
 import { EditorContainer } from "./components/editor/EditorContainer";
 import { FloatingToolbar } from "./components/navigation/FloatingToolbar";
 import { SettingsModal } from "./components/overlays/SettingsModal";
 import { ImportModal } from "./components/overlays/ImportModal";
-import { MobileToolbar } from "./components/navigation/MobileToolbar";
 import { WorkspacePlacement } from "./components/navigation/WorkspacePlacement";
-import { motion, AnimatePresence } from "motion/react";
-import { cn } from "./lib/utils";
 
 export default function App() {
   const { pages, activeFocusedPageId, setPageContent } = useEditorStore();
@@ -38,7 +37,7 @@ export default function App() {
   const activePage =
     pages.find((p) => p.id === activeFocusedPageId) || pages[0];
 
-  const { showPages, direction, setDirection } = useUIStore();
+  const { direction, setDirection } = useUIStore();
 
   const {
     theme,
@@ -173,13 +172,7 @@ export default function App() {
           appApi={appApi}
           pluginContext={overlayPluginsRef.current?.context ?? null}
         >
-      <div
-        dir={direction}
-        className={cn(
-          "h-screen overflow-hidden bg-minimal-bg text-minimal-text font-sans flex flex-col selection:bg-minimal-accent/20 transition-colors duration-500",
-          "",
-        )}
-      >
+      <AppShell dir={direction}>
         <input
           type="file"
           ref={fileInputRef}
@@ -206,15 +199,13 @@ export default function App() {
           />
         )}
 
-        <AnimatePresence>{showPages && <WorkspacePlacement />}</AnimatePresence>
+        <WorkspacePlacement />
 
-        {isMobile && (
-          <MobileToolbar
-            fileInputRef={fileInputRef}
-            toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
-            pluginContext={overlayPluginsRef.current?.context ?? null}
-          />
-        )}
+        <BottomBar
+          fileInputRef={fileInputRef}
+          toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
+          pluginContext={overlayPluginsRef.current?.context ?? null}
+        />
 
         <SettingsModal
           pluginSettings={overlayPluginsRef.current?.context?.settings ?? []}
@@ -231,7 +222,7 @@ export default function App() {
 
         <RegisteredHosts hosts={hostPlugins ?? []} />
         <RegisteredOverlays overlays={overlayPlugins ?? []} />
-      </div>
+      </AppShell>
     </PluginProvider>
       </EditorCommandBusProvider>
     </PluginRegistryProvider>

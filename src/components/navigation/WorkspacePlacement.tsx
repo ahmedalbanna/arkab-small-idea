@@ -17,6 +17,7 @@ import {
 import { useEditorStore, Page } from '../../stores/editorStore';
 import { useUIStore } from '../../stores/uiStore';
 import { cn } from '../../lib/utils';
+import { PanelSlot } from '../layout/PanelSlot';
 
 export const WorkspacePlacement: React.FC = () => {
   const {
@@ -82,29 +83,16 @@ export const WorkspacePlacement: React.FC = () => {
   };
 
   return (
-    <>
-      {/* Backdrop overlay */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={() => setPagesMenu(false)}
-        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[110]"
-      />
-
-      {/* Sidebar Drawer */}
-      <motion.div
-        initial={{ x: direction === 'rtl' ? -420 : 420, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: direction === 'rtl' ? -420 : 420, opacity: 0 }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className={cn(
-          "fixed top-0 bottom-0 w-full max-w-[420px] bg-minimal-bg border-minimal-border z-[120] shadow-2xl flex flex-col transition-all duration-300",
-          direction === 'rtl' ? "left-0 border-r" : "right-0 border-l"
-        )}
-      >
+    <PanelSlot
+      isOpen={showPages}
+      onClose={() => setPagesMenu(false)}
+      side="end"
+      showCloseButton={false}
+      width="420px"
+    >
+      <div className="flex flex-col h-full">
         {/* Header section */}
-        <div className="p-5 border-b border-minimal-border bg-minimal-sidebar flex items-start justify-between">
+        <div className="p-5 border-b border-minimal-border bg-minimal-sidebar flex items-start justify-between shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Library className="w-5 h-5 text-minimal-accent" />
@@ -121,13 +109,14 @@ export const WorkspacePlacement: React.FC = () => {
           <button
             onClick={() => setPagesMenu(false)}
             className="p-2 hover:bg-minimal-border rounded-full hover:text-red-500 transition-colors shadow-sm"
+            aria-label="Close workspace placement"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tab Selection */}
-        <div className="grid grid-cols-2 border-b border-minimal-border p-2 bg-minimal-sidebar/40 gap-1.5">
+        <div className="grid grid-cols-2 border-b border-minimal-border p-2 bg-minimal-sidebar/40 gap-1.5 shrink-0">
           <button
             onClick={() => setActiveTab('placement')}
             className={cn(
@@ -155,20 +144,21 @@ export const WorkspacePlacement: React.FC = () => {
         </div>
 
         {/* Search input */}
-        <div className="p-4 border-b border-minimal-border/60">
+        <div className="p-4 border-b border-minimal-border/60 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-minimal-muted/80" />
+            <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-minimal-muted/80" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={direction === 'rtl' ? 'ابحث في العناوين والمحتويات...' : 'Search chapters and snippets...'}
-              className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl pl-10 pr-4 py-2.5 text-xs text-minimal-text placeholder:text-minimal-muted/70 outline-none focus:border-minimal-accent/40 transition-colors"
+              className="w-full bg-minimal-sidebar border border-minimal-border rounded-xl ps-10 pe-4 py-2.5 text-xs text-minimal-text placeholder:text-minimal-muted/70 outline-none focus:border-minimal-accent/40 transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-minimal-border rounded"
+                className="absolute end-3.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-minimal-border rounded"
+                aria-label="Clear search"
               >
                 <X className="w-3 h-3 text-minimal-muted" />
               </button>
@@ -177,7 +167,7 @@ export const WorkspacePlacement: React.FC = () => {
         </div>
 
         {/* Content body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar min-h-0">
           <AnimatePresence mode="wait">
             {activeTab === 'placement' ? (
               <motion.div
@@ -224,7 +214,7 @@ export const WorkspacePlacement: React.FC = () => {
                               layoutId={`placement-card-${page.id}`}
                               className="bg-minimal-bg border border-minimal-border rounded-xl p-3 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
                             >
-                              <div className="min-w-0 flex-1 mr-3">
+                              <div className="min-w-0 flex-1 me-3">
                                 <div className="flex items-center gap-2 mb-1">
                                   {editingTitleId === page.id ? (
                                     <input
@@ -322,7 +312,7 @@ export const WorkspacePlacement: React.FC = () => {
                             layoutId={`placement-card-${page.id}`}
                             className="bg-minimal-sidebar/40 border border-minimal-border rounded-xl p-3 hover:bg-minimal-bg hover:border-minimal-accent/20 transition-all flex items-center justify-between group relative"
                           >
-                            <div className="min-w-0 flex-1 mr-3">
+                            <div className="min-w-0 flex-1 me-3">
                               <div className="flex items-center gap-2 mb-1">
                                 {editingTitleId === page.id ? (
                                   <input
@@ -440,7 +430,7 @@ export const WorkspacePlacement: React.FC = () => {
                           <p className="text-[9px] text-minimal-muted font-mono mt-0.5">
                             {getWordCount(page.content)} {direction === 'rtl' ? 'كلمة' : 'words'}
                             {activePageIds.includes(page.id) && (
-                              <span className="ml-1.5 text-[8px] font-bold text-minimal-accent bg-minimal-accent/10 px-1 rounded">
+                              <span className="ms-1.5 text-[8px] font-bold text-minimal-accent bg-minimal-accent/10 px-1 rounded">
                                 {direction === 'rtl' ? 'نشط' : 'ACTIVE'}
                               </span>
                             )}
@@ -460,7 +450,7 @@ export const WorkspacePlacement: React.FC = () => {
         </div>
 
         {/* Footer actions */}
-        <div className="p-4 border-t border-minimal-border bg-minimal-sidebar flex gap-2">
+        <div className="p-4 border-t border-minimal-border bg-minimal-sidebar flex gap-2 shrink-0">
           <button
             onClick={() => addPage(direction === 'rtl' ? 'فصل جديد' : 'New Chapter', `# ${direction === 'rtl' ? 'فصل جديد' : 'New Chapter'}\n\n`)}
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-minimal-accent hover:bg-minimal-accent/90 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-minimal-accent/20 transition-all active:scale-95 cursor-pointer"
@@ -469,7 +459,7 @@ export const WorkspacePlacement: React.FC = () => {
             <span>{direction === 'rtl' ? 'إضافة فصل جديد' : 'Add New Chapter'}</span>
           </button>
         </div>
-      </motion.div>
-    </>
+      </div>
+    </PanelSlot>
   );
 };

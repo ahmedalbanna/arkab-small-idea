@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { Keyboard, X } from 'lucide-react';
+import { ModalSlot } from '../layout/ModalSlot';
 
 interface ShortcutsHelpProps {
   showShortcuts: boolean;
@@ -12,35 +12,27 @@ export const ShortcutsHelp: React.FC<ShortcutsHelpProps> = ({
   setShowShortcuts
 }) => {
   return (
-    <AnimatePresence>
-      {showShortcuts && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowShortcuts(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-minimal-bg border border-minimal-border rounded-3xl shadow-2xl overflow-hidden"
-          >
-            <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/50">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-minimal-accent/10 flex items-center justify-center text-minimal-accent">
-                  <Keyboard className="w-4 h-4" />
-                </div>
-                <h3 className="text-xs font-bold text-minimal-text uppercase tracking-widest">Keyboard Shortcuts</h3>
-              </div>
-              <button onClick={() => setShowShortcuts(false)} className="p-2 hover:bg-minimal-border rounded-full transition-colors">
-                <X className="w-4 h-4 text-minimal-muted" />
-              </button>
+    <ModalSlot
+      isOpen={showShortcuts}
+      onClose={() => setShowShortcuts(false)}
+      hideCloseButton={true}
+      maxWidth="max-w-lg"
+      className="p-0 overflow-hidden"
+    >
+      <div className="flex flex-col h-full">
+        <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/50 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-minimal-accent/10 flex items-center justify-center text-minimal-accent">
+              <Keyboard className="w-4 h-4" />
             </div>
+            <h3 className="text-xs font-bold text-minimal-text uppercase tracking-widest">Keyboard Shortcuts</h3>
+          </div>
+          <button onClick={() => setShowShortcuts(false)} className="p-2 hover:bg-minimal-border rounded-full transition-colors" aria-label="Close shortcuts">
+            <X className="w-4 h-4 text-minimal-muted" />
+          </button>
+        </div>
 
-            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar min-h-0">
               {/* Editor Formatting */}
               <section className="space-y-3">
                 <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest">Formatting</h4>
@@ -96,12 +88,10 @@ export const ShortcutsHelp: React.FC<ShortcutsHelpProps> = ({
               </section>
             </div>
 
-            <div className="p-4 bg-minimal-sidebar/30 border-t border-minimal-border text-center">
-              <p className="text-[8px] font-bold text-minimal-muted uppercase tracking-[0.2em]">Press Ctrl + / to toggle this dialog</p>
-            </div>
-          </motion.div>
+        <div className="p-4 bg-minimal-sidebar/30 border-t border-minimal-border text-center shrink-0">
+          <p className="text-[8px] font-bold text-minimal-muted uppercase tracking-[0.2em]">Press Ctrl + / to toggle this dialog</p>
         </div>
-      )}
-    </AnimatePresence>
+      </div>
+    </ModalSlot>
   );
 };

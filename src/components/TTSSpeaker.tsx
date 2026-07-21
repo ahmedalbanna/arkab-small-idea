@@ -137,7 +137,8 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
           {/* Close Button */}
           <button
             onClick={() => { stopSpeech(); setTTS(false); }}
-            className="absolute -top-2 -right-2 p-1 bg-minimal-sidebar border border-minimal-border rounded-full text-minimal-muted hover:text-minimal-accent transition-colors"
+            className="absolute -top-2 -end-2 p-1 bg-minimal-sidebar border border-minimal-border rounded-full text-minimal-muted hover:text-minimal-accent transition-colors"
+            aria-label="Close text to speech"
           >
             <X size={14} />
           </button>

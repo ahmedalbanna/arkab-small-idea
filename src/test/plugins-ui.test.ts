@@ -46,13 +46,12 @@ describe("UI plugin extraction", () => {
     expect(prosePlugins).toHaveLength(2);
   });
 
-  it("status-bar plugin registers a statusbar overlay", () => {
+  it("status-bar plugin registers a visibility setting (no overlay — BottomBar is part of AppShell)", () => {
     const { overlays } = captureInit(statusBarPlugin);
-    expect(overlays).toHaveLength(1);
-    expect((overlays[0] as any).mount).toBe("statusbar");
+    expect(overlays).toHaveLength(0);
   });
 
-  it("status-bar plugin registers its visibility setting and a show predicate", () => {
+  it("status-bar plugin registers its visibility setting", () => {
     const settings: any[] = [];
     const ctx = {
       ...({} as any),
@@ -79,9 +78,6 @@ describe("UI plugin extraction", () => {
       key: "visible",
       type: "toggle",
     });
-    // The overlay's `show` predicate reads the persisted plugin setting.
-    const overlay = captureInit(statusBarPlugin).overlays[0] as any;
-    expect(typeof overlay.show).toBe("function");
   });
 
   it("toc plugin registers an overlay", () => {
@@ -89,10 +85,10 @@ describe("UI plugin extraction", () => {
     expect(overlays).toHaveLength(1);
   });
 
-  it("loadPlugins wires status-bar and toc overlays into the collectors", async () => {
+  it("loadPlugins wires toc overlay into the collectors", async () => {
     const loaded = await loadPlugins(fakeEditor());
     const overlayIds = loaded.collectors.overlays.map((o) => o.id).sort();
-    expect(overlayIds).toContain("status-bar");
+    expect(overlayIds).not.toContain("status-bar");
     expect(overlayIds).toContain("toc");
   });
 });

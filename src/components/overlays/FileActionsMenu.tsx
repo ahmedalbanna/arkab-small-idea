@@ -44,7 +44,7 @@ export const FileActionsMenu: React.FC<FileActionsMenuProps> = ({
       {showFileActions && (
         <div className={cn(
           "flex flex-col gap-1 w-56 bg-minimal-bg border border-minimal-border rounded-2xl shadow-2xl p-2 z-[60]",
-          inline ? "absolute top-full right-0 mt-2" : "absolute right-full mr-4 bottom-0"
+          inline ? "absolute top-full end-0 mt-2" : "absolute end-full me-4 bottom-0"
         )}>
           <div className="px-3 py-1.5 border-b border-minimal-border flex items-center justify-between">
             <span className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest">File Actions</span>

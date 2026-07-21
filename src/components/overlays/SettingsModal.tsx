@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -7,6 +7,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { getPluginList } from '../../plugins';
 import { useSetPluginEnabled } from '../../plugins/registryContext';
 import type { PluginSettingDef } from '../../plugins/types';
+import { ModalSlot } from '../layout/ModalSlot';
 
 interface SettingsModalProps {
   /** Plugin-contributed settings to render. */
@@ -41,30 +42,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
   );
 
   return (
-    <AnimatePresence>
-      {showSettings && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSettings(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-md bg-minimal-bg border border-minimal-border rounded-3xl shadow-2xl overflow-hidden"
-          >
-            <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/50">
-              <h3 className="text-xs font-bold text-minimal-text uppercase tracking-widest">Global Settings</h3>
-              <button onClick={() => setSettings(false)} className="p-2 hover:bg-minimal-border rounded-full transition-colors">
-                <X className="w-4 h-4 text-minimal-muted" />
-              </button>
-            </div>
+    <ModalSlot
+      isOpen={showSettings}
+      onClose={() => setSettings(false)}
+      hideCloseButton={true}
+      maxWidth="max-w-md"
+      className="p-0 overflow-hidden"
+    >
+      <div className="flex flex-col h-full">
+        <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/50 shrink-0">
+          <h3 className="text-xs font-bold text-minimal-text uppercase tracking-widest">Global Settings</h3>
+          <button onClick={() => setSettings(false)} className="p-2 hover:bg-minimal-border rounded-full transition-colors" aria-label="Close settings">
+            <X className="w-4 h-4 text-minimal-muted" />
+          </button>
+        </div>
 
-            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar min-h-0">
               {/* Theme Gallery Section */}
               <section className="space-y-3">
                 <h4 className="text-[10px] font-bold text-minimal-muted uppercase tracking-widest flex items-center justify-between">
@@ -73,9 +66,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { id: 'light', label: 'Classic Bright', desc: 'مشرق كلاسيكي', bg: '#ffffff', accent: '#3498db', text: 'text-zinc-800' },
-                    { id: 'dark', label: 'Onyx Charcoal', desc: 'فحم الأونيكس', bg: '#111115', accent: '#6366f1', text: 'text-zinc-100' },
-                    { id: 'system', label: 'System Match', desc: 'مزامنة النظام', bg: '#27272a', accent: '#a1a1aa', text: 'text-zinc-300' },
+                    { id: 'light', label: 'Classic Bright', desc: 'مشرق كلاسيكي', bg: '#ffffff', accent: '#3498db', text: 'text-gray-800' },
+                    { id: 'dark', label: 'Onyx Charcoal', desc: 'فحم الأونيكس', bg: '#111115', accent: '#6366f1', text: 'text-gray-100' },
+                    { id: 'system', label: 'System Match', desc: 'مزامنة النظام', bg: '#27272a', accent: '#a1a1aa', text: 'text-gray-300' },
                     { id: 'andalusia', label: 'Andalusia Gold', desc: 'الأندلس الذهبي', bg: '#fdfaf2', accent: '#2e7d32', text: 'text-emerald-900' },
                     { id: 'cosmos', label: 'Deep Cosmos', desc: 'الكون الساحر', bg: '#0a0a14', accent: '#a855f7', text: 'text-purple-200' },
                     { id: 'parchment', label: 'Vintage Parchment', desc: 'الوثيقة العتيقة', bg: '#f4ece1', accent: '#d84315', text: 'text-amber-950' },
@@ -111,7 +104,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                         {t.desc}
                       </span>
                       {theme === t.id && (
-                        <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: headingColor }} />
+                        <div className="absolute top-1 end-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: headingColor }} />
                       )}
                     </button>
                   );
@@ -210,7 +203,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                   >
                     <motion.div
                       animate={{ x: enableHeadingNumbering ? 20 : 2 }}
-                      className="absolute top-1 left-0 w-3 h-3 rounded-full bg-white shadow-sm"
+                      className="absolute top-1 start-0 w-3 h-3 rounded-full bg-white shadow-sm"
                     />
                   </button>
                 </div>
@@ -243,7 +236,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                         >
                           <motion.div
                             animate={{ x: enabled ? 20 : 2 }}
-                            className="absolute top-1 left-0 w-3 h-3 rounded-full bg-white shadow-sm"
+                            className="absolute top-1 start-0 w-3 h-3 rounded-full bg-white shadow-sm"
                           />
                         </button>
                       </div>
@@ -285,7 +278,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
                                 >
                                   <motion.div
                                     animate={{ x: value ? 20 : 2 }}
-                                    className="absolute top-1 left-0 w-3 h-3 rounded-full bg-white shadow-sm"
+                                    className="absolute top-1 start-0 w-3 h-3 rounded-full bg-white shadow-sm"
                                   />
                                 </button>
                               )}
@@ -334,12 +327,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ pluginSettings = [
               )}
             </div>
 
-            <div className="p-4 bg-minimal-sidebar/30 border-t border-minimal-border text-center">
-              <p className="text-[8px] font-bold text-minimal-muted uppercase tracking-[0.2em]">Ink & Quill v2.0.0 — Modern Minimalism</p>
-            </div>
-          </motion.div>
+        <div className="p-4 bg-minimal-sidebar/30 border-t border-minimal-border text-center shrink-0">
+          <p className="text-[8px] font-bold text-minimal-muted uppercase tracking-[0.2em]">Ink & Quill v2.0.0 — Modern Minimalism</p>
         </div>
-      )}
-    </AnimatePresence>
+      </div>
+    </ModalSlot>
   );
 };

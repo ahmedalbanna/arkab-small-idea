@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { List, X, ChevronRight, Hash, Filter } from 'lucide-react';
+import { List, X, ChevronRight, ChevronLeft, Hash, Filter } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { type EditorRef } from '../ProseMirrorEditor';
 import { cn } from '../../lib/utils';
+import { Z_CLASS } from '../../lib/zIndex';
 
 interface TableOfContentsProps {
   editorRef: React.RefObject<EditorRef>;
@@ -18,7 +19,7 @@ interface HeadingInfo {
 }
 
 const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
-  const { showTOC, setTOC } = useUIStore();
+  const { showTOC, setTOC, direction } = useUIStore();
   const { activeFocusedPageId } = useEditorStore();
   const [headings, setHeadings] = useState<HeadingInfo[]>([]);
   const [maxLevel, setMaxLevel] = useState(6);
@@ -49,10 +50,13 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, x: 20 }}
+        initial={{ opacity: 0, x: direction === 'rtl' ? -20 : 20 }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 20 }}
-        className="fixed top-24 right-6 w-64 bg-minimal-sidebar/90 backdrop-blur-xl border border-minimal-border rounded-2xl shadow-2xl z-40 flex flex-col max-h-[70vh]"
+        exit={{ opacity: 0, x: direction === 'rtl' ? -20 : 20 }}
+        className={cn(
+          "fixed top-24 end-6 w-64 bg-minimal-sidebar/90 backdrop-blur-xl border border-minimal-border rounded-2xl shadow-2xl flex flex-col max-h-[70vh]",
+          Z_CLASS.floating,
+        )}
       >
         <div className="p-4 border-b border-minimal-border flex items-center justify-between">
           <div className="flex items-center gap-2 text-minimal-accent">
@@ -73,6 +77,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
             <button
               onClick={() => setTOC(false)}
               className="p-1.5 hover:bg-minimal-border/50 rounded-lg transition-colors text-minimal-muted"
+              aria-label="Close table of contents"
             >
               <X size={14} />
             </button>
@@ -98,7 +103,11 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ editorRef }) => {
                   className="mt-1 flex-shrink-0 text-minimal-muted group-hover:text-minimal-accent transition-colors"
                   style={{ marginLeft: `${(heading.level - 1) * 12}px` }}
                 >
-                  <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                  {direction === 'rtl' ? (
+                    <ChevronLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" />
+                  ) : (
+                    <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                  )}
                 </div>
                 <span className={cn(
                   "text-[11px] leading-tight transition-colors",

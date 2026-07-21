@@ -47,7 +47,7 @@ export const SnapshotsMenu: React.FC<SnapshotsMenuProps> = ({
       </button>
 
       {showSnapshots && (
-        <div className="absolute left-0 top-full mt-2 flex flex-col gap-1 w-48 bg-minimal-bg border border-minimal-border rounded-2xl shadow-2xl p-2 z-[60] animate-in fade-in zoom-in-95 duration-200 origin-top-left">
+        <div className="absolute start-0 top-full mt-2 flex flex-col gap-1 w-48 bg-minimal-bg border border-minimal-border rounded-2xl shadow-2xl p-2 z-[60] animate-in fade-in zoom-in-95 duration-200 origin-top-start">
           <div className="px-3 py-1.5 border-b border-minimal-border flex items-center justify-between">
             <span className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest">
               Snapshots
@@ -108,6 +108,7 @@ export const SnapshotsMenu: React.FC<SnapshotsMenuProps> = ({
                           );
                         }}
                         className="opacity-0 group-hover/s:opacity-100 p-1 hover:text-red-500 transition-all font-bold"
+                        aria-label="Delete snapshot"
                       >
                         <X className="w-2.5 h-2.5" />
                       </button>

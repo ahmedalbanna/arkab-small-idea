@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { importFile } from '../../services/importService';
+import { ModalSlot } from '../layout/ModalSlot';
 
 interface ImportModalProps {
   onImport: (content: string) => void;
@@ -50,35 +51,34 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport }) => {
     }
   };
 
-  if (!showImportModal) return null;
-
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="w-full max-w-lg bg-minimal-bg border border-minimal-border rounded-3xl shadow-2xl overflow-hidden"
-        >
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/30">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-minimal-accent/10 rounded-xl text-minimal-accent">
-                <Upload className="w-5 h-5" />
-              </div>
-              <h2 className="text-sm font-bold text-minimal-text uppercase tracking-widest">Import Document</h2>
+    <ModalSlot
+      isOpen={showImportModal}
+      onClose={() => setImportModal(false)}
+      hideCloseButton={true}
+      maxWidth="max-w-lg"
+      className="p-0 overflow-hidden"
+    >
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-minimal-border flex items-center justify-between bg-minimal-sidebar/30 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-minimal-accent/10 rounded-xl text-minimal-accent">
+              <Upload className="w-5 h-5" />
             </div>
-            <button
-              onClick={() => setImportModal(false)}
-              className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <h2 className="text-sm font-bold text-minimal-text uppercase tracking-widest">Import Document</h2>
           </div>
+          <button
+            onClick={() => setImportModal(false)}
+            className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors"
+            aria-label="Close import dialog"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          {/* Content */}
-          <div className="p-8">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-8 min-h-0">
             {!selectedFile ? (
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -114,6 +114,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport }) => {
                   <button
                     onClick={() => setSelectedFile(null)}
                     className="p-2 text-minimal-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                    aria-label="Remove selected file"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -181,9 +182,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport }) => {
                 </div>
               </div>
             )}
-          </div>
-        </motion.div>
+        </div>
       </div>
-    </AnimatePresence>
+    </ModalSlot>
   );
 };

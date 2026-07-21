@@ -655,7 +655,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
                     <Sparkles className="w-4 h-4 text-minimal-accent" />
                   </motion.div>
-                  <span className="text-xs font-semibold text-minimal-accent pr-2">AI is Writing...</span>
+                  <span className="text-xs font-semibold text-minimal-accent pe-2">AI is Writing...</span>
                   <div className="w-px h-3 bg-minimal-border" />
                   <button
                     onClick={() => {

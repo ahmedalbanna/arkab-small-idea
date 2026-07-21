@@ -1,11 +1,11 @@
 import type { InkPlugin } from "../types";
-import { StatusBar } from "../../components/layout/StatusBar";
-import { useSettingsStore } from "../../stores/settingsStore";
 
 /**
- * Renders the bottom status bar. The component is self-contained (it reads
- * the active page and embedding state from stores), so this plugin only has
- * to register it as an overlay and contribute its visibility setting.
+ * Status Bar visibility setting.
+ *
+ * The BottomBar component (rendered by AppShell) now handles both desktop
+ * status-bar and mobile toolbar duties.  This plugin keeps the Appearance
+ * toggle so users can continue controlling visibility.
  */
 export const statusBarPlugin: InkPlugin = {
   id: "status-bar",
@@ -19,14 +19,6 @@ export const statusBarPlugin: InkPlugin = {
       type: "toggle",
       defaultValue: true,
       group: "Appearance",
-    });
-
-    ctx.registerOverlay({
-      id: "status-bar",
-      component: StatusBar,
-      mount: "statusbar",
-      show: () =>
-        useSettingsStore.getState().pluginSettings["status-bar.visible"] !== false,
     });
   },
 };

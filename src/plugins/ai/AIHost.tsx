@@ -2,11 +2,11 @@ import React, { useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { AIAssistant } from "../../components/ai/AIAssistant";
-import { cn } from "../../lib/utils";
 import { AIProviderSettings } from "../../components/ai/AIProviderSettings";
 import { SearchBar } from "../../components/overlays/SearchBar";
 import { SemanticFolders } from "../../components/SemanticFolders";
 import { ShortcutsHelp } from "../../components/overlays/ShortcutsHelp";
+import { PanelSlot } from "../../components/layout/PanelSlot";
 import TTSSpeaker from "../../components/TTSSpeaker";
 import { chatWithAI, checkOllamaConnection, type ChatMessage } from "../../services/aiService";
 import { ragService } from "../../services/ragService";
@@ -431,44 +431,38 @@ export function AIHost() {
 
   return (
     <>
-      <AnimatePresence>
-        {showAIAssistant && (
-          <motion.div
-            initial={{ x: '100%', opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: '100%', opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200, mass: 0.8 }}
-            className={cn(
-              'absolute end-0 inset-y-0 z-[110] flex flex-col',
-              'w-full md:w-1/2 md:min-w-[380px] md:max-w-[700px]',
-              'border-s border-minimal-border bg-minimal-bg shadow-2xl'
-            )}
-          >
-            <AIAssistant
-              ollamaStatus={ollamaStatusKey}
-              aiPrompt={aiPrompt}
-              setAiPrompt={setAiPrompt}
-              chatInputRef={chatInputRef}
-              chatImageInputRef={chatImageInputRef}
-              chatAttachedImages={chatAttachedImages}
-              setChatAttachedImages={setChatAttachedImages}
-              chatHistory={chatHistory}
-              isGenerating={isGenerating}
-              scrollRef={chatScrollRef}
-              handleAiGenerate={handleAiGenerate}
-              handleChatImageUpload={handleChatImageUpload}
-              formatChatInput={formatChatInput}
-              stopAiGenerate={stopAiGenerate}
-              handleAiAction={runAiAction}
-              handleDismissMessage={handleDismissMessage}
-              handleReviseMessage={handleReviseMessage}
-              onApply={applyContent}
-              onRetry={handleRetry}
-              onClose={() => setAIAssistant(false)}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <PanelSlot
+        isOpen={showAIAssistant}
+        onClose={() => setAIAssistant(false)}
+        side="end"
+        zLevel="panel"
+        showBackdrop={false}
+        showCloseButton={false}
+        className="w-full md:w-1/2 md:min-w-[380px] md:max-w-[700px]"
+      >
+        <AIAssistant
+          ollamaStatus={ollamaStatusKey}
+          aiPrompt={aiPrompt}
+          setAiPrompt={setAiPrompt}
+          chatInputRef={chatInputRef}
+          chatImageInputRef={chatImageInputRef}
+          chatAttachedImages={chatAttachedImages}
+          setChatAttachedImages={setChatAttachedImages}
+          chatHistory={chatHistory}
+          isGenerating={isGenerating}
+          scrollRef={chatScrollRef}
+          handleAiGenerate={handleAiGenerate}
+          handleChatImageUpload={handleChatImageUpload}
+          formatChatInput={formatChatInput}
+          stopAiGenerate={stopAiGenerate}
+          handleAiAction={runAiAction}
+          handleDismissMessage={handleDismissMessage}
+          handleReviseMessage={handleReviseMessage}
+          onApply={applyContent}
+          onRetry={handleRetry}
+          onClose={() => setAIAssistant(false)}
+        />
+      </PanelSlot>
 
       <AIProviderSettings
         aiSettingsTab={aiSettingsTab}
@@ -501,12 +495,13 @@ export function AIHost() {
             initial={{ x: 300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 300, opacity: 0 }}
-            className="absolute right-0 top-0 bottom-0 z-[100] w-[320px] shadow-2xl"
+            className="absolute end-0 top-0 bottom-0 z-[100] w-[320px] shadow-2xl"
           >
             <div className="h-full relative">
               <button
                 onClick={() => setSemanticFolders(false)}
-                className="absolute top-4 -left-12 p-2 bg-minimal-bg border border-minimal-border rounded-full hover:text-red-500 transition-colors shadow-lg z-[110]"
+                className="absolute top-4 -start-12 p-2 bg-minimal-bg border border-minimal-border rounded-full hover:text-red-500 transition-colors shadow-lg z-[110]"
+                aria-label="Close semantic folders"
               >
                 <X className="w-4 h-4" />
               </button>
