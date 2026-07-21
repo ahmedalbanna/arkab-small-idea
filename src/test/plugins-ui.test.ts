@@ -80,15 +80,14 @@ describe("UI plugin extraction", () => {
     });
   });
 
-  it("toc plugin registers an overlay", () => {
+  it("toc plugin is a no-op stub (overlay removed)", () => {
     const { overlays } = captureInit(tocPlugin);
-    expect(overlays).toHaveLength(1);
+    expect(overlays).toHaveLength(0);
   });
 
-  it("loadPlugins wires toc overlay into the collectors", async () => {
+  it("loadPlugins collectors no longer include toc overlay", async () => {
     const loaded = await loadPlugins(fakeEditor());
     const overlayIds = loaded.collectors.overlays.map((o) => o.id).sort();
-    expect(overlayIds).not.toContain("status-bar");
-    expect(overlayIds).toContain("toc");
+    expect(overlayIds).not.toContain("toc");
   });
 });

@@ -30,7 +30,7 @@ export interface ModalSlotProps {
  * `aria-labelledby`).
  *
  * Intended to replace the manual modal/overlay implementations in
- * `SettingsModal`, `ImportModal`, `ShortcutsHelp`, etc.
+ * `ImportModal`, `ShortcutsHelp`, etc.
  */
 export function ModalSlot({
   isOpen,

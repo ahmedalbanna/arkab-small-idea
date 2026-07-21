@@ -23,9 +23,7 @@ import { BottomBar } from "./components/layout/BottomBar";
 import { MobileMenu } from "./components/navigation/MobileMenu";
 import { EditorContainer } from "./components/editor/EditorContainer";
 import { FloatingToolbar } from "./components/navigation/FloatingToolbar";
-import { SettingsModal } from "./components/overlays/SettingsModal";
 import { ImportModal } from "./components/overlays/ImportModal";
-import { WorkspacePlacement } from "./components/navigation/WorkspacePlacement";
 
 export default function App() {
   const { pages, activeFocusedPageId, setPageContent } = useEditorStore();
@@ -199,16 +197,10 @@ export default function App() {
           />
         )}
 
-        <WorkspacePlacement />
-
         <BottomBar
           fileInputRef={fileInputRef}
           toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
           pluginContext={overlayPluginsRef.current?.context ?? null}
-        />
-
-        <SettingsModal
-          pluginSettings={overlayPluginsRef.current?.context?.settings ?? []}
         />
 
         <ImportModal

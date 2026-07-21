@@ -35,11 +35,10 @@ describe("loadPlugins (phase 1 wiring)", () => {
       expect(loaded.schema.nodes[name], `schema should have "${name}"`).toBeTruthy();
     }
 
-    // The table of contents plugin registers an overlay (status bar is now
-    // part of AppShell via BottomBar, not a plugin overlay).
+    // TOC overlay was removed; confirm it no longer appears.
     const overlayIds = loaded.collectors.overlays.map((o) => o.id).sort();
     expect(overlayIds).not.toContain("status-bar");
-    expect(overlayIds).toContain("toc");
+    expect(overlayIds).not.toContain("toc");
 
     // The tables plugin contributes its ProseMirror plugins (sort + row actions).
     expect(pmPlugins.length).toBeGreaterThanOrEqual(7);

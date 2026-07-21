@@ -30,11 +30,7 @@ describe("LayoutContext", () => {
     useUIStore.setState({
       showAIAssistant: false,
       showSearch: false,
-      showTOC: false,
-      showPages: false,
-      showSemanticFolders: false,
       showTTS: false,
-      showSettings: false,
       showImportModal: false,
       showMobileMenu: false,
       showAiSettings: false,
@@ -87,36 +83,6 @@ describe("LayoutContext", () => {
     expect(screen.getByTestId("active-panel").textContent).toBe("search");
   });
 
-  it("derives activePanel from uiStore — toc panel", () => {
-    useUIStore.setState({ showTOC: true });
-    render(
-      <LayoutProvider>
-        <LayoutConsumer id="toc-test" />
-      </LayoutProvider>,
-    );
-    expect(screen.getByTestId("active-panel").textContent).toBe("toc");
-  });
-
-  it("derives activePanel from uiStore — workspace panel", () => {
-    useUIStore.setState({ showPages: true });
-    render(
-      <LayoutProvider>
-        <LayoutConsumer id="ws-test" />
-      </LayoutProvider>,
-    );
-    expect(screen.getByTestId("active-panel").textContent).toBe("workspace");
-  });
-
-  it("derives activePanel from uiStore — semantic panel", () => {
-    useUIStore.setState({ showSemanticFolders: true });
-    render(
-      <LayoutProvider>
-        <LayoutConsumer id="sem-test" />
-      </LayoutProvider>,
-    );
-    expect(screen.getByTestId("active-panel").textContent).toBe("semantic");
-  });
-
   it("derives activePanel from uiStore — tts panel", () => {
     useUIStore.setState({ showTTS: true });
     render(
@@ -136,8 +102,8 @@ describe("LayoutContext", () => {
     expect(screen.getByTestId("active-panel").textContent).toBe("null");
   });
 
-  it("derives isModalOpen from settings modal", () => {
-    useUIStore.setState({ showSettings: true });
+  it("derives isModalOpen from import modal", () => {
+    useUIStore.setState({ showImportModal: true });
     render(
       <LayoutProvider>
         <LayoutConsumer id="modal-test" />
@@ -214,16 +180,16 @@ describe("LayoutContext", () => {
       layout = useLayout();
       return null;
     }
-    useUIStore.setState({ showTOC: true });
+    useUIStore.setState({ showSearch: true });
     render(
       <LayoutProvider>
         <Action />
       </LayoutProvider>,
     );
 
-    layout!.togglePanel("workspace");
-    expect(useUIStore.getState().showTOC).toBe(false);
-    expect(useUIStore.getState().showPages).toBe(true);
+    layout!.togglePanel("tts");
+    expect(useUIStore.getState().showSearch).toBe(false);
+    expect(useUIStore.getState().showTTS).toBe(true);
   });
 
   it("togglePanel closes an already-open panel", () => {

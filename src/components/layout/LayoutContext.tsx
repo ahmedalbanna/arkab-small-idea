@@ -9,9 +9,6 @@ import { Z_LAYERS } from "../../lib/zIndex";
 export type PanelId =
   | "ai"
   | "search"
-  | "toc"
-  | "workspace"
-  | "semantic"
   | "tts";
 
 /** Map each PanelId to its uiStore setter name and boolean getter. */
@@ -26,18 +23,6 @@ const PANEL_MAP: Record<
   search: {
     get: (s) => s.showSearch,
     set: (show) => useUIStore.getState().setSearch(show),
-  },
-  toc: {
-    get: (s) => s.showTOC,
-    set: (show) => useUIStore.getState().setTOC(show),
-  },
-  workspace: {
-    get: (s) => s.showPages,
-    set: (show) => useUIStore.getState().setPagesMenu(show),
-  },
-  semantic: {
-    get: (s) => s.showSemanticFolders,
-    set: (show) => useUIStore.getState().setSemanticFolders(show),
   },
   tts: {
     get: (s) => s.showTTS,
@@ -81,13 +66,10 @@ function useLayoutContextValue(): LayoutContextValue {
   }, [
     store.showAIAssistant,
     store.showSearch,
-    store.showTOC,
-    store.showPages,
-    store.showSemanticFolders,
     store.showTTS,
   ]);
 
-  const isModalOpen = store.showSettings || store.showImportModal;
+  const isModalOpen = store.showImportModal;
 
   return useMemo(
     () => ({

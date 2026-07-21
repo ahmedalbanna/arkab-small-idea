@@ -24,7 +24,7 @@ export const Z_LAYERS = {
   sticky: 20,
   /** Floating UI — FloatingToolbar, TOC, popovers */
   floating: 40,
-  /** Side panels — AI assistant, WorkspacePlacement, Search */
+  /** Side panels — AI assistant, Search */
   panel: 60,
   /** Modal overlay backdrops */
   overlay: 100,

@@ -41,7 +41,7 @@ export interface PanelSlotProps {
  * document direction (LTR / RTL).  Uses `motion/react` spring animations
  * for smooth entrance and exit.
  *
- * This is the building block for the AI assistant, WorkspacePlacement,
+ * This is the building block for the AI assistant, Search,
  * Search, Table of Contents, and other side panels.
  */
 export function PanelSlot({

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, Search, FolderRoot, Settings, Command, Headset, List, Library } from 'lucide-react';
+import { Sparkles, Search, Command, Headset } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Z_CLASS } from '../../lib/zIndex';
 import { useUIStore } from '../../stores/uiStore';
@@ -24,13 +24,9 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 }) => {
   const {
     showAIAssistant, setAIAssistant,
-    showPages, setPagesMenu,
     showSearch, setSearch,
-    showSemanticFolders, setSemanticFolders,
-    showSettings, setSettings,
     showQuickCommands, setQuickCommands,
     showTTS, setTTS,
-    showTOC, setTOC,
   } = useUIStore();
 
   const { togglePanel } = useLayout();
@@ -41,20 +37,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const aiTools = [
     { id: 'ai', icon: Sparkles, active: showAIAssistant, action: () => togglePanel('ai'), title: 'AI Assistant' },
     { id: 'tts', icon: Headset, active: showTTS, action: () => setTTS(!showTTS), title: 'Text to Speech' },
-    { id: 'toc', icon: List, active: showTOC, action: () => togglePanel('toc'), title: 'Table of Contents' },
     { id: 'search', icon: Search, active: showSearch, action: () => togglePanel('search'), title: 'Find & Replace' },
     { id: 'commands', icon: Command, active: showQuickCommands, action: () => setQuickCommands(!showQuickCommands), title: 'Toggle Quick Commands Menu' },
-  ];
-
-  // ── Section 2: Workspace ──
-  const workspace = [
-    { id: 'placement', icon: Library, active: showPages, action: () => togglePanel('workspace'), title: 'Workspace Placement System' },
-    { id: 'semantic', icon: FolderRoot, active: showSemanticFolders, action: () => togglePanel('semantic'), title: 'Semantic Folders' },
-  ];
-
-  // ── Section 3: Settings ──
-  const settings = [
-    { id: 'settings', icon: Settings, active: showSettings, action: () => setSettings(!showSettings), title: 'Global Settings' },
   ];
 
   const renderButton = (
@@ -89,14 +73,6 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     <div className={cn("fixed top-8 end-8 flex flex-col gap-3", Z_CLASS.floating)}>
       {aiTools.map((item, idx) => renderButton(item, idx))}
 
-      <Divider />
-
-      {workspace.map((item, idx) => renderButton(item, aiTools.length + idx))}
-
-      <Divider />
-
-      {settings.map((item, idx) => renderButton(item, aiTools.length + workspace.length + idx))}
-
       {pluginButtons.length > 0 && <Divider />}
       {pluginButtons.map((item, idx) => {
         const Icon = item.icon;
@@ -108,7 +84,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             animate={{ opacity: active ? 1 : 0.6, x: 0, scale: 1 }}
             whileHover={{ opacity: 1, scale: 1.1, x: -4 }}
             whileTap={{ scale: 0.95 }}
-            transition={{ delay: (aiTools.length + workspace.length + settings.length + idx) * 0.05, duration: 0.3, ease: "easeOut" }}
+            transition={{ delay: (aiTools.length + idx) * 0.05, duration: 0.3, ease: "easeOut" }}
             onClick={() => item.onClick(pluginContext as PluginContext)}
             aria-label={item.label}
             className={cn(

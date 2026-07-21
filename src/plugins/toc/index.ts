@@ -1,20 +1,15 @@
 import type { InkPlugin } from "../types";
-import { TableOfContentsOverlay } from "./TableOfContentsOverlay";
 
 /**
- * Renders the document outline (table of contents). The overlay resolves the
- * active editor through `AppApi` and hands it to the existing component, so
- * no app-level prop drilling is required.
+ * Placeholder — Table of Contents has been removed. Kept as a stub so that
+ * `buildPluginModules` doesn't break if anything references `tocPlugin`.
+ * Remove entirely when the plugin set is cleaned up.
  */
 export const tocPlugin: InkPlugin = {
   id: "toc",
   name: "Table of Contents",
   version: "1.0.0",
-  init(ctx) {
-    ctx.registerOverlay({
-      id: "toc",
-      component: TableOfContentsOverlay,
-      mount: "overlay",
-    });
+  init(_ctx) {
+    // no-op
   },
 };

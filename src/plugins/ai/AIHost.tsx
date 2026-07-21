@@ -1,10 +1,8 @@
 import React, { useRef, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { X } from "lucide-react";
+
 import { AIAssistant } from "../../components/ai/AIAssistant";
 import { AIProviderSettings } from "../../components/ai/AIProviderSettings";
 import { SearchBar } from "../../components/overlays/SearchBar";
-import { SemanticFolders } from "../../components/SemanticFolders";
 import { ShortcutsHelp } from "../../components/overlays/ShortcutsHelp";
 import { PanelSlot } from "../../components/layout/PanelSlot";
 import TTSSpeaker from "../../components/TTSSpeaker";
@@ -47,7 +45,7 @@ export function AIHost() {
     setAvailableModels,
   } = useAIStore();
 
-  const { showSemanticFolders, setSemanticFolders, showAIAssistant, setAIAssistant } = useUIStore();
+  const { showAIAssistant, setAIAssistant } = useUIStore();
 
 
   const {
@@ -488,34 +486,6 @@ export function AIHost() {
         handleReplaceAll={handleReplaceAll}
         setSearchIndex={setSearchIndex}
       />
-
-      <AnimatePresence>
-        {showSemanticFolders && (
-          <motion.div
-            initial={{ x: 300, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 300, opacity: 0 }}
-            className="absolute end-0 top-0 bottom-0 z-[100] w-[320px] shadow-2xl"
-          >
-            <div className="h-full relative">
-              <button
-                onClick={() => setSemanticFolders(false)}
-                className="absolute top-4 -start-12 p-2 bg-minimal-bg border border-minimal-border rounded-full hover:text-red-500 transition-colors shadow-lg z-[110]"
-                aria-label="Close semantic folders"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <SemanticFolders
-                onJump={(text) => {
-                  if (activePage) {
-                    getEditorRef(activePage.id)?.scrollToText(text);
-                  }
-                }}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <TTSSpeaker
         editorRef={{
