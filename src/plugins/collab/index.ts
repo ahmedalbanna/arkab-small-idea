@@ -9,7 +9,14 @@ import {
   type ConnectionManagerHandle,
   type TransportMode,
 } from "./connection";
+import { useCollabStore } from "./collabStore";
 import { CollabUsersList } from "./UserList";
+import type { CollabRole } from "./collabStore";
+import {
+  createSectionTrackingPlugin,
+  buildCursorWidget,
+  buildSelectionWidget,
+} from "./cursorUtils";
 
 export interface CollabConfig {
   docId: string;
@@ -29,6 +36,10 @@ export interface CollabConfig {
   onDisconnect?: () => void;
   /** Lifecycle callback: fired when sync state changes. */
   onSync?: (synced: boolean) => void;
+  /** JWT auth token for authenticated sessions. */
+  authToken?: string;
+  /** Local user's collaboration role. */
+  role?: CollabRole;
 }
 
 /** Editor-supplied collaboration options: the document config plus a toggle. */
@@ -88,6 +99,8 @@ export function createCollabPlugin(config: CollabConfig): InkPlugin {
           avatar: config.avatar,
           transport: config.transport,
           persist: config.persist !== false,
+          authToken: config.authToken,
+          role: config.role,
         });
         connManager.connect();
       } else {
@@ -105,7 +118,6 @@ export function createCollabPlugin(config: CollabConfig): InkPlugin {
 
       // Wire lifecycle callbacks from config into the collab store
       if (config.onConnect || config.onDisconnect || config.onSync) {
-        const { useCollabStore } = require("./collabStore");
         const store = useCollabStore.getState();
         if (config.onConnect) store.setOnConnect(config.onConnect);
         if (config.onDisconnect) store.setOnDisconnect(config.onDisconnect);
@@ -118,8 +130,12 @@ export function createCollabPlugin(config: CollabConfig): InkPlugin {
       // ProseMirror collaboration plugins (works with both transports)
       const plugins: Plugin[] = [
         ySyncPlugin(type),
-        yCursorPlugin(awareness),
+        yCursorPlugin(awareness, {
+          cursorBuilder: buildCursorWidget,
+          selectionBuilder: buildSelectionWidget,
+        }),
         yUndoPlugin(),
+        createSectionTrackingPlugin(awareness),
         keymap({
           "Mod-z": undo,
           "Mod-y": redo,

@@ -56,8 +56,8 @@ describe("collab plugin (registry lifecycle)", () => {
     const plugin = createCollabPlugin({ docId: "doc-1", username: "Ada" });
     plugin.init(makeMockContext(registered));
 
-    // ySync, yCursor, yUndo, keymap
-    expect(registered).toHaveLength(4);
+    // ySync, yCursor, yUndo, sectionTracking, keymap
+    expect(registered).toHaveLength(5);
     expect(BroadcastChannelMock.instances).toHaveLength(1);
     expect(BroadcastChannelMock.instances[0].name).toBe("ink-quill-collab-doc-1");
   });
@@ -87,7 +87,7 @@ describe("collab plugin (registry lifecycle)", () => {
       context: ctx,
     }));
 
-    expect(registered).toHaveLength(4);
+    expect(registered).toHaveLength(5);
 
     // Teardown must close the channel and report no leaks.
     const leaked = registry.destroyAll();

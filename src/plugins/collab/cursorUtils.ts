@@ -1,15 +1,23 @@
 /**
- * Custom cursor and selection builders for y-prosemirror's yCursorPlugin.
+ * Custom cursor and selection builders for y-prosemirror's yCursorPlugin,
+ * plus ProseMirror plugins for typing detection and section tracking.
  *
- * These render richer cursor widgets that display the user's name alongside
- * the cursor caret, and highlight selection ranges with the user's colour.
+ * ---
+ * Phase 5.3: Typing indicator, section tracking, enhanced cursor widget.
  */
 
+import type { Awareness } from "y-protocols/awareness";
+import { Plugin } from "prosemirror-state";
+import type { DecorationAttrs } from "prosemirror-view";
+
+// ---------------------------------------------------------------------------
+// Cursor widget builder (returns HTMLElement for yCursorPlugin's cursorBuilder)
+// Selection builder (returns DecorationAttrs)
+// ---------------------------------------------------------------------------
+
 /**
- * Build a cursor element that shows the user's name + colour.
- *
- * Usage with yCursorPlugin:
- *   yCursorPlugin(awareness, { cursorBuilder: buildCursorWidget })
+ * Build a cursor DOM element showing the user's name + colour.
+ * yCursorPlugin expects cursorBuilder to return an HTMLElement.
  */
 export function buildCursorWidget(state: { user: { name?: string; color?: string } }): HTMLElement {
   const user = state.user || {};
@@ -25,7 +33,6 @@ export function buildCursorWidget(state: { user: { name?: string; color?: string
     pointer-events: none;
   `;
 
-  // Cursor caret (vertical bar)
   const caret = document.createElement("span");
   caret.style.cssText = `
     position: absolute;
@@ -36,7 +43,6 @@ export function buildCursorWidget(state: { user: { name?: string; color?: string
     background-color: ${color};
   `;
 
-  // Name label
   const label = document.createElement("span");
   label.textContent = name;
   label.style.cssText = `
@@ -60,19 +66,104 @@ export function buildCursorWidget(state: { user: { name?: string; color?: string
 }
 
 /**
- * Build a selection highlight element for a remote user's selection range.
+ * Build selection highlight decoration attrs for a remote user's selection range.
+ * yCursorPlugin expects selectionBuilder to return DecorationAttrs.
  */
 export function buildSelectionWidget(state: {
   user: { name?: string; color?: string };
-}): HTMLElement {
+}): DecorationAttrs {
   const user = state.user || {};
   const color = user.color || "#666";
+  return {
+    style: `background-color: ${color}33;`,
+    class: "collab-selection",
+  };
+}
 
-  const el = document.createElement("span");
-  el.className = "collab-selection";
-  el.style.cssText = `
-    background-color: ${color}33;  /* 20% opacity */
-    pointer-events: none;
-  `;
-  return el;
+// ---------------------------------------------------------------------------
+// Typing detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Set up typing detection on the editor DOM element.
+ *
+ * On keydown sets `typing: true` in awareness; clears after `idleTimeout` ms.
+ */
+export function setupTypingDetection(
+  editorDom: HTMLElement,
+  awareness: Awareness,
+  idleTimeout = 3000,
+): () => void {
+  let typingTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const setTyping = (isTyping: boolean) => {
+    awareness.setLocalStateField("typing", isTyping);
+  };
+
+  const onKeyDown = () => {
+    setTyping(true);
+    if (typingTimer) clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+      setTyping(false);
+      typingTimer = null;
+    }, idleTimeout);
+  };
+
+  const onBlur = () => {
+    if (typingTimer) clearTimeout(typingTimer);
+    typingTimer = null;
+    setTyping(false);
+  };
+
+  editorDom.addEventListener("keydown", onKeyDown);
+  editorDom.addEventListener("blur", onBlur);
+
+  return () => {
+    editorDom.removeEventListener("keydown", onKeyDown);
+    editorDom.removeEventListener("blur", onBlur);
+    if (typingTimer) clearTimeout(typingTimer);
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Section tracking
+// ---------------------------------------------------------------------------
+
+/**
+ * Determine the nearest heading text above a position in a ProseMirror doc.
+ */
+function getSectionAtPosition(doc: any, pos: number): string | null {
+  try {
+    let section: string | null = null;
+    doc.nodesBetween(0, pos, (node: any) => {
+      if (node.type?.name === "heading" && node.attrs?.level && node.textContent) {
+        section = node.textContent.slice(0, 60);
+      }
+    });
+    return section;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ProseMirror plugin that publishes the current section (heading) the cursor
+ * is in to the Awareness instance on every selection/state change.
+ *
+ * Register this plugin alongside the other collab plugins in the collab init.
+ */
+export function createSectionTrackingPlugin(awareness: Awareness): Plugin {
+  return new Plugin({
+    view: () => ({
+      update: (view) => {
+        try {
+          const pos = view.state.selection.from;
+          const section = getSectionAtPosition(view.state.doc, pos);
+          awareness.setLocalStateField("currentSection", section);
+        } catch {
+          // ignore
+        }
+      },
+    }),
+  });
 }

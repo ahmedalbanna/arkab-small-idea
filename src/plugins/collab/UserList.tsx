@@ -1,8 +1,12 @@
 /**
  * CollabUsersList — a collapsible list of currently connected remote users.
  *
- * Shows each user's colour dot, name, and optional avatar.  The list updates
- * reactively via the collab store.
+ * Shows each user's colour dot, name, avatar, role badge, typing indicator,
+ * and current editing section.
+ *
+ * ---
+ * Phase 5.2: Role badges, section info.
+ * Phase 5.3: Typing indicator pulse, section indicators.
  */
 
 import { useState } from "react";
@@ -37,16 +41,29 @@ export function CollabUsersList() {
                 />
               ) : (
                 <span
-                  className="inline-flex items-center justify-center w-5 h-5 rounded-full border-2 border-background text-[9px] font-bold text-white"
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full border-2 border-background text-[9px] font-bold text-white relative"
                   style={{ backgroundColor: user.color }}
                   title={user.name}
                 >
                   {user.name.charAt(0).toUpperCase()}
+                  {/* Typing pulse */}
+                  {user.isTyping && (
+                    <span className="absolute inset-0 rounded-full animate-ping bg-white/30" />
+                  )}
                 </span>
               )}
-              {/* Tooltip */}
+              {/* Tooltip with name + role + section */}
               <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-[10px] rounded bg-popover text-popover-foreground shadow-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                 {user.name}
+                {user.role && user.role !== "editor" && (
+                  <span className="ml-1 uppercase text-[8px] font-bold opacity-60">
+                    ({user.role})
+                  </span>
+                )}
+                {user.isTyping && <span className="ml-1 text-yellow-500">typing…</span>}
+                {user.currentSection && (
+                  <span className="ml-1 opacity-60">· {user.currentSection}</span>
+                )}
               </span>
             </div>
           ))}

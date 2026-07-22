@@ -8,12 +8,23 @@
  * The awareness state is extended with optional avatar, cursor position
  * metadata, and selection range information so remote peers can render
  * richer presence indicators.
+ *
+ * ---
+ * Step 5.1: Latency probing, bandwidth tracking, connection quality.
+ * Step 5.2: Auth token passing, role support.
+ * Step 5.3: Typing indicator, section tracking in awareness.
  */
 
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { Awareness } from "y-protocols/awareness";
-import { useCollabStore, type CollabStatus, type ConnectedUser } from "./collabStore";
+import {
+  useCollabStore,
+  type CollabStatus,
+  type ConnectedUser,
+  type ConnectionQuality,
+  type CollabRole,
+} from "./collabStore";
 
 export interface WebSocketTransportOptions {
   /** Yjs document to sync. */
@@ -34,6 +45,10 @@ export interface WebSocketTransportOptions {
   connect?: boolean;
   /** Maximum backoff time in ms (default 5000). */
   maxBackoffTime?: number;
+  /** JWT auth token for authenticated sessions. */
+  authToken?: string;
+  /** Local user's role. */
+  role?: CollabRole;
 }
 
 export interface WebSocketTransportHandle {
@@ -42,15 +57,23 @@ export interface WebSocketTransportHandle {
   destroy: () => void;
 }
 
+// ---- Custom protocol message types (mirrors server) ----
+const messagePing = 4;
+const messagePong = 5;
+
+/**
+ * Derive a quality rating from latency in ms.
+ */
+function latencyToQuality(latency: number): ConnectionQuality {
+  if (latency < 50) return "excellent";
+  if (latency < 150) return "good";
+  if (latency < 300) return "fair";
+  return "poor";
+}
+
 /**
  * Create a y-websocket WebsocketProvider and bind it to the local collab
- * store for status / awareness tracking.
- *
- * The awareness state is enriched with:
- *   user: { name, color, avatar? }
- *   cursor: { pos?, selection? }  (set externally by the editor)
- *
- * Caller is responsible for calling `destroy()` during cleanup.
+ * store for status / awareness / quality tracking.
  */
 export function createWebSocketTransport(
   options: WebSocketTransportOptions,
@@ -67,6 +90,8 @@ export function createWebSocketTransport(
     avatar,
     connect = true,
     maxBackoffTime = 5000,
+    authToken,
+    role,
   } = options;
 
   // y-websocket appends "/<roomName>" to the base URL automatically
@@ -74,19 +99,88 @@ export function createWebSocketTransport(
 
   const awareness = options.awareness ?? new Awareness(doc);
 
-  // Enrich local awareness state with user metadata + cursor placeholder
-  awareness.setLocalStateField("user", { name: username, color, avatar: avatar || null });
+  // Enrich local awareness with user metadata + role
+  awareness.setLocalStateField("user", {
+    name: username,
+    color,
+    avatar: avatar || null,
+    role: role || null,
+  });
 
   const store = useCollabStore.getState();
   store.setServerUrl(serverUrl);
   store.setRoomName(roomName);
   store.setTransport("websocket");
+  if (authToken) store.setAuthToken(authToken);
+  if (role) store.setLocalRole(role);
 
   const provider = new WebsocketProvider(baseUrl, roomName, doc, {
     connect,
     awareness,
     maxBackoffTime,
+    // Pass auth token as URL param (server reads it from the connection URL)
+    params: authToken ? { token: authToken } : undefined,
   });
+
+  // ---- Latency probing (Step 5.1) ----
+
+  let pingInterval: ReturnType<typeof setInterval> | null = null;
+  let pendingPingTimestamp: number | null = null;
+
+  /**
+   * Access the raw WebSocket from the provider to send custom binary messages.
+   * Falls back gracefully if unavailable.
+   */
+  function sendBinaryMessage(type: number, payload?: Uint8Array): void {
+    try {
+      const ws = (provider as any).ws as WebSocket | null;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      // Build message: [type, ...payload]
+      const len = payload ? payload.length + 1 : 1;
+      const buf = new Uint8Array(len);
+      buf[0] = type;
+      if (payload) buf.set(payload, 1);
+      ws.send(buf);
+    } catch {
+      // WS not available
+    }
+  }
+
+  function sendPing(): void {
+    if (provider.shouldConnect && provider.synced) {
+      const ts = performance.now();
+      pendingPingTimestamp = ts;
+      // Encode timestamp as 8-byte big-endian
+      const tsBuf = new Uint8Array(8);
+      new DataView(tsBuf.buffer).setFloat64(0, ts, false);
+      sendBinaryMessage(messagePing, tsBuf);
+    }
+  }
+
+  function handlePong(data: Uint8Array): void {
+    if (data.length < 8) return;
+    const sentTs = new DataView(data.buffer, data.byteOffset, 8).getFloat64(0, false);
+    if (pendingPingTimestamp !== null && Math.abs(sentTs - pendingPingTimestamp) < 100) {
+      const rtt = performance.now() - sentTs;
+      const collabStore = useCollabStore.getState();
+      collabStore.setLatency(Math.round(rtt));
+      collabStore.setConnectionQuality(latencyToQuality(rtt));
+      collabStore.setLastPing(Date.now());
+      pendingPingTimestamp = null;
+    }
+  }
+
+  // ---- Bandwidth tracking (Step 5.1) ----
+
+  let bytesReceived = 0;
+  let bandwidthSampleInterval: ReturnType<typeof setInterval> | null = null;
+
+  function sampleBandwidth(): void {
+    const collabStore = useCollabStore.getState();
+    collabStore.setBandwidth(bytesReceived);
+    bytesReceived = 0;
+  }
 
   // ---- Wire provider events into the store ----
 
@@ -97,6 +191,13 @@ export function createWebSocketTransport(
       case "connected":
         mapped = "connected";
         collabStore.onConnect?.();
+        // Start latency probing
+        if (!pingInterval) {
+          pingInterval = setInterval(sendPing, 5000);
+        }
+        if (!bandwidthSampleInterval) {
+          bandwidthSampleInterval = setInterval(sampleBandwidth, 1000);
+        }
         break;
       case "connecting":
         mapped = "connecting";
@@ -104,6 +205,15 @@ export function createWebSocketTransport(
       case "disconnected":
         mapped = collabStore.status === "connected" ? "reconnecting" : "disconnected";
         if (mapped === "disconnected") collabStore.onDisconnect?.();
+        // Stop probing
+        if (pingInterval) {
+          clearInterval(pingInterval);
+          pingInterval = null;
+        }
+        if (bandwidthSampleInterval) {
+          clearInterval(bandwidthSampleInterval);
+          bandwidthSampleInterval = null;
+        }
         break;
       default:
         mapped = "disconnected";
@@ -127,13 +237,18 @@ export function createWebSocketTransport(
     for (const [clientId, state] of states) {
       if (clientId === localId) continue;
       const entry = state as Record<string, unknown> | undefined;
-      const user = entry?.user as { name?: string; color?: string; avatar?: string } | undefined;
+      const user = entry?.user as
+        { name?: string; color?: string; avatar?: string; role?: string } | undefined;
       if (user) {
         users.push({
           name: user.name || "Unknown",
           color: user.color || "#666",
           clientId,
           avatar: user.avatar,
+          role: (user.role as CollabRole) || "editor",
+          isTyping: !!entry?.typing,
+          currentSection: (entry?.currentSection as string) || undefined,
+          lastActive: Date.now(),
         });
       }
     }
@@ -144,10 +259,56 @@ export function createWebSocketTransport(
   provider.on("status", onStatus);
   awareness.on("update", onAwarenessChange);
 
+  // Intercept incoming raw messages for custom types (ping/pong)
+  const origReceive = (provider as any).receiveMessage;
+  if (origReceive) {
+    (provider as any).receiveMessage = function (event: MessageEvent) {
+      const data = event.data;
+      if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+        const buf = new Uint8Array(data);
+        if (buf.length > 0) {
+          const type = buf[0];
+          if (type === messagePong) {
+            handlePong(buf.slice(1));
+            return; // Consumed
+          }
+        }
+      }
+      // Fall through to default handler
+      origReceive.call(this, event);
+    };
+  }
+
+  // Track bytes received for bandwidth estimation
+  const origWsOpen = (provider as any)._wsOpen;
+  if (origWsOpen) {
+    (provider as any)._wsOpen = function () {
+      const ws = (provider as any).ws;
+      if (ws) {
+        const origOnMessage = ws.onmessage;
+        ws.onmessage = (event: MessageEvent) => {
+          if (event.data && typeof event.data.byteLength === "number") {
+            bytesReceived += event.data.byteLength;
+          }
+          if (origOnMessage) origOnMessage.call(ws, event);
+        };
+      }
+      if (origWsOpen) origWsOpen.call(this);
+    };
+  }
+
   return {
     provider,
     awareness,
     destroy: () => {
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
+      if (bandwidthSampleInterval) {
+        clearInterval(bandwidthSampleInterval);
+        bandwidthSampleInterval = null;
+      }
       provider.off("status", onStatus);
       provider.off("sync", () => {});
       awareness.off("update", onAwarenessChange);

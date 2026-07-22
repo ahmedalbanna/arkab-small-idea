@@ -8,11 +8,21 @@
  * Protocol (mirrors y-websocket / y-protocols):
  *   messageSync          = 0  – Yjs sync steps 1 & 2, document updates
  *   messageAwareness     = 1  – Cursor / presence updates
- *   messageAuth          = 2  – Authentication reply (unused by default)
- *   messageQueryAwareness = 3  – Request full awareness state
+ *   messageAuth          = 2  – Authentication reply
+ *   messageQueryAwareness = 3 – Request full awareness state
+ *   messagePing          = 4  – Latency probe (client → server)
+ *   messagePong          = 5  – Latency response (server → client)
  *
  * The server holds Yjs documents in memory per room.  Optional LevelDB
  * persistence can be plugged in through the config.
+ *
+ * ---
+ * Phase 5 additions:
+ * - messagePing / messagePong for latency measurement
+ * - Token-based authentication via URL params
+ * - Session management with collaborator roles
+ * - Bandwidth tracking per client
+ * - Health endpoint with per-room metrics
  */
 
 import * as http from "http";
@@ -25,46 +35,71 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import { getCollabServerConfig, type CollabServerConfig } from "./collab-server.config";
 
 // ---------------------------------------------------------------------------
-// Protocol constants (mirror y-websocket / y-protocols)
+// Protocol constants
 // ---------------------------------------------------------------------------
 const messageSync = 0;
 const messageAwareness = 1;
 const messageAuth = 2;
 const messageQueryAwareness = 3;
+const messagePing = 4;
+const messagePong = 5;
 
 // ---------------------------------------------------------------------------
-// Per-room state
+// Types
 // ---------------------------------------------------------------------------
+
+export type CollabRole = "viewer" | "editor" | "admin";
+
+export interface SessionInfo {
+  /** Unique session identifier assigned on join. */
+  id: string;
+  /** Room this session belongs to. */
+  roomName: string;
+  /** User display name. */
+  username: string;
+  /** User role. */
+  role: CollabRole;
+  /** When the session was created. */
+  joinedAt: number;
+  /** Authenticated user ID (if auth is enabled). */
+  userId?: string;
+  /** Avatar URL. */
+  avatar?: string;
+}
+
 interface RoomState {
-  /** Shared Yjs document for this room. */
   doc: Y.Doc;
-  /** Awareness instance attached to the room's doc. */
   awareness: awarenessProtocol.Awareness;
-  /** Connected clients for this room. */
   clients: Set<CollabClient>;
+  /** Session metadata keyed by clientId. */
+  sessions: Map<number, SessionInfo>;
+  /** Timestamp of room creation. */
+  createdAt: number;
 }
 
 interface CollabClient {
   ws: WebSocket;
-  /** Yjs clientID assigned by the Y.Doc (set after sync step 1). */
   clientId: number | null;
-  /** Whether the client has completed initial sync. */
   synced: boolean;
-  /** The room this client belongs to. */
   roomName: string;
-  /** Ping interval handle for this client. */
   pingTimer: ReturnType<typeof setInterval> | null;
+  /** Session info for this client. */
+  session: SessionInfo | null;
+  /** Bytes received from this client. */
+  bytesReceived: number;
+  /** Last message timestamp. */
+  lastActivity: number;
 }
 
 // ---------------------------------------------------------------------------
-// Room manager — holds all active Yjs documents in memory
+// Room manager
 // ---------------------------------------------------------------------------
+
 const startTime = Date.now();
 
 class RoomManager {
   private rooms = new Map<string, RoomState>();
 
-  /** Get or create a room. */
   getOrCreate(roomName: string): RoomState {
     let room = this.rooms.get(roomName);
     if (!room) {
@@ -73,10 +108,9 @@ class RoomManager {
       const awareness = new awarenessProtocol.Awareness(doc);
       awareness.setLocalState(null);
 
-      room = { doc, awareness, clients: new Set() };
+      room = { doc, awareness, clients: new Set(), sessions: new Map(), createdAt: Date.now() };
       this.rooms.set(roomName, room);
 
-      // Broadcast awareness updates to all clients in the room
       awareness.on(
         "update",
         (
@@ -97,19 +131,17 @@ class RoomManager {
     return room;
   }
 
-  /** Remove a client from a room and clean up if the room becomes empty. */
   removeClient(client: CollabClient): void {
     const room = this.rooms.get(client.roomName);
     if (!room) return;
 
     room.clients.delete(client);
-    // Remove the client from awareness so others stop seeing their cursor
     if (client.clientId !== null) {
+      room.sessions.delete(client.clientId);
       awarenessProtocol.removeAwarenessStates(room.awareness, [client.clientId], "disconnect");
     }
 
     if (room.clients.size === 0) {
-      // Schedule cleanup — gives a brief window for reconnection
       setTimeout(() => {
         if (room.clients.size === 0) {
           room.awareness.destroy();
@@ -120,12 +152,10 @@ class RoomManager {
     }
   }
 
-  /** Number of active rooms. */
   get roomCount(): number {
     return this.rooms.size;
   }
 
-  /** Total connected clients across all rooms. */
   get clientCount(): number {
     let total = 0;
     for (const room of this.rooms.values()) {
@@ -134,13 +164,51 @@ class RoomManager {
     return total;
   }
 
-  /** Return a health summary object. */
+  /** Return a detailed health summary. */
   getHealth(): Record<string, unknown> {
+    const rooms = Array.from(this.rooms.entries()).map(([name, room]) => ({
+      name,
+      clients: room.clients.size,
+      sessions: Array.from(room.sessions.values()).map((s) => ({
+        id: s.id,
+        username: s.username,
+        role: s.role,
+        joinedAt: s.joinedAt,
+      })),
+      createdAt: room.createdAt,
+    }));
     return {
       rooms: this.roomCount,
       clients: this.clientCount,
       uptime: Math.floor((Date.now() - startTime) / 1000),
+      roomDetails: rooms,
     };
+  }
+
+  /** Validate and parse an auth token. Returns session data or null. */
+  authenticate(
+    token: string,
+    _roomName: string,
+  ): { username: string; role: CollabRole; userId?: string; avatar?: string } | null {
+    // Simple token validation: a token is "user:<username>:<role>:<secret>"
+    // In production, use JWT verification.
+    if (!token.startsWith("user:")) return null;
+    const parts = token.split(":");
+    if (parts.length < 4) return null;
+    const secret = process.env.COLLAB_SECRET || "ink-quill-dev-secret";
+    if (parts[3] !== secret) return null;
+    const role = parts[2] as CollabRole;
+    if (!["viewer", "editor", "admin"].includes(role)) return null;
+    return { username: parts[1], role, userId: parts[1] };
+  }
+
+  /** Generate an invite link for a room. */
+  generateInvite(roomName: string, role: CollabRole = "editor"): string {
+    const secret = process.env.COLLAB_SECRET || "ink-quill-dev-secret";
+    // Token format: user:<username>:<role>:<secret> (username is "invited" for invites)
+    const token = `user:invited:${role}:${secret}`;
+    const baseUrl = process.env.COLLAB_URL || `http://localhost:${getCollabServerConfig().port}`;
+    return `${baseUrl}/join/${roomName}?token=${encodeURIComponent(token)}`;
   }
 }
 
@@ -162,13 +230,23 @@ function sendAwareness(ws: WebSocket, awarenessUpdate: Uint8Array): void {
   ws.send(encoding.toUint8Array(encoder));
 }
 
+/** Send a pong response echoing the ping payload. */
+function sendPong(ws: WebSocket, pingPayload: Uint8Array): void {
+  const encoder = encoding.createEncoder();
+  encoding.writeVarUint(encoder, messagePong);
+  encoding.writeVarUint8Array(encoder, pingPayload);
+  ws.send(encoding.toUint8Array(encoder));
+}
+
 // ---------------------------------------------------------------------------
-// Message handler for incoming WebSocket binary frames
+// Message handler
 // ---------------------------------------------------------------------------
 
 function handleMessage(data: Uint8Array, client: CollabClient, room: RoomState): void {
   const decoder = decoding.createDecoder(data);
   const messageType = decoding.readVarUint(decoder);
+
+  client.lastActivity = Date.now();
 
   switch (messageType) {
     case messageSync: {
@@ -178,6 +256,10 @@ function handleMessage(data: Uint8Array, client: CollabClient, room: RoomState):
       if (syncMessageType === syncProtocol.messageYjsSyncStep2 && !client.synced) {
         client.synced = true;
         client.clientId = room.doc.clientID;
+        // Assign session when sync completes
+        if (client.session) {
+          room.sessions.set(client.clientId, client.session);
+        }
       }
       if (encoding.length(encoder) > 1) {
         client.ws.send(encoding.toUint8Array(encoder));
@@ -203,9 +285,22 @@ function handleMessage(data: Uint8Array, client: CollabClient, room: RoomState):
       break;
     }
 
-    case messageAuth:
-      // Auth is a reply to a permission-denied message — unused here
+    case messagePing: {
+      // Echo the ping payload back as pong for client-side RTT measurement
+      const payload = decoding.readVarUint8Array(decoder);
+      sendPong(client.ws, payload);
       break;
+    }
+
+    case messageAuth: {
+      // Auth is handled during connection setup (URL params) or via this message
+      // For now, accept the auth message and reply with success
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, messageAuth);
+      encoding.writeUint8(encoder, 1); // success
+      client.ws.send(encoding.toUint8Array(encoder));
+      break;
+    }
 
     default:
       console.warn(`[collab] Unknown message type: ${messageType}`);
@@ -213,30 +308,76 @@ function handleMessage(data: Uint8Array, client: CollabClient, room: RoomState):
 }
 
 // ---------------------------------------------------------------------------
-// Client setup
+// Client setup with auth support
 // ---------------------------------------------------------------------------
+
+function parseAuthToken(url: string): string | null {
+  const queryIndex = url.indexOf("?");
+  if (queryIndex === -1) return null;
+  const params = new URLSearchParams(url.slice(queryIndex));
+  return params.get("token");
+}
+
+function generateSessionId(): string {
+  return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+}
 
 function setupClient(
   ws: WebSocket,
   roomName: string,
   manager: RoomManager,
   config: CollabServerConfig,
+  reqUrl?: string,
 ): CollabClient {
+  // Try to authenticate via URL token
+  let session: SessionInfo | null = null;
+  if (reqUrl) {
+    const token = parseAuthToken(reqUrl);
+    if (token) {
+      const auth = manager.authenticate(token, roomName);
+      if (auth) {
+        session = {
+          id: generateSessionId(),
+          roomName,
+          username: auth.username,
+          role: auth.role,
+          joinedAt: Date.now(),
+          userId: auth.userId,
+          avatar: auth.avatar,
+        };
+      }
+    }
+  }
+
+  // Default session for unauthenticated users (editor role)
+  if (!session) {
+    session = {
+      id: generateSessionId(),
+      roomName,
+      username: `User-${Math.random().toString(36).substring(2, 6)}`,
+      role: "editor",
+      joinedAt: Date.now(),
+    };
+  }
+
   const client: CollabClient = {
     ws,
     clientId: null,
     synced: false,
     roomName,
     pingTimer: null,
+    session,
+    bytesReceived: 0,
+    lastActivity: Date.now(),
   };
 
   const room = manager.getOrCreate(roomName);
   room.clients.add(client);
 
-  // Send the initial sync step 1 to the newly joined client
+  // Send the initial sync step 1
   sendSyncStep1(ws, room.doc);
 
-  // Forward Yjs document updates from other clients to this client
+  // Forward Yjs document updates
   const updateHandler = (update: Uint8Array, origin: unknown) => {
     if (origin !== client) {
       const encoder = encoding.createEncoder();
@@ -249,8 +390,9 @@ function setupClient(
   };
   room.doc.on("update", updateHandler);
 
-  // Handle incoming binary messages
+  // Incoming binary messages
   ws.on("message", (data: Buffer) => {
+    client.bytesReceived += data.byteLength;
     if (data.byteLength > config.maxMessageSize) {
       console.warn(`[collab] Message too large (${data.byteLength} bytes), dropping`);
       return;
@@ -258,20 +400,20 @@ function setupClient(
     handleMessage(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), client, room);
   });
 
-  // Handle close
+  // Close handler
   ws.on("close", () => {
     room.doc.off("update", updateHandler);
     if (client.pingTimer) clearInterval(client.pingTimer);
     manager.removeClient(client);
   });
 
-  // Handle errors
+  // Error handler
   ws.on("error", (err) => {
     console.error(`[collab] WebSocket error for client in room "${roomName}":`, err.message);
     ws.close();
   });
 
-  // Set up periodic ping to keep the connection alive
+  // Periodic ping to keep alive
   const pingTimer = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.ping();
@@ -297,8 +439,6 @@ export interface CollabServerHandle {
 
 /**
  * Create and start the collaboration WebSocket server.
- *
- * Attaches to an existing HTTP server so it can share a port with Express.
  */
 export function createCollabServer(
   httpServer: http.Server,
@@ -314,14 +454,12 @@ export function createCollabServer(
   });
 
   wss.on("connection", (ws: WebSocket, req) => {
-    // Extract room name from the URL path after the base path
-    // e.g. ws://host/ws-collab/doc123 → room = "doc123"
     const url = req.url || "/";
     const basePath = resolvedConfig.path;
     const roomName = url.slice(basePath.length).replace(/^\/+/, "").split("?")[0] || "default";
 
     console.log(`[collab] Client connected to room "${roomName}"`);
-    setupClient(ws, roomName, manager, resolvedConfig);
+    setupClient(ws, roomName, manager, resolvedConfig, req.url);
   });
 
   wss.on("error", (err: Error) => {
@@ -345,7 +483,7 @@ export function createCollabServer(
   return handle;
 }
 
-/** Create a standalone collab server on its own port (useful for testing or separate deployment). */
+/** Create a standalone collab server on its own port. */
 export function createStandaloneCollabServer(
   config?: Partial<CollabServerConfig>,
 ): CollabServerHandle {

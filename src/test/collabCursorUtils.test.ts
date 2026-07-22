@@ -25,10 +25,9 @@ describe("collab cursor utils", () => {
     expect(caret.style.backgroundColor).toBe("rgb(102, 102, 102)"); // #666 parsed
   });
 
-  it("buildSelectionWidget returns a styled span", () => {
-    const el = buildSelectionWidget({ user: { name: "Carol", color: "#0000ff" } });
-    expect(el).toBeInstanceOf(HTMLElement);
-    expect(el.className).toBe("collab-selection");
-    expect(el.style.backgroundColor).toContain("rgba(0, 0, 255, 0.2)"); // 33 hex → 0.2
+  it("buildSelectionWidget returns a styled DecorationAttrs", () => {
+    const attrs = buildSelectionWidget({ user: { name: "Carol", color: "#0000ff" } });
+    expect(attrs.class).toBe("collab-selection");
+    expect(attrs.style).toContain("#0000ff");
   });
 });

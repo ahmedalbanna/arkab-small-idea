@@ -46,6 +46,10 @@ export interface ConnectionManagerOptions {
   transport?: TransportMode;
   /** Enable y-indexeddb persistence for offline support. */
   persist?: boolean;
+  /** JWT auth token for authenticated sessions. */
+  authToken?: string;
+  /** Local user's collaboration role. */
+  role?: "viewer" | "editor" | "admin";
 }
 
 export type ConnectionState = CollabStatus;
@@ -177,6 +181,8 @@ export function createConnectionManager(
       avatar: options.avatar,
       connect: true,
       maxBackoffTime: options.maxBackoffTime ?? 5000,
+      authToken: options.authToken,
+      role: options.role,
     };
 
     transportHandle = createWebSocketTransport(wsOptions);
