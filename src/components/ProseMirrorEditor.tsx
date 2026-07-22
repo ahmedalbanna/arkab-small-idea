@@ -1,34 +1,11 @@
-import { forwardRef, useCallback, useEffect, useId, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useId, useRef } from "react";
 import { Selection, TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { type AIAssistantAction } from "../services/aiService";
-import {
-  Bold,
-  Italic,
-  Link,
-  Code,
-  Underline,
-  Strikethrough,
-  Sparkles,
-  CheckCheck,
-  ArrowRight,
-  Zap,
-  FileText,
-  Copy,
-  Scissors,
-  Plus,
-  GripVertical,
-  RefreshCcw,
-  Check,
-  Square,
-  X as XIcon,
-} from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { cn, slugify } from "../lib/utils";
+import { cn } from "../lib/utils";
 import { SlashMenu } from "./SlashMenu";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useAIUIStore } from "../stores/aiUIStore";
-import { editorSerializer } from "./editor/hooks/useMarkdownSerializer";
 import { usePluginLoader } from "./editor/hooks/usePluginLoader";
 import { useMarkdownSerializer } from "./editor/hooks/useMarkdownSerializer";
 import { useEditorView } from "./editor/hooks/useEditorView";
@@ -37,8 +14,11 @@ import { useMarkdownSync } from "./editor/hooks/useMarkdownSync";
 import { useFormatting } from "./editor/hooks/useFormatting";
 import { useImperativeEditorApi } from "./editor/hooks/useImperativeEditorApi";
 import { useAIStreaming } from "./editor/hooks/useAIStreaming";
-import { AIFloatingToolbar } from "./editor/AIFloatingToolbar";
 import { CommandPalette } from "./editor/CommandPalette";
+import { BubbleMenuOverlay } from "./editor/menus/BubbleMenuOverlay";
+import { AIStreamOverlay } from "./editor/menus/AIStreamOverlay";
+import { SideMenuOverlay } from "./editor/menus/SideMenuOverlay";
+import { ContextMenu } from "./editor/menus/ContextMenu";
 import type { LoadedPlugins } from "../plugins";
 import type { EditorCommand } from "../plugins/types";
 
@@ -240,8 +220,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       setCommandPaletteOpen(false);
     };
 
-    const [isCopied, setIsCopied] = useState(false);
-
     // --- Composed hooks (single-responsibility slices) -------------------
     const loaded = usePluginLoader(viewRef, onLoaded, collab, myEditorId);
     const { editorSchema, parseMarkdownDoc } = useMarkdownSerializer(loaded);
@@ -355,399 +333,65 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           />
         </ErrorBoundary>
 
-        <AnimatePresence>
-          {bubbleMenu.show && bubbleMenu.editorId === myEditorId && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 10 }}
-              style={{
-                position: "absolute",
-                left: bubbleMenu.x,
-                top: bubbleMenu.y,
-                transform: "translateX(-50%)",
-              }}
-              className="z-[100] flex items-center gap-0.5 bg-minimal-bg border border-minimal-border rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-minimal-border"
-            >
-              <AIFloatingToolbar
-                state={{ x: 0, y: 0, show: true, editorId: myEditorId }}
-                isProcessingAI={isProcessingAI}
-                aiStreaming={aiDraft?.isStreaming ?? false}
-                onAction={handleAIActionWithCustom}
-                onStop={() => aiDraft?.abortController?.abort()}
-                onClose={() => {
-                  setBubbleMenu((prev) => ({ ...prev, show: false }));
-                  viewRef.current?.focus();
-                }}
-                embedded
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <BubbleMenuOverlay
+          bubbleMenu={bubbleMenu}
+          editorId={myEditorId}
+          isProcessingAI={isProcessingAI}
+          aiStreaming={aiDraft?.isStreaming ?? false}
+          onAction={handleAIActionWithCustom}
+          onStop={() => aiDraft?.abortController?.abort()}
+          onClose={() => setBubbleMenu((prev) => ({ ...prev, show: false }))}
+          viewRef={viewRef}
+        />
 
-        <AnimatePresence>
-          {aiDraft && (
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 5 }}
-              style={{
-                position: "absolute",
-                left: "2rem", // Align to text padding
-                top: aiDraft.y,
-              }}
-              className="z-[150] flex flex-col items-start gap-2 max-w-full"
-            >
-              {aiDraft.isStreaming ? (
-                <div className="flex items-center gap-2 bg-minimal-bg border border-minimal-accent/50 rounded-xl p-1.5 shadow-xl backdrop-blur-xl ring-1 ring-minimal-accent/20">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  >
-                    <Sparkles className="w-4 h-4 text-minimal-accent" />
-                  </motion.div>
-                  <span className="text-xs font-semibold text-minimal-accent pe-2">
-                    AI is Writing...
-                  </span>
-                  {aiDraft.customInstruction && (
-                    <>
-                      <div className="w-px h-3 bg-minimal-border" />
-                      <span className="text-[9px] font-medium text-minimal-muted whitespace-nowrap truncate max-w-[150px]">
-                        Custom: {aiDraft.customInstruction}
-                      </span>
-                    </>
-                  )}
-                  <div className="w-px h-3 bg-minimal-border" />
-                  <button
-                    onClick={() => {
-                      if (aiDraft.abortController) {
-                        aiDraft.abortController.abort();
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-red-400 hover:bg-minimal-sidebar hover:text-red-300 rounded"
-                    title="Stop AI Generation"
-                  >
-                    <Square className="w-3.5 h-3.5 fill-current" /> Stop
-                  </button>
-                </div>
-              ) : aiDraft.showActions ? (
-                <div className="flex items-center gap-1 bg-minimal-bg border border-minimal-border rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-minimal-border">
-                  {aiDraft.customInstruction && (
-                    <>
-                      <span className="text-[9px] font-medium text-minimal-muted px-1.5 whitespace-nowrap truncate max-w-[150px]">
-                        Custom: {aiDraft.customInstruction}
-                      </span>
-                      <div className="w-px h-3 bg-minimal-border" />
-                    </>
-                  )}
-                  <button
-                    onClick={() => handleAIActionDecision("replace")}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-emerald-400 hover:bg-minimal-sidebar hover:text-emerald-300 rounded"
-                  >
-                    <Check className="w-3.5 h-3.5" /> Approve & Replace
-                  </button>
-                  <div className="w-px h-4 bg-minimal-border" />
-                  <button
-                    onClick={() => handleAIActionDecision("append")}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-minimal-accent hover:bg-minimal-sidebar hover:text-minimal-accent-hover rounded"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Append Below
-                  </button>
-                  <div className="w-px h-4 bg-minimal-border" />
-                  <button
-                    onClick={() => handleAIActionDecision("retry")}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-minimal-text hover:bg-minimal-sidebar hover:text-minimal-text rounded"
-                  >
-                    <RefreshCcw className="w-3.5 h-3.5" /> Regenerate
-                  </button>
-                  <div className="w-px h-4 bg-minimal-border" />
-                  <button
-                    onClick={() => handleAIActionDecision("cancel")}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-red-400 hover:bg-minimal-sidebar hover:text-red-300 rounded"
-                  >
-                    <XIcon className="w-3.5 h-3.5" /> Discard
-                  </button>
-                </div>
-              ) : null}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <AIStreamOverlay
+          aiDraft={aiDraft}
+          onDecision={handleAIActionDecision}
+          onStop={() => aiDraft?.abortController?.abort()}
+        />
 
-        <AnimatePresence>
-          {slashMenu.show && slashMenu.editorId === myEditorId && (
-            <SlashMenu
-              x={slashMenu.x}
-              y={slashMenu.y}
-              query={slashMenu.query}
-              isAbsolute={true}
-              pluginCommands={loaded?.context.commands ?? []}
-              onSelect={handleSlashSelect}
-              onPluginCommand={handlePluginSlashSelect}
-              onClose={() => setSlashMenu((prev) => ({ ...prev, show: false, query: "" }))}
-            />
-          )}
-        </AnimatePresence>
+        {slashMenu.show && slashMenu.editorId === myEditorId && (
+          <SlashMenu
+            x={slashMenu.x}
+            y={slashMenu.y}
+            query={slashMenu.query}
+            isAbsolute={true}
+            pluginCommands={loaded?.context.commands ?? []}
+            onSelect={handleSlashSelect}
+            onPluginCommand={handlePluginSlashSelect}
+            onClose={() => setSlashMenu((prev) => ({ ...prev, show: false, query: "" }))}
+          />
+        )}
 
-        <AnimatePresence>
-          {sideMenu.show &&
-            sideMenu.editorId === myEditorId &&
-            (bubbleMenu.editorId !== myEditorId || !bubbleMenu.show) && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                style={{
-                  position: "absolute",
-                  left: "-2rem",
-                  top: sideMenu.y,
-                }}
-                className="z-[50] flex items-center gap-0.5 group"
-              >
-                <button
-                  onClick={() => {
-                    const coords = viewRef.current?.coordsAtPos(sideMenu.pos);
-                    const editorRect = containerRef.current?.getBoundingClientRect();
-                    if (coords && editorRect) {
-                      setSlashMenu({
-                        x: coords.left - editorRect.left,
-                        y: coords.bottom - editorRect.top + 5,
-                        show: true,
-                        pos: sideMenu.pos + 1,
-                        query: "",
-                        editorId: myEditorId,
-                      });
-                    }
-                  }}
-                  className="p-1.5 hover:bg-minimal-accent/10 text-minimal-muted/40 hover:text-minimal-accent rounded-lg transition-all cursor-pointer bg-minimal-bg/50 backdrop-blur"
-                  title="Add Block"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-                <div className="p-1.5 text-minimal-muted/20 cursor-grab hover:text-minimal-muted transition-colors">
-                  <GripVertical className="w-3.5 h-3.5" />
-                </div>
-                {sideMenu.nodeName === "heading" && (
-                  <>
-                    <div className="w-px h-4 bg-minimal-border mx-0.5" />
-                    <button
-                      onClick={() => {
-                        if (!viewRef.current) return;
-                        const node = viewRef.current.state.doc.nodeAt(sideMenu.pos);
-                        if (node && node.type.name === "heading") {
-                          const slug = slugify(node.textContent);
-                          const url = new URL(window.location.href);
-                          url.hash = slug;
-                          navigator.clipboard.writeText(url.toString());
-                          setIsCopied(true);
-                          setTimeout(() => setIsCopied(false), 2000);
-                        }
-                      }}
-                      className={cn(
-                        "p-1.5 rounded-lg transition-all cursor-pointer bg-minimal-bg/50 backdrop-blur border border-transparent",
-                        isCopied
-                          ? "text-emerald-500 bg-emerald-500/5 border-emerald-500/20"
-                          : "text-minimal-muted/40 hover:text-minimal-accent hover:bg-minimal-accent/10",
-                      )}
-                      title={isCopied ? "Copied!" : "Copy Anchor Link"}
-                    >
-                      {isCopied ? (
-                        <Check className="w-3.5 h-3.5" />
-                      ) : (
-                        <Link className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </>
-                )}
-              </motion.div>
-            )}
-        </AnimatePresence>
+        <SideMenuOverlay
+          sideMenu={sideMenu}
+          bubbleMenu={bubbleMenu}
+          editorId={myEditorId}
+          viewRef={viewRef}
+          onOpenSlash={(pos) => {
+            const coords = viewRef.current?.coordsAtPos(pos);
+            const editorRect = containerRef.current?.getBoundingClientRect();
+            if (coords && editorRect) {
+              setSlashMenu({
+                x: coords.left - editorRect.left,
+                y: coords.bottom - editorRect.top + 5,
+                show: true,
+                pos: pos + 1,
+                query: "",
+                editorId: myEditorId,
+              });
+            }
+          }}
+        />
 
-        <AnimatePresence>
-          {contextMenu.show && contextMenu.editorId === myEditorId && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              style={{
-                position: "absolute",
-                left: contextMenu.x,
-                top: contextMenu.y,
-              }}
-              className="z-[200] w-56 bg-minimal-bg border border-minimal-border rounded-xl shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-md"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex flex-col gap-1">
-                <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar rounded-t-lg mb-1">
-                  Editing
-                </div>
-                {[
-                  {
-                    id: "bold",
-                    label: "Bold",
-                    icon: Bold,
-                    action: () => handleFormat("bold"),
-                  },
-                  {
-                    id: "italic",
-                    label: "Italic",
-                    icon: Italic,
-                    action: () => handleFormat("italic"),
-                  },
-                  {
-                    id: "underline",
-                    label: "Underline",
-                    icon: Underline,
-                    action: () => handleFormat("underline"),
-                  },
-                  {
-                    id: "strike",
-                    label: "Strikethrough",
-                    icon: Strikethrough,
-                    action: () => handleFormat("strike"),
-                  },
-                  {
-                    id: "code",
-                    label: "Code Block",
-                    icon: Code,
-                    action: () => handleFormat("code"),
-                  },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      item.action();
-                      setContextMenu((prev) => ({ ...prev, show: false }));
-                    }}
-                    className="flex items-center gap-2 p-1.5 hover:bg-minimal-sidebar rounded-lg text-left transition-colors text-minimal-text"
-                  >
-                    <item.icon className="w-3.5 h-3.5" />
-                    <span className="text-xs font-medium">{item.label}</span>
-                  </button>
-                ))}
-
-                <div className="h-px bg-minimal-border my-1 mx-1" />
-
-                <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar mb-1">
-                  AI Power
-                </div>
-                {[
-                  {
-                    id: "improve",
-                    label: "Refine & Improve",
-                    icon: Zap,
-                    action: () => handleAIAction("improve"),
-                  },
-                  {
-                    id: "fix-grammar",
-                    label: "Fix Errors",
-                    icon: CheckCheck,
-                    action: () => handleAIAction("fix-grammar"),
-                  },
-                  {
-                    id: "summarize",
-                    label: "Summarize",
-                    icon: FileText,
-                    action: () => handleAIAction("summarize"),
-                  },
-                  {
-                    id: "complete-text",
-                    label: "Continue Writing",
-                    icon: ArrowRight,
-                    action: () => handleAIAction("complete-text"),
-                  },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      item.action();
-                      setContextMenu((prev) => ({ ...prev, show: false }));
-                    }}
-                    className="flex items-center gap-2 p-1.5 hover:bg-minimal-accent/20 rounded-lg text-left transition-colors text-minimal-text"
-                  >
-                    <item.icon className="w-3.5 h-3.5 text-minimal-accent" />
-                    <span className="text-xs font-medium">{item.label}</span>
-                  </button>
-                ))}
-
-                <div className="h-px bg-minimal-border my-1 mx-1" />
-
-                <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar mb-1">
-                  Clipboard
-                </div>
-                {[
-                  {
-                    id: "copy",
-                    label: "Copy as Markdown",
-                    icon: Copy,
-                    action: () => {
-                      if (viewRef.current) {
-                        const { state } = viewRef.current;
-                        const { from, to } = state.selection;
-                        const slice = state.selection.content();
-                        const markdown = editorSerializer.serialize(
-                          editorSchema.nodes.doc.create(null, slice.content),
-                        );
-                        const plainText = state.doc.textBetween(from, to, " ");
-
-                        if (navigator.clipboard && navigator.clipboard.write) {
-                          const textBlob = new Blob([plainText], {
-                            type: "text/plain",
-                          });
-                          const markdownBlob = new Blob([markdown], {
-                            type: "text/markdown",
-                          });
-
-                          try {
-                            navigator.clipboard.write([
-                              new ClipboardItem({
-                                "text/plain": textBlob,
-                                "text/markdown": markdownBlob,
-                              }),
-                            ]);
-                          } catch {
-                            // Fallback to just text if writing multi-format fails
-                            navigator.clipboard.writeText(markdown || plainText);
-                          }
-                        } else {
-                          navigator.clipboard.writeText(markdown || plainText);
-                        }
-                      }
-                    },
-                  },
-                  {
-                    id: "cut",
-                    label: "Cut text",
-                    icon: Scissors,
-                    action: () => {
-                      if (viewRef.current) {
-                        const { state, dispatch } = viewRef.current;
-                        const slice = state.selection.content();
-                        const markdown = editorSerializer.serialize(
-                          editorSchema.nodes.doc.create(null, slice.content),
-                        );
-
-                        navigator.clipboard.writeText(markdown);
-                        dispatch(state.tr.deleteSelection());
-                      }
-                    },
-                  },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      item.action();
-                      setContextMenu((prev) => ({ ...prev, show: false }));
-                    }}
-                    className="flex items-center gap-2 p-1.5 hover:bg-minimal-border rounded-lg text-left transition-colors text-minimal-muted hover:text-minimal-text"
-                  >
-                    <item.icon className="w-3.5 h-3.5" />
-                    <span className="text-xs font-medium">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <ContextMenu
+          contextMenu={contextMenu}
+          onClose={() => setContextMenu((prev) => ({ ...prev, show: false }))}
+          handleFormat={handleFormat}
+          handleAIAction={handleAIAction}
+          viewRef={viewRef}
+          editorSchema={editorSchema}
+        />
 
         {commandPaletteOpen && (
           <CommandPalette
