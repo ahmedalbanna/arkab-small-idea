@@ -8,6 +8,7 @@ interface UIState {
   showMobileMenu: boolean;
   showAiSettings: boolean;
   showImportModal: boolean;
+  showExportModal: boolean;
   showQuickCommands: boolean;
   direction: "ltr" | "rtl";
   isIndexing: boolean;
@@ -24,6 +25,7 @@ interface UIState {
   setMobileMenu: (show: boolean | ((prev: boolean) => boolean)) => void;
   setAiSettings: (show: boolean | ((prev: boolean) => boolean)) => void;
   setImportModal: (show: boolean | ((prev: boolean) => boolean)) => void;
+  setExportModal: (show: boolean | ((prev: boolean) => boolean)) => void;
   setQuickCommands: (show: boolean | ((prev: boolean) => boolean)) => void;
   setDirection: (direction: "ltr" | "rtl" | ((prev: "ltr" | "rtl") => "ltr" | "rtl")) => void;
   setIndexing: (indexing: boolean) => void;
@@ -42,6 +44,7 @@ export const useUIStore = create<UIState>()(
       showMobileMenu: false,
       showAiSettings: false,
       showImportModal: false,
+      showExportModal: false,
       showQuickCommands: true,
       direction: "ltr",
       isIndexing: false,
@@ -84,6 +87,13 @@ export const useUIStore = create<UIState>()(
             typeof showImportModal === "function"
               ? showImportModal(state.showImportModal)
               : showImportModal,
+        })),
+      setExportModal: (showExportModal) =>
+        set((state) => ({
+          showExportModal:
+            typeof showExportModal === "function"
+              ? showExportModal(state.showExportModal)
+              : showExportModal,
         })),
       setQuickCommands: (showQuickCommands) =>
         set((state) => ({

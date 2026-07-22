@@ -24,6 +24,7 @@ import { MobileMenu } from "./components/navigation/MobileMenu";
 import { EditorContainer } from "./components/editor/EditorContainer";
 import { FloatingToolbar } from "./components/navigation/FloatingToolbar";
 import { ImportModal } from "./components/overlays/ImportModal";
+import { ExportDialog } from "./components/overlays/ExportDialog";
 
 export default function App() {
   const { pages, activeFocusedPageId, setPageContent } = useEditorStore();
@@ -200,6 +201,8 @@ export default function App() {
                 }
               }}
             />
+
+            <ExportDialog />
 
             <RegisteredHosts hosts={hostPlugins ?? []} />
             <RegisteredOverlays overlays={overlayPlugins ?? []} />

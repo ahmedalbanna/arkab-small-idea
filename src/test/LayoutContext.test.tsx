@@ -28,6 +28,7 @@ describe("LayoutContext", () => {
       showSearch: false,
       showTTS: false,
       showImportModal: false,
+      showExportModal: false,
       showMobileMenu: false,
       showAiSettings: false,
       showQuickCommands: true,

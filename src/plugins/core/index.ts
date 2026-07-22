@@ -6,6 +6,7 @@ import { dropCursor } from "prosemirror-dropcursor";
 import { gapCursor } from "prosemirror-gapcursor";
 import { tableEditing } from "prosemirror-tables";
 import { buildInputRules, buildKeymap } from "../../components/prose-setup";
+import { createPasteHandler } from "../editor/pasteHandler";
 import type { InkPlugin, PluginContext } from "../types";
 
 /**
@@ -102,5 +103,6 @@ export const corePlugin: InkPlugin = {
     ctx.registerProsePlugin(() => gapCursor());
     ctx.registerProsePlugin(() => linkPreviewPlugin);
     ctx.registerProsePlugin(() => tableEditing());
+    ctx.registerProsePlugin(() => createPasteHandler());
   },
 };

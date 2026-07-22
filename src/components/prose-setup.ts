@@ -175,21 +175,37 @@ export function buildInputRules(schema: Schema) {
       }),
     );
 
-  // Task auto-completion rules - transforming line starting with [ ] or [x]
+  // Task list auto-completion: - [ ] creates unchecked task, - [x] creates checked
   rules.push(
-    new InputRule(/^\s*([-+*])\s\[ \]\s$/, (state, match, start, end) => {
-      return state.tr.insertText(match[0], start, end);
+    new InputRule(/^\s*[-+*]\s\[( |x)\]\s$/, (state, match, start, end) => {
+      const isChecked = match[1] === "x";
+      const prefix = isChecked ? "- [x] " : "- [ ] ";
+      return state.tr.insertText(prefix, start, end);
     }),
   );
 
-  // Rule for [ ] or [x] to enhance interactive formatting
-  rules.push(
-    new InputRule(/^\[( |x)\]\s$/, (state, match, start, end) => {
-      const isChecked = match[1] === "x";
-      const newText = isChecked ? "- [x] " : "- [ ] ";
-      return state.tr.insertText(newText, start, end);
-    }),
-  );
+  // Math display block: $$ creates a math_display node when available
+  if (schema.nodes.math_display) {
+    rules.push(
+      new InputRule(/^\$\$\s$/, (state, _match, start, end) => {
+        const node = schema.nodes.math_display.create();
+        return state.tr.replaceWith(start, end, node);
+      }),
+    );
+  }
+
+  // Enhanced code block: trigger for diagram languages (mermaid, etc.)
+  // The existing ```(\w+)?\s rule handles this, but we add a more explicit one
+  // for common diagram languages to ensure they register
+  if (schema.nodes.code_block) {
+    rules.push(
+      textblockTypeInputRule(
+        /^```(mermaid|dot|graphviz|plantuml|d2|excalidraw)\s$/,
+        schema.nodes.code_block,
+        (match) => ({ params: match[1] }),
+      ),
+    );
+  }
 
   return inputRules({ rules });
 }
