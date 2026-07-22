@@ -53,10 +53,17 @@ export interface SlashMenuState {
 }
 
 /**
- * UI state for the AI assistant, search dialog, and related panels. Previously
- * this lived as local `useState` in `App.tsx`; lifting it into a store lets the
- * `ai` plugin host render the panels while the editor tree (search highlighting,
- * slash menu) reads the same state without prop-drilling.
+ * UI state for editor panels, menus, search, and the AI assistant.
+ *
+ * Domains (all in one store for convenience — they are read together by the
+ * layout components that render the panel layer):
+ *   - **Editor menus**  – bubble, context, side, slash, command palette, formats
+ *   - **Search**        – find/replace text, match tracking, semantic results
+ *   - **AI assistant**  – prompt, attached images, settings tab, action handler
+ *   - **Misc toggles**  – shortcut help
+ *
+ * The name is historical (AI was the first consumer to lift state here). If
+ * the store grows further, consider splitting into per-domain stores.
  */
 interface AIUIState {
   // Chat
@@ -90,8 +97,6 @@ interface AIUIState {
   // Misc panels
   showShortcuts: boolean;
   setShowShortcuts: (v: boolean) => void;
-  showFileActions: boolean;
-  setShowFileActions: (v: boolean) => void;
 
   // Editor menu UI — lifted from ProseMirrorEditor so the `editorUI` plugin can
   // drive it through ProseMirror plugins and the menu components can render it.
@@ -147,8 +152,6 @@ export const useAIUIStore = create<AIUIState>((set) => ({
 
   showShortcuts: false,
   setShowShortcuts: (v) => set({ showShortcuts: v }),
-  showFileActions: false,
-  setShowFileActions: (v) => set({ showFileActions: v }),
 
   sideMenu: { y: 0, show: false, pos: 0, editorId: "" },
   setSideMenu: (v) => set((s) => ({ sideMenu: typeof v === "function" ? v(s.sideMenu) : v })),
