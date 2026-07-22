@@ -62,15 +62,63 @@ async function pipeNdjson(response: Response, res: express.Response): Promise<vo
   }
 }
 
+/**
+ * Proxies a POST request to the Ollama API, handling validation, fetch,
+ * streaming vs non-streaming response, and consistent error handling.
+ */
+async function proxyOllamaRequest<T extends z.ZodTypeAny>(
+  req: express.Request,
+  res: express.Response,
+  ollamaPath: string,
+  logLabel: string,
+  bodySchema: T,
+  buildFetchBody: (data: z.infer<T>) => Record<string, unknown>,
+): Promise<void> {
+  try {
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body." });
+      return;
+    }
+    const data = parsed.data;
+    const body = buildFetchBody(data);
+
+    const response = await fetch(`${OLLAMA_HOST}${ollamaPath}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, stream: body.stream ?? true }),
+      signal: AbortSignal.timeout(300000),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Ollama ${logLabel} error: ${response.status} - ${errorText}`);
+      throw new Error(GENERIC_ERROR);
+    }
+
+    if (body.stream !== false) {
+      await pipeNdjson(response, res);
+    } else {
+      const json = await response.json();
+      res.json(json);
+    }
+  } catch (error) {
+    console.error(`AI ${logLabel.charAt(0).toUpperCase() + logLabel.slice(1)} Error:`, error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: GENERIC_ERROR });
+    }
+  }
+}
+
+const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:0.5b";
+
 async function startServer() {
   const app = express();
   const API_ONLY = process.argv.includes("--api-only");
   const PORT = API_ONLY ? 3009 : 3008;
 
   app.use(express.json());
-
-  const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
-  const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:0.5b";
 
   // CORS for Vite dev server when running standalone
   if (API_ONLY) {
@@ -98,86 +146,22 @@ async function startServer() {
   });
 
   // AI Chat Proxy
-  app.post("/api/ai/chat", async (req, res) => {
-    try {
-      const parsed = chatBodySchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ error: "Invalid request body." });
-        return;
-      }
-      const { messages, model, stream = true } = parsed.data;
-
-      const response = await fetch(`${OLLAMA_HOST}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: model || OLLAMA_MODEL,
-          messages: messages,
-          stream: stream,
-        }),
-        signal: AbortSignal.timeout(300000), // 5 minutes for streaming
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Ollama chat error: ${response.status} - ${errorText}`);
-        throw new Error(GENERIC_ERROR);
-      }
-
-      if (stream) {
-        await pipeNdjson(response, res);
-      } else {
-        const data = await response.json();
-        res.json(data);
-      }
-    } catch (error) {
-      console.error("AI Chat Error:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: GENERIC_ERROR });
-      }
-    }
+  app.post("/api/ai/chat", (req, res) => {
+    proxyOllamaRequest(req, res, "/api/chat", "chat", chatBodySchema, (data) => ({
+      model: data.model || OLLAMA_MODEL,
+      messages: data.messages,
+      stream: data.stream ?? true,
+    }));
   });
 
   // AI Generation proxy
-  app.post("/api/ai/generate", async (req, res) => {
-    try {
-      const parsed = generateBodySchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ error: "Invalid request body." });
-        return;
-      }
-      const { prompt, system, model, stream = true } = parsed.data;
-
-      const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: model || OLLAMA_MODEL,
-          prompt: prompt,
-          system: system,
-          stream: stream,
-        }),
-        signal: AbortSignal.timeout(300000), // 5 minutes for streaming
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Ollama generation error: ${response.status} - ${errorText}`);
-        throw new Error(GENERIC_ERROR);
-      }
-
-      if (stream) {
-        await pipeNdjson(response, res);
-      } else {
-        const data = await response.json();
-        res.json(data);
-      }
-    } catch (error) {
-      console.error("AI Generation Error:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: GENERIC_ERROR });
-      }
-    }
+  app.post("/api/ai/generate", (req, res) => {
+    proxyOllamaRequest(req, res, "/api/generate", "generation", generateBodySchema, (data) => ({
+      model: data.model || OLLAMA_MODEL,
+      prompt: data.prompt,
+      system: data.system,
+      stream: data.stream ?? true,
+    }));
   });
 
   // Vite middleware for development (skipped when using --api-only)
