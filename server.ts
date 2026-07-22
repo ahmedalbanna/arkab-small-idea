@@ -1,5 +1,6 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
+import * as http from "http";
 import path from "path";
 import dotenv from "dotenv";
 import { z } from "zod";
@@ -113,19 +114,40 @@ async function proxyOllamaRequest<T extends z.ZodTypeAny>(
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:0.5b";
 
+// ---- Collab server & middleware (lazy imports) ----
+let collabHandle: import("./server/collab-server").CollabServerHandle | null = null;
+
 async function startServer() {
   const app = express();
   const API_ONLY = process.argv.includes("--api-only");
   const PORT = API_ONLY ? 3009 : 3008;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
+
+  // ---- Rate limiting & auth middleware ----
+  if (process.env.RATE_LIMIT_ENABLED === "true") {
+    const { createRateLimiter } = await import("./server/middleware/rateLimit");
+    app.use(
+      createRateLimiter({
+        maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "60", 10),
+        windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10),
+      }),
+    );
+    console.log("[server] Rate limiting enabled");
+  }
+
+  if (process.env.AUTH_ENABLED === "true") {
+    const { createAuthMiddleware } = await import("./server/middleware/auth");
+    app.use(createAuthMiddleware({ enabled: true }));
+    console.log("[server] API auth middleware enabled");
+  }
 
   // CORS for Vite dev server when running standalone
   if (API_ONLY) {
     app.use((_req, res, next) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
       next();
     });
   }
@@ -164,6 +186,15 @@ async function startServer() {
     }));
   });
 
+  // Health check endpoint
+  app.get("/api/health", (_req, res) => {
+    const health: Record<string, unknown> = { status: "ok", uptime: process.uptime() };
+    if (collabHandle) {
+      health.collab = collabHandle.manager.getHealth();
+    }
+    res.json(health);
+  });
+
   // Vite middleware for development (skipped when using --api-only)
   if (!API_ONLY) {
     if (process.env.NODE_ENV !== "production") {
@@ -181,7 +212,20 @@ async function startServer() {
     }
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  // Create HTTP server and start listening
+  const httpServer = http.createServer(app);
+
+  // Start the collaboration WebSocket server on the same HTTP server
+  const enableCollab = process.env.COLLAB_ENABLED !== "false";
+  if (enableCollab) {
+    const { createCollabServer } = await import("./server/collab-server");
+    collabHandle = createCollabServer(httpServer);
+    console.log(
+      `[server] Collaboration server enabled at ws://0.0.0.0:${PORT}${collabHandle.wss.path}`,
+    );
+  }
+
+  httpServer.listen(PORT, "0.0.0.0", () => {
     if (API_ONLY) {
       console.log(`API server running on http://localhost:${PORT}`);
     } else {
@@ -189,6 +233,20 @@ async function startServer() {
     }
     console.log(`Proxying AI requests to ${OLLAMA_HOST} using model ${OLLAMA_MODEL}`);
   });
+
+  // Graceful shutdown
+  const shutdown = async () => {
+    console.log("\n[server] Shutting down gracefully...");
+    if (collabHandle) {
+      await collabHandle.close();
+    }
+    httpServer.close(() => {
+      console.log("[server] Server closed");
+      process.exit(0);
+    });
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 startServer();

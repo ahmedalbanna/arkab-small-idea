@@ -5,6 +5,7 @@ import {
   type AIProvider,
   getProvider,
 } from "./providers";
+import { actionBucket, chatBucket } from "./rateLimiter";
 
 // Re-export everything from providers for backward compatibility
 export type { AIAssistantAction, ChatMessage, AIProvider };
@@ -133,6 +134,11 @@ export const processAIAction = async (
       prompt = text;
   }
 
+  // Apply client-side rate limiting before making the API call
+  if (!actionBucket.tryConsume(1)) {
+    throw new Error("Rate limited. Please wait a moment before requesting another AI action.");
+  }
+
   const aiProvider = getProvider(provider, { apiKeys, providerConfigs });
   return await aiProvider.generate(prompt, systemInstruction, model, onChunk, signal);
 };
@@ -170,6 +176,10 @@ Existing context: ${context}
 
 Generate only the markdown content.
 `;
+
+  if (!chatBucket.tryConsume(1)) {
+    throw new Error("Rate limited. Please wait a moment before generating more content.");
+  }
 
   const aiProvider = getProvider(provider, { apiKeys, providerConfigs });
   return await aiProvider.generate(prompt, systemInstruction, model, onChunk);
@@ -274,6 +284,10 @@ export const chatWithAI = async (
         images: m.images,
       })),
   ];
+
+  if (!chatBucket.tryConsume(1)) {
+    throw new Error("Rate limited. Please wait a moment before sending another message.");
+  }
 
   const aiProvider = getProvider(provider, { apiKeys, providerConfigs });
   return await aiProvider.chat(formattedMessages, model, onChunk, signal);
