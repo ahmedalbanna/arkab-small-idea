@@ -15,12 +15,11 @@ import { vectorStore } from "../../services/embeddingService";
  * The host owns this state itself and reads the active document from the
  * editor store, so `App.tsx` no longer needs these effects.
  */
-export function DocumentLifecycleHost() {
+export function DocumentLifecycleHost(): null {
   const { pages, activeFocusedPageId, addSnapshot } = useEditorStore();
   const { serviceConfigs, apiKeys } = useAIStore();
 
-  const activePage =
-    pages.find((p) => p.id === activeFocusedPageId) || pages[0];
+  const activePage = pages.find((p) => p.id === activeFocusedPageId) || pages[0];
   const markdown = activePage?.content || "";
 
   // Initialize the vector store and sync its indexed counts into the UI store.
@@ -28,18 +27,18 @@ export function DocumentLifecycleHost() {
     vectorStore.init().then(() => {
       useUIStore
         .getState()
-        .setIndexedCounts(
-          vectorStore.getChunks().length,
-          vectorStore.getEpisodes().length,
-        );
+        .setIndexedCounts(vectorStore.getChunks().length, vectorStore.getEpisodes().length);
     });
   }, []);
 
   // Auto-snapshot every 5 minutes.
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (activePage) addSnapshot(activePage.id, markdown);
-    }, 5 * 60 * 1000);
+    const interval = setInterval(
+      () => {
+        if (activePage) addSnapshot(activePage.id, markdown);
+      },
+      5 * 60 * 1000,
+    );
     return () => clearInterval(interval);
   }, [activePage, markdown, addSnapshot]);
 
@@ -48,8 +47,7 @@ export function DocumentLifecycleHost() {
     const timeout = setTimeout(() => {
       const embeddingOptions = {
         provider: serviceConfigs.embeddings.provider,
-        apiKey:
-          apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
+        apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
         model: serviceConfigs.embeddings.model,
       };
       ragService.indexDocument(markdown, embeddingOptions);

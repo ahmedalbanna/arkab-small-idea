@@ -112,13 +112,9 @@ interface AIUIState {
   // `useAIStreaming` hook (coupled to the editor's draft state) and is
   // published here so the `ai` plugin's keymap can invoke it without a module
   // global. `null` when no editor is mounted.
-  aiActionHandler:
-    | ((action: AIAssistantAction, customInstruction?: string) => void)
-    | null;
+  aiActionHandler: ((action: AIAssistantAction, customInstruction?: string) => void) | null;
   setAiActionHandler: (
-    handler:
-      | ((action: AIAssistantAction, customInstruction?: string) => void)
-      | null,
+    handler: ((action: AIAssistantAction, customInstruction?: string) => void) | null,
   ) => void;
 }
 
@@ -155,8 +151,7 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   setShowFileActions: (v) => set({ showFileActions: v }),
 
   sideMenu: { y: 0, show: false, pos: 0, editorId: "" },
-  setSideMenu: (v) =>
-    set((s) => ({ sideMenu: typeof v === "function" ? v(s.sideMenu) : v })),
+  setSideMenu: (v) => set((s) => ({ sideMenu: typeof v === "function" ? v(s.sideMenu) : v })),
   contextMenu: { x: 0, y: 0, show: false, pos: 0, editorId: "" },
   setContextMenu: (v) =>
     set((s) => ({
@@ -175,8 +170,7 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   commandPaletteOpen: false,
   setCommandPaletteOpen: (v) => set({ commandPaletteOpen: v }),
   slashMenu: { x: 0, y: 0, show: false, pos: 0, query: "", editorId: "" },
-  setSlashMenu: (v) =>
-    set((s) => ({ slashMenu: typeof v === "function" ? v(s.slashMenu) : v })),
+  setSlashMenu: (v) => set((s) => ({ slashMenu: typeof v === "function" ? v(s.slashMenu) : v })),
 
   aiActionHandler: null,
   setAiActionHandler: (handler) => set({ aiActionHandler: handler }),

@@ -26,10 +26,14 @@ class ImageNodeView {
     this.toolbar = document.createElement("div");
     this.toolbar.className = "image-alignment-toolbar";
 
-    const createLayoutButton = (name, alignment, floatValue, iconSvg) => {
+    const createLayoutButton = (
+      name: string,
+      alignment: string,
+      floatValue: string,
+      iconSvg: string,
+    ) => {
       const btn = document.createElement("button");
-      const isActive =
-        node.attrs.align === alignment && node.attrs.float === floatValue;
+      const isActive = node.attrs.align === alignment && node.attrs.float === floatValue;
       btn.className = `align-btn ${isActive ? "active" : ""}`;
       btn.title = name;
       btn.innerHTML = iconSvg;
@@ -51,21 +55,11 @@ class ImageNodeView {
       floatRight: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="3" width="8" height="8"/><line x1="3" x2="9" y1="5" y2="5"/><line x1="3" x2="9" y1="9" y2="9"/><line x1="3" x2="21" y1="14" y2="14"/><line x1="3" x2="21" y1="18" y2="18"/></svg>`,
     };
 
-    this.toolbar.appendChild(
-      createLayoutButton("Float Left", "left", "left", ICONS.floatLeft),
-    );
-    this.toolbar.appendChild(
-      createLayoutButton("Align Left", "left", "none", ICONS.left),
-    );
-    this.toolbar.appendChild(
-      createLayoutButton("Align Center", "center", "none", ICONS.center),
-    );
-    this.toolbar.appendChild(
-      createLayoutButton("Align Right", "right", "none", ICONS.right),
-    );
-    this.toolbar.appendChild(
-      createLayoutButton("Float Right", "right", "right", ICONS.floatRight),
-    );
+    this.toolbar.appendChild(createLayoutButton("Float Left", "left", "left", ICONS.floatLeft));
+    this.toolbar.appendChild(createLayoutButton("Align Left", "left", "none", ICONS.left));
+    this.toolbar.appendChild(createLayoutButton("Align Center", "center", "none", ICONS.center));
+    this.toolbar.appendChild(createLayoutButton("Align Right", "right", "none", ICONS.right));
+    this.toolbar.appendChild(createLayoutButton("Float Right", "right", "right", ICONS.floatRight));
     this.dom.appendChild(this.toolbar);
 
     this.img = document.createElement("img");
@@ -165,7 +159,7 @@ class ImageNodeView {
 
     this.dom.setAttribute("data-align", node.attrs.align || "center");
     this.dom.style.width = node.attrs.width || "100%";
-    
+
     // Reset float classes
     this.dom.classList.remove("float-left", "float-right");
     if (node.attrs.float && node.attrs.float !== "none") {
@@ -178,16 +172,18 @@ class ImageNodeView {
     // Update active toolbar button
     const btns = this.toolbar.children;
     for (let i = 0; i < btns.length; i++) {
-        const btn = btns[i] as HTMLElement;
-        const title = btn.title;
-        let active = false;
-        if (title === "Float Left") active = node.attrs.float === "left";
-        else if (title === "Align Left") active = node.attrs.align === "left" && node.attrs.float === "none";
-        else if (title === "Align Center") active = node.attrs.align === "center";
-        else if (title === "Align Right") active = node.attrs.align === "right" && node.attrs.float === "none";
-        else if (title === "Float Right") active = node.attrs.float === "right";
-        
-        btn.className = `align-btn ${active ? "active" : ""}`;
+      const btn = btns[i] as HTMLElement;
+      const title = btn.title;
+      let active = false;
+      if (title === "Float Left") active = node.attrs.float === "left";
+      else if (title === "Align Left")
+        active = node.attrs.align === "left" && node.attrs.float === "none";
+      else if (title === "Align Center") active = node.attrs.align === "center";
+      else if (title === "Align Right")
+        active = node.attrs.align === "right" && node.attrs.float === "none";
+      else if (title === "Float Right") active = node.attrs.float === "right";
+
+      btn.className = `align-btn ${active ? "active" : ""}`;
     }
 
     return true;

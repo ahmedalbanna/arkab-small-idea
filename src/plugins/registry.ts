@@ -1,4 +1,5 @@
-import type { InkPlugin, SchemaContribution } from "./types";
+import type { InkPlugin, SchemaContribution, PluginContext } from "./types";
+import type { Schema } from "prosemirror-model";
 import { pluginLogger } from "./logger";
 import { schemaContributionSchema, formatIssues } from "./contributionSchemas";
 
@@ -57,9 +58,7 @@ export class PluginRegistry {
     for (const [id, entry] of this.entries) {
       for (const dep of entry.plugin.dependencies ?? []) {
         if (!this.entries.has(dep)) {
-          throw new Error(
-            `Plugin "${id}" depends on unregistered plugin "${dep}".`,
-          );
+          throw new Error(`Plugin "${id}" depends on unregistered plugin "${dep}".`);
         }
         indegree.set(id, (indegree.get(id) ?? 0) + 1);
         dependents.get(dep)!.push(id);
@@ -83,9 +82,7 @@ export class PluginRegistry {
     }
 
     if (order.length !== this.entries.size) {
-      const cycle = [...this.entries.keys()].filter(
-        (id) => !order.includes(id),
-      );
+      const cycle = [...this.entries.keys()].filter((id) => !order.includes(id));
       pluginLogger.error("*", "resolve:cycle", "Cyclic plugin dependency detected", {
         cycle,
       });
@@ -139,8 +136,8 @@ export class PluginRegistry {
    */
   async initAll(
     ctxFactory: (contributions: SchemaContribution) => Promise<{
-      schema: import("prosemirror-model").Schema;
-      context: import("./types").PluginContext;
+      schema: Schema;
+      context: PluginContext;
     }>,
   ): Promise<void> {
     const contributions = await this.collectSchemaContributions();

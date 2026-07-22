@@ -1,11 +1,7 @@
-import { TextSelection } from "prosemirror-state";
+import { TextSelection, type EditorState } from "prosemirror-state";
 import type { EditorCommandAction, EditorCommandExecutor, EditorCommandResult } from "./commandBus";
 import type { CoreEditor } from "../CoreEditor";
-import {
-  insertText,
-  insertImage,
-  insertGallery,
-} from "../operations/text";
+import { insertText, insertImage, insertGallery } from "../operations/text";
 import {
   setMarkdown,
   appendMarkdown,
@@ -23,7 +19,7 @@ import {
 import { getHtml } from "../operations/html";
 
 /** Find the document position of the first occurrence of `text`. */
-function findTextPosition(state: import("prosemirror-state").EditorState, text: string): number | null {
+function findTextPosition(state: EditorState, text: string): number | null {
   const docText = state.doc.textContent;
   const idx = docText.indexOf(text);
   if (idx === -1) return null;
@@ -79,10 +75,7 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
         }
 
         case "insertImage": {
-          core.apply(
-            insertImage(state, core.schema, action.src, action.alt, action.title)
-              .tr,
-          );
+          core.apply(insertImage(state, core.schema, action.src, action.alt, action.title).tr);
           return {};
         }
 
@@ -98,11 +91,7 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
         }
 
         case "replaceSelectionWithMarkdown": {
-          const { tr, inverse } = replaceSelectionWithMarkdown(
-            state,
-            action.markdown,
-            core.io,
-          );
+          const { tr, inverse } = replaceSelectionWithMarkdown(state, action.markdown, core.io);
           core.apply(tr);
           return { inverse };
         }
@@ -144,12 +133,7 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
             core.streamRange = { from: sel.from, to: sel.to };
           }
           const parsed = core.io.parse(action.content);
-          const { tr, inverse } = streamMarkdown(
-            state,
-            action.content,
-            core.io,
-            core.streamRange,
-          );
+          const { tr, inverse } = streamMarkdown(state, action.content, core.io, core.streamRange);
           // Advance the streaming cursor so the next chunk accumulates.
           core.streamRange = {
             from: core.streamRange.from,

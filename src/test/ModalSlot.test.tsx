@@ -5,16 +5,9 @@ import { ModalSlot } from "../components/layout/ModalSlot";
 
 afterEach(cleanup);
 
-function Fixture({
-  isOpen = true,
-  onClose,
-}: { isOpen?: boolean; onClose?: () => void }) {
+function Fixture({ isOpen = true, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   return (
-    <ModalSlot
-      isOpen={isOpen}
-      onClose={onClose ?? vi.fn()}
-      title="Test Modal"
-    >
+    <ModalSlot isOpen={isOpen} onClose={onClose ?? vi.fn()} title="Test Modal">
       <button>Confirm</button>
       <button>Cancel</button>
       <p>Modal body content</p>

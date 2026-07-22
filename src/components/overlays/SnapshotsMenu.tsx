@@ -71,9 +71,7 @@ export const SnapshotsMenu: React.FC<SnapshotsMenuProps> = ({
               snapshots.map((s) => {
                 const restore = () => {
                   if (
-                    window.confirm(
-                      "Restore this version? Your current work will be overwritten.",
-                    )
+                    window.confirm("Restore this version? Your current work will be overwritten.")
                   ) {
                     setMarkdown(s.content);
                     setShowSnapshots(false);
@@ -84,7 +82,7 @@ export const SnapshotsMenu: React.FC<SnapshotsMenuProps> = ({
                     key={s.id}
                     onClick={restore}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         restore();
                       }
@@ -103,9 +101,7 @@ export const SnapshotsMenu: React.FC<SnapshotsMenuProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSnapshots(pageId, (prev) =>
-                            prev.filter((snap) => snap.id !== s.id),
-                          );
+                          setSnapshots(pageId, (prev) => prev.filter((snap) => snap.id !== s.id));
                         }}
                         className="opacity-0 group-hover/s:opacity-100 p-1 hover:text-red-500 transition-all font-bold"
                         aria-label="Delete snapshot"

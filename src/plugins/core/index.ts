@@ -58,15 +58,11 @@ const linkPreviewPlugin = new Plugin({
           if (pos !== null) {
             if (nextIndex === priorities.length) {
               // Remove priority badge
-              view.dispatch(
-                view.state.tr.delete(pos, pos + 3).scrollIntoView(),
-              );
+              view.dispatch(view.state.tr.delete(pos, pos + 3).scrollIntoView());
             } else {
               const next = priorities[nextIndex];
               const newTag = `(${next})`;
-              view.dispatch(
-                view.state.tr.insertText(newTag, pos, pos + 3).scrollIntoView(),
-              );
+              view.dispatch(view.state.tr.insertText(newTag, pos, pos + 3).scrollIntoView());
             }
             return true;
           }

@@ -4,10 +4,7 @@ import type { InkPlugin, PluginContext, SchemaContribution } from "../plugins/ty
 import type { Schema } from "prosemirror-model";
 import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
 
-function makePlugin(
-  id: string,
-  opts: Partial<InkPlugin> = {},
-): InkPlugin {
+function makePlugin(id: string, opts: Partial<InkPlugin> = {}): InkPlugin {
   return {
     id,
     name: id,
@@ -112,12 +109,18 @@ describe("PluginRegistry", () => {
     const reg = new PluginRegistry();
     const calls: string[] = [];
     reg.register(
-      makePlugin("a", { init: () => { calls.push("a"); } }),
+      makePlugin("a", {
+        init: () => {
+          calls.push("a");
+        },
+      }),
     );
     reg.register(
       makePlugin("b", {
         dependencies: ["a"],
-        init: () => { calls.push("b"); },
+        init: () => {
+          calls.push("b");
+        },
       }),
     );
 
@@ -132,8 +135,20 @@ describe("PluginRegistry", () => {
   it("calls destroy in reverse order", async () => {
     const reg = new PluginRegistry();
     const calls: string[] = [];
-    reg.register(makePlugin("a", { destroy: () => { calls.push("a"); } }));
-    reg.register(makePlugin("b", { destroy: () => { calls.push("b"); } }));
+    reg.register(
+      makePlugin("a", {
+        destroy: () => {
+          calls.push("a");
+        },
+      }),
+    );
+    reg.register(
+      makePlugin("b", {
+        destroy: () => {
+          calls.push("b");
+        },
+      }),
+    );
 
     await reg.initAll(async () => ({
       schema: {} as Schema,

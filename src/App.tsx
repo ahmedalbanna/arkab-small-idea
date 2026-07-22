@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useMediaQuery } from "./lib/utils";
-import { EditorRef } from "./components/ProseMirrorEditor";
+import type { EditorRef } from "./components/ProseMirrorEditor";
 import { useEditorStore } from "./stores/editorStore";
 import { useUIStore } from "./stores/uiStore";
 import { useSettingsStore } from "./stores/settingsStore";
@@ -32,19 +32,11 @@ export default function App() {
   const editorRefs = useRef<Record<string, EditorRef | null>>({});
 
   // For compatibility with single-doc logic, we'll use the "focused" page
-  const activePage =
-    pages.find((p) => p.id === activeFocusedPageId) || pages[0];
+  const activePage = pages.find((p) => p.id === activeFocusedPageId) || pages[0];
 
   const { direction, setDirection } = useUIStore();
 
-  const {
-    theme,
-    fontSize,
-    lineHeight,
-    maxWidth,
-    fontFamily,
-    headingColor,
-  } = useSettingsStore();
+  const { theme, fontSize, lineHeight, maxWidth, fontFamily, headingColor } = useSettingsStore();
 
   useEffect(() => {
     document.documentElement.style.setProperty("--heading-color", headingColor);
@@ -59,10 +51,8 @@ export default function App() {
 
   const [hasHydrated, setHasHydrated] = useState(false);
   useEffect(() => {
-    setHasHydrated(useEditorStore.persist.hasHydrated());
-    const unsub = useEditorStore.persist.onFinishHydration(() =>
-      setHasHydrated(true),
-    );
+    setHasHydrated(useEditorStore.persist.hasHydrated()); // eslint-disable-line react-hooks/set-state-in-effect
+    const unsub = useEditorStore.persist.onFinishHydration(() => setHasHydrated(true));
     return unsub;
   }, []);
 
@@ -72,9 +62,7 @@ export default function App() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const imageFiles = Array.from(files).filter((f) =>
-      f.type.startsWith("image/"),
-    );
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (imageFiles.length === 0) {
       alert("Please upload image files.");
       return;
@@ -93,14 +81,9 @@ export default function App() {
     Promise.all(promises).then((results) => {
       if (activePage) {
         if (results.length > 1) {
-          editorRefs.current[activePage.id]?.insertGallery(
-            results.map((r) => r.src),
-          );
+          editorRefs.current[activePage.id]?.insertGallery(results.map((r) => r.src));
         } else {
-          editorRefs.current[activePage.id]?.insertImage(
-            results[0].src,
-            results[0].name,
-          );
+          editorRefs.current[activePage.id]?.insertImage(results[0].src, results[0].name);
         }
       }
     });
@@ -138,15 +121,16 @@ export default function App() {
   const [overlayPlugins, setOverlayPlugins] = useState<
     LoadedPlugins["collectors"]["overlays"] | null
   >(null);
-  const [hostPlugins, setHostPlugins] = useState<
-    LoadedPlugins["collectors"]["hosts"] | null
-  >(null);
+  const [hostPlugins, setHostPlugins] = useState<LoadedPlugins["collectors"]["hosts"] | null>(null);
   const handleEditorLoaded = useCallback((loaded: LoadedPlugins) => {
     const prev = overlayPluginsRef.current;
     // Only refresh overlays/hosts when the enabled plugin set actually changes
     // (e.g. a feature was toggled), avoiding re-mounts on identical reloads.
     const key = (l: LoadedPlugins) =>
-      l.collectors.overlays.map((o) => o.id).sort().join(",") +
+      l.collectors.overlays
+        .map((o) => o.id)
+        .sort()
+        .join(",") +
       "|" +
       l.collectors.hosts
         .map((h) => (h as { name?: string }).name || "")
@@ -168,54 +152,59 @@ export default function App() {
       <EditorCommandBusProvider>
         <PluginProvider
           appApi={appApi}
+          // eslint-disable-next-line react-hooks/refs
           pluginContext={overlayPluginsRef.current?.context ?? null}
         >
-      <AppShell dir={direction}>
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          onChange={handleImageUpload}
-          multiple
-        />
+          <AppShell dir={direction}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleImageUpload}
+              multiple
+            />
 
-        <MobileMenu />
+            <MobileMenu />
 
-        <EditorContainer
-          editorRefs={editorRefs}
-          fileInputRef={fileInputRef}
-          onLoaded={handleEditorLoaded}
-        />
+            <EditorContainer
+              editorRefs={editorRefs}
+              fileInputRef={fileInputRef}
+              onLoaded={handleEditorLoaded}
+            />
 
-        {!isMobile && (
-          <FloatingToolbar
-            direction={direction}
-            setDirection={setDirection}
-            toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
-            pluginContext={overlayPluginsRef.current?.context ?? null}
-          />
-        )}
+            {!isMobile && (
+              <FloatingToolbar
+                direction={direction}
+                setDirection={setDirection}
+                // eslint-disable-next-line react-hooks/refs
+                toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
+                // eslint-disable-next-line react-hooks/refs
+                pluginContext={overlayPluginsRef.current?.context ?? null}
+              />
+            )}
 
-        <BottomBar
-          fileInputRef={fileInputRef}
-          toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
-          pluginContext={overlayPluginsRef.current?.context ?? null}
-        />
+            <BottomBar
+              fileInputRef={fileInputRef}
+              // eslint-disable-next-line react-hooks/refs
+              toolbarItems={overlayPluginsRef.current?.context?.toolbarItems ?? []}
+              // eslint-disable-next-line react-hooks/refs
+              pluginContext={overlayPluginsRef.current?.context ?? null}
+            />
 
-        <ImportModal
-          onImport={(content) => {
-            if (activePage) {
-              setPageContent(activePage.id, content);
-              editorRefs.current[activePage.id]?.setMarkdown(content);
-            }
-          }}
-        />
+            <ImportModal
+              onImport={(content) => {
+                if (activePage) {
+                  setPageContent(activePage.id, content);
+                  editorRefs.current[activePage.id]?.setMarkdown(content);
+                }
+              }}
+            />
 
-        <RegisteredHosts hosts={hostPlugins ?? []} />
-        <RegisteredOverlays overlays={overlayPlugins ?? []} />
-      </AppShell>
-    </PluginProvider>
+            <RegisteredHosts hosts={hostPlugins ?? []} />
+            <RegisteredOverlays overlays={overlayPlugins ?? []} />
+          </AppShell>
+        </PluginProvider>
       </EditorCommandBusProvider>
     </PluginRegistryProvider>
   );

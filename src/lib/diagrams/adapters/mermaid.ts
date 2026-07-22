@@ -1,5 +1,6 @@
 import type { DiagramAdapter } from "../types";
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 let mermaidMod: typeof import("mermaid") | null = null;
 let lastTheme: string | null = null;
 
@@ -9,7 +10,7 @@ function firstLine(message: string, fallback: string): string {
   return line.trim() || fallback;
 }
 
-export const mermaidAdapter: DiagramAdapter = async (lang, source, opts) => {
+export const mermaidAdapter: DiagramAdapter = async (_lang, source, opts) => {
   try {
     if (!mermaidMod) {
       mermaidMod = await import("mermaid");
@@ -19,7 +20,7 @@ export const mermaidAdapter: DiagramAdapter = async (lang, source, opts) => {
     if (lastTheme !== themeName) {
       mermaid.initialize({
         startOnLoad: false,
-        securityLevel: "loose",
+        securityLevel: "strict",
         theme: themeName,
         fontFamily: "inherit",
       });
@@ -29,6 +30,10 @@ export const mermaidAdapter: DiagramAdapter = async (lang, source, opts) => {
     const { svg } = await mermaid.render(id, source);
     return { ok: true, svg, engine: "mermaid" };
   } catch (e: any) {
-    return { ok: false, error: firstLine(e?.message, "Invalid Mermaid syntax."), engine: "mermaid" };
+    return {
+      ok: false,
+      error: firstLine(e?.message, "Invalid Mermaid syntax."),
+      engine: "mermaid",
+    };
   }
 };

@@ -17,11 +17,7 @@ interface UseFocusTrapOptions {
  * the Escape key is pressed.  Restores focus to the previously focused element
  * when the trap is deactivated.
  */
-export function useFocusTrap({
-  containerRef,
-  onEscape,
-  enabled = true,
-}: UseFocusTrapOptions) {
+export function useFocusTrap({ containerRef, onEscape, enabled = true }: UseFocusTrapOptions) {
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
   // Capture previously focused element when trap activates

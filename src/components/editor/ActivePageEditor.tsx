@@ -24,11 +24,13 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import ProseMirrorEditor, { EditorRef } from "../ProseMirrorEditor";
+import type { EditorRef } from "../ProseMirrorEditor";
+import ProseMirrorEditor from "../ProseMirrorEditor";
 import { FormatButton } from "./menus/FormatButton";
 import { SnapshotsMenu } from "../overlays/SnapshotsMenu";
 import { FileActionsMenu } from "../overlays/FileActionsMenu";
-import { Page, useEditorStore } from "../../stores/editorStore";
+import type { Page } from "../../stores/editorStore";
+import { useEditorStore } from "../../stores/editorStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useAIStore } from "../../stores/aiStore";
@@ -64,10 +66,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
     addSnapshot,
   } = useEditorStore();
 
-  const {
-    fontSize: globalFontSize,
-    enableHeadingNumbering,
-  } = useSettingsStore();
+  const { fontSize: globalFontSize, enableHeadingNumbering } = useSettingsStore();
 
   const { direction, showSearch, setAutoSaving } = useUIStore();
 
@@ -185,16 +184,12 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
                   onClick={() => setIsEditingGoal(true)}
                   className={cn(
                     "flex items-center gap-1.5 hover:text-minimal-accent transition-colors",
-                    page.wordGoal > 0
-                      ? "text-minimal-accent"
-                      : "text-minimal-muted",
+                    page.wordGoal > 0 ? "text-minimal-accent" : "text-minimal-muted",
                   )}
                   title="Set Word Goal"
                 >
                   <Target className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-mono font-bold">
-                    {page.wordGoal || "GOAL"}
-                  </span>
+                  <span className="text-[10px] font-mono font-bold">{page.wordGoal || "GOAL"}</span>
                 </button>
               )}
             </div>
@@ -235,40 +230,122 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
       {/* Formatting toolbar — visible when page is active */}
       {activeFocusedPageId === id && (
         <div className="px-4 md:px-6 py-1.5 border-b border-minimal-border/50 bg-minimal-sidebar/20 flex items-center gap-0.5 overflow-x-auto no-scrollbar">
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("h1")} title="Heading 1" icon={<Heading1 className="w-3.5 h-3.5" />} active={activeFormats?.h1} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("h2")} title="Heading 2" icon={<Heading2 className="w-3.5 h-3.5" />} active={activeFormats?.h2} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("h3")} title="Heading 3" icon={<Heading3 className="w-3.5 h-3.5" />} active={activeFormats?.h3} />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("h1")}
+            title="Heading 1"
+            icon={<Heading1 className="w-3.5 h-3.5" />}
+            active={activeFormats?.h1}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("h2")}
+            title="Heading 2"
+            icon={<Heading2 className="w-3.5 h-3.5" />}
+            active={activeFormats?.h2}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("h3")}
+            title="Heading 3"
+            icon={<Heading3 className="w-3.5 h-3.5" />}
+            active={activeFormats?.h3}
+          />
           <div className="w-px h-3 bg-minimal-border mx-0.5" />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("bold")} title="Bold (Ctrl+B)" icon={<Bold className="w-3.5 h-3.5" />} active={activeFormats?.bold} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("italic")} title="Italic (Ctrl+I)" icon={<Italic className="w-3.5 h-3.5" />} active={activeFormats?.italic} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("underline")} title="Underline (Ctrl+U)" icon={<Underline className="w-3.5 h-3.5" />} active={activeFormats?.underline} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("strike")} title="Strikethrough" icon={<Strikethrough className="w-3.5 h-3.5" />} active={activeFormats?.strike} />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("bold")}
+            title="Bold (Ctrl+B)"
+            icon={<Bold className="w-3.5 h-3.5" />}
+            active={activeFormats?.bold}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("italic")}
+            title="Italic (Ctrl+I)"
+            icon={<Italic className="w-3.5 h-3.5" />}
+            active={activeFormats?.italic}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("underline")}
+            title="Underline (Ctrl+U)"
+            icon={<Underline className="w-3.5 h-3.5" />}
+            active={activeFormats?.underline}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("strike")}
+            title="Strikethrough"
+            icon={<Strikethrough className="w-3.5 h-3.5" />}
+            active={activeFormats?.strike}
+          />
           <div className="w-px h-3 bg-minimal-border mx-0.5" />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("quote")} title="Quote" icon={<Quote className="w-3.5 h-3.5" />} active={activeFormats?.blockquote} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("bullet")} title="Bullet List" icon={<List className="w-3.5 h-3.5" />} active={activeFormats?.bullet} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("code")} title="Code" icon={<Code className="w-3.5 h-3.5" />} active={activeFormats?.code} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("tableify")} title="Convert to Table" icon={<Table className="w-3.5 h-3.5" />} />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("quote")}
+            title="Quote"
+            icon={<Quote className="w-3.5 h-3.5" />}
+            active={activeFormats?.blockquote}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("bullet")}
+            title="Bullet List"
+            icon={<List className="w-3.5 h-3.5" />}
+            active={activeFormats?.bullet}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("code")}
+            title="Code"
+            icon={<Code className="w-3.5 h-3.5" />}
+            active={activeFormats?.code}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("tableify")}
+            title="Convert to Table"
+            icon={<Table className="w-3.5 h-3.5" />}
+          />
           <div className="w-px h-3 bg-minimal-border mx-0.5" />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("alignLeft")} title="Align Left" icon={<AlignLeft className="w-3.5 h-3.5" />} active={activeFormats?.alignLeft} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("alignCenter")} title="Align Center" icon={<AlignCenter className="w-3.5 h-3.5" />} active={activeFormats?.alignCenter} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("alignRight")} title="Align Right" icon={<AlignRight className="w-3.5 h-3.5" />} active={activeFormats?.alignRight} />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("alignJustify")} title="Justify" icon={<Layout className="w-3.5 h-3.5" />} active={activeFormats?.alignJustify} />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("alignLeft")}
+            title="Align Left"
+            icon={<AlignLeft className="w-3.5 h-3.5" />}
+            active={activeFormats?.alignLeft}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("alignCenter")}
+            title="Align Center"
+            icon={<AlignCenter className="w-3.5 h-3.5" />}
+            active={activeFormats?.alignCenter}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("alignRight")}
+            title="Align Right"
+            icon={<AlignRight className="w-3.5 h-3.5" />}
+            active={activeFormats?.alignRight}
+          />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("alignJustify")}
+            title="Justify"
+            icon={<Layout className="w-3.5 h-3.5" />}
+            active={activeFormats?.alignJustify}
+          />
           <div className="w-px h-3 bg-minimal-border mx-0.5" />
-          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("link")} title="Link" icon={<Link className="w-3.5 h-3.5" />} />
-          <FormatButton onClick={() => {
-            const url = window.prompt("Enter Image URL:");
-            if (url && validateUrl(url)) {
-              editorRefs.current[id]?.insertImage(url, "Image");
-            } else if (url) {
-              window.alert("Invalid URL. Only http and https URLs are allowed.");
-            }
-          }} title="Insert Image" icon={<ImageIcon className="w-3.5 h-3.5" />} />
+          <FormatButton
+            onClick={() => editorRefs.current[id]?.handleFormat("link")}
+            title="Link"
+            icon={<Link className="w-3.5 h-3.5" />}
+          />
+          <FormatButton
+            onClick={() => {
+              const url = window.prompt("Enter Image URL:");
+              if (url && validateUrl(url)) {
+                editorRefs.current[id]?.insertImage(url, "Image");
+              } else if (url) {
+                window.alert("Invalid URL. Only http and https URLs are allowed.");
+              }
+            }}
+            title="Insert Image"
+            icon={<ImageIcon className="w-3.5 h-3.5" />}
+          />
         </div>
       )}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <ProseMirrorEditor
           ref={(el) => {
-            editorRefs.current[id] = el;
+            editorRefs.current[id] = el; // eslint-disable-line react-hooks/immutability
           }}
           editorId={id}
           value={page.content}
@@ -304,10 +381,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
             } else {
               const url = window.prompt("Enter Image URL:");
               if (url && validateUrl(url)) {
-                editorRefs.current[id]?.insertImage(
-                  url,
-                  "Image Alternative Text",
-                );
+                editorRefs.current[id]?.insertImage(url, "Image Alternative Text");
               } else if (url) {
                 window.alert("Invalid URL. Only http and https URLs are allowed.");
               }
@@ -322,10 +396,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
             currentMatchIndex,
             embeddingOptions: {
               provider: serviceConfigs.embeddings.provider,
-              apiKey:
-                apiKeys?.[
-                serviceConfigs.embeddings.provider as keyof typeof apiKeys
-                ],
+              apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
               model: serviceConfigs.embeddings.model,
             },
           }}

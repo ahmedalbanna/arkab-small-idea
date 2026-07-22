@@ -10,26 +10,14 @@ import { serializeDoc } from "../serialization/markdown";
  */
 
 /** Replace the whole document with parsed markdown. */
-export function setMarkdown(
-  state: EditorState,
-  markdown: string,
-  io: MarkdownIO,
-): OpResult {
+export function setMarkdown(state: EditorState, markdown: string, io: MarkdownIO): OpResult {
   const before = serializeDoc(state.doc);
-  const tr = state.tr.replaceWith(
-    0,
-    state.doc.content.size,
-    io.parse(markdown).content,
-  );
+  const tr = state.tr.replaceWith(0, state.doc.content.size, io.parse(markdown).content);
   return { tr, inverse: { type: "setMarkdown", content: before } };
 }
 
 /** Append parsed markdown to the end of the document. */
-export function appendMarkdown(
-  state: EditorState,
-  markdown: string,
-  io: MarkdownIO,
-): OpResult {
+export function appendMarkdown(state: EditorState, markdown: string, io: MarkdownIO): OpResult {
   const before = serializeDoc(state.doc);
   const parsed = io.parse(markdown);
   const tr = state.tr.insert(state.doc.content.size, parsed.content);

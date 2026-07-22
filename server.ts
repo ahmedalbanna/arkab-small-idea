@@ -1,13 +1,66 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
-import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { z } from "zod";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// --- Request body schemas (validated before forwarding to Ollama) ---
+const chatMessageSchema = z.object({
+  role: z.string(),
+  content: z.string().optional(),
+  parts: z.array(z.any()).optional(),
+  images: z.array(z.string()).optional(),
+});
+
+const chatBodySchema = z.object({
+  messages: z.array(chatMessageSchema),
+  model: z.string().optional(),
+  stream: z.boolean().optional(),
+});
+
+const generateBodySchema = z.object({
+  prompt: z.string(),
+  system: z.string().optional(),
+  model: z.string().optional(),
+  stream: z.boolean().optional(),
+});
+
+/** Generic message returned to clients; details are logged server-side only. */
+const GENERIC_ERROR = "Upstream AI service error. Check server logs for details.";
+
+/**
+ * Streams an NDJSON response body to the Express response, writing each
+ * chunk as it arrives. Used by both /api/ai/chat and /api/ai/generate.
+ */
+async function pipeNdjson(response: Response, res: express.Response): Promise<void> {
+  res.setHeader("Content-Type", "application/x-ndjson");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    res.status(502).json({ error: "Upstream returned an empty response body." });
+    return;
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
+    }
+  } catch (streamErr) {
+    console.error("Stream reading error:", streamErr);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Streaming connection interrupted." });
+    }
+  } finally {
+    reader.releaseLock();
+    res.end();
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -30,25 +83,30 @@ async function startServer() {
   }
 
   // AI Tags Proxy (Connection check)
-  app.get("/api/ai/tags", async (req, res) => {
+  app.get("/api/ai/tags", async (_req, res) => {
     try {
       const response = await fetch(`${OLLAMA_HOST}/api/tags`, {
         signal: AbortSignal.timeout(5000),
       });
-      if (!response.ok)
-        throw new Error(`Ollama tags error: ${response.statusText}`);
+      if (!response.ok) throw new Error(`Ollama tags error: ${response.statusText}`);
       const data = await response.json();
       res.json(data);
     } catch (error) {
       console.error("AI Tags Error:", error);
-      res.status(500).json({ error: (error as Error).message });
+      res.status(500).json({ error: GENERIC_ERROR });
     }
   });
 
   // AI Chat Proxy
   app.post("/api/ai/chat", async (req, res) => {
     try {
-      const { messages, model, stream = true } = req.body;
+      const parsed = chatBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid request body." });
+        return;
+      }
+      const { messages, model, stream = true } = parsed.data;
+
       const response = await fetch(`${OLLAMA_HOST}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -62,32 +120,12 @@ async function startServer() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Ollama chat error: ${response.status} - ${errorText}`);
+        console.error(`Ollama chat error: ${response.status} - ${errorText}`);
+        throw new Error(GENERIC_ERROR);
       }
 
       if (stream) {
-        res.setHeader("Content-Type", "application/x-ndjson");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
-
-        const reader = (response.body as any).getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            res.write(value);
-          }
-        } catch (streamErr) {
-          console.error("Stream reading error:", streamErr);
-          res.write(
-            Buffer.from(
-              JSON.stringify({ error: (streamErr as Error).message }) + "\n",
-            ),
-          );
-        } finally {
-          reader.releaseLock();
-          res.end();
-        }
+        await pipeNdjson(response, res);
       } else {
         const data = await response.json();
         res.json(data);
@@ -95,7 +133,7 @@ async function startServer() {
     } catch (error) {
       console.error("AI Chat Error:", error);
       if (!res.headersSent) {
-        res.status(500).json({ error: (error as Error).message });
+        res.status(500).json({ error: GENERIC_ERROR });
       }
     }
   });
@@ -103,7 +141,13 @@ async function startServer() {
   // AI Generation proxy
   app.post("/api/ai/generate", async (req, res) => {
     try {
-      const { prompt, system, model, stream = true } = req.body;
+      const parsed = generateBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid request body." });
+        return;
+      }
+      const { prompt, system, model, stream = true } = parsed.data;
+
       const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,34 +162,12 @@ async function startServer() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(
-          `Ollama generation error: ${response.status} - ${errorText}`,
-        );
+        console.error(`Ollama generation error: ${response.status} - ${errorText}`);
+        throw new Error(GENERIC_ERROR);
       }
 
       if (stream) {
-        res.setHeader("Content-Type", "application/x-ndjson");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
-
-        const reader = (response.body as any).getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            res.write(value);
-          }
-        } catch (streamErr) {
-          console.error("Stream reading error:", streamErr);
-          res.write(
-            Buffer.from(
-              JSON.stringify({ error: (streamErr as Error).message }) + "\n",
-            ),
-          );
-        } finally {
-          reader.releaseLock();
-          res.end();
-        }
+        await pipeNdjson(response, res);
       } else {
         const data = await response.json();
         res.json(data);
@@ -153,7 +175,7 @@ async function startServer() {
     } catch (error) {
       console.error("AI Generation Error:", error);
       if (!res.headersSent) {
-        res.status(500).json({ error: (error as Error).message });
+        res.status(500).json({ error: GENERIC_ERROR });
       }
     }
   });
@@ -181,9 +203,7 @@ async function startServer() {
     } else {
       console.log(`Server running on http://localhost:${PORT}`);
     }
-    console.log(
-      `Proxying AI requests to ${OLLAMA_HOST} using model ${OLLAMA_MODEL}`,
-    );
+    console.log(`Proxying AI requests to ${OLLAMA_HOST} using model ${OLLAMA_MODEL}`);
   });
 }
 

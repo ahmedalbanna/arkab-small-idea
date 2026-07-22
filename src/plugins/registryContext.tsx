@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useState,
-  type ReactNode,
-} from "react";
-import { PluginRegistry } from "./registry";
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import type { PluginRegistry } from "./registry";
 import { useSettingsStore } from "../stores/settingsStore";
 
 /**
@@ -24,8 +18,7 @@ interface PluginRegistryContextValue {
   setRegistry: (registry: PluginRegistry | null) => void;
 }
 
-export const PluginRegistryContext =
-  createContext<PluginRegistryContextValue | null>(null);
+export const PluginRegistryContext = createContext<PluginRegistryContextValue | null>(null);
 
 /** Stable no-op used when there is no provider (e.g. editor mounted in isolation). */
 const NOOP = () => {};
@@ -56,10 +49,7 @@ export function useSetPluginRegistry(): (registry: PluginRegistry | null) => voi
  * store (which every editor reads to rebuild) and applies the lifecycle
  * `enable`/`disable` to the active registry from context.
  */
-export function useSetPluginEnabled(): (
-  id: string,
-  enabled: boolean,
-) => void {
+export function useSetPluginEnabled(): (id: string, enabled: boolean) => void {
   const ctx = useContext(PluginRegistryContext);
   return useCallback(
     (id: string, enabled: boolean) => {

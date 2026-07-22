@@ -6,10 +6,7 @@
  * (`plugins/*`, `components/*`, `test/*`) continue to resolve. New code should
  * import directly from `@core/commands/commandBus`.
  */
-export {
-  EditorCommandBus,
-  defaultEditorCommandBus,
-} from "@core/commands/commandBus";
+export { EditorCommandBus, defaultEditorCommandBus } from "@core/commands/commandBus";
 export type {
   EditorCommandAction,
   EditorCommandResult,

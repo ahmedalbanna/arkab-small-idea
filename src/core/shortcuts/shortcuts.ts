@@ -24,14 +24,54 @@ interface ShortcutDef {
  * commands that benefit from a global binding.
  */
 export const DEFAULT_SHORTCUTS: Record<string, ShortcutDef> = {
-  bold: { combo: "Mod-B", label: "Bold", category: "format", action: { type: "format", format: "bold" } },
-  italic: { combo: "Mod-I", label: "Italic", category: "format", action: { type: "format", format: "italic" } },
-  underline: { combo: "Mod-U", label: "Underline", category: "format", action: { type: "format", format: "underline" } },
-  strike: { combo: "Alt-Shift-5", label: "Strikethrough", category: "format", action: { type: "format", format: "strike" } },
-  code: { combo: "Mod-E", label: "Inline code", category: "format", action: { type: "format", format: "code" } },
-  bulletList: { combo: "Mod-Shift-8", label: "Bullet list", category: "list", action: { type: "format", format: "bullet" } },
-  orderedList: { combo: "Mod-Shift-7", label: "Ordered list", category: "list", action: { type: "format", format: "numbered" } },
-  blockquote: { combo: "Mod-Shift-.", label: "Blockquote", category: "block", action: { type: "format", format: "quote" } },
+  bold: {
+    combo: "Mod-B",
+    label: "Bold",
+    category: "format",
+    action: { type: "format", format: "bold" },
+  },
+  italic: {
+    combo: "Mod-I",
+    label: "Italic",
+    category: "format",
+    action: { type: "format", format: "italic" },
+  },
+  underline: {
+    combo: "Mod-U",
+    label: "Underline",
+    category: "format",
+    action: { type: "format", format: "underline" },
+  },
+  strike: {
+    combo: "Alt-Shift-5",
+    label: "Strikethrough",
+    category: "format",
+    action: { type: "format", format: "strike" },
+  },
+  code: {
+    combo: "Mod-E",
+    label: "Inline code",
+    category: "format",
+    action: { type: "format", format: "code" },
+  },
+  bulletList: {
+    combo: "Mod-Shift-8",
+    label: "Bullet list",
+    category: "list",
+    action: { type: "format", format: "bullet" },
+  },
+  orderedList: {
+    combo: "Mod-Shift-7",
+    label: "Ordered list",
+    category: "list",
+    action: { type: "format", format: "numbered" },
+  },
+  blockquote: {
+    combo: "Mod-Shift-.",
+    label: "Blockquote",
+    category: "block",
+    action: { type: "format", format: "quote" },
+  },
 };
 
 function actionEquals(a: EditorCommandAction, b: EditorCommandAction): boolean {
@@ -69,7 +109,10 @@ interface ParsedCombo {
 }
 
 function parseCombo(combo: string): ParsedCombo {
-  const parts = combo.split("-").map((p) => p.trim()).filter(Boolean);
+  const parts = combo
+    .split("-")
+    .map((p) => p.trim())
+    .filter(Boolean);
   const rawKey = parts[parts.length - 1] ?? "";
   const key = rawKey.length === 1 ? rawKey.toUpperCase() : rawKey;
   let mod: ParsedCombo["mod"] = null;
@@ -104,7 +147,7 @@ export function resolveShortcut(
   const eventKey = event.key.length === 1 ? event.key.toUpperCase() : event.key;
   for (const s of shortcuts) {
     const pc = parseCombo(s.combo);
-    let modOk = true;
+    let modOk: boolean;
     if (pc.mod === "mod") {
       modOk = event.ctrlKey || event.metaKey;
     } else if (pc.mod === "ctrl") {

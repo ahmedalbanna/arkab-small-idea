@@ -1,22 +1,22 @@
-import type { StateStorage } from 'zustand/middleware';
+import type { StateStorage } from "zustand/middleware";
 
-const DB_NAME = 'ink-quill-storage';
-const STORE_NAME = 'kv';
+const DB_NAME = "ink-quill-storage";
+const STORE_NAME = "kv";
 const DB_VERSION = 1;
 
 // Legacy localStorage keys that should be transparently migrated into IndexedDB
 // on first read, so existing users don't lose data when we switch backends.
 const LEGACY_KEYS = new Set([
-  'ink-quill-editor-storage-v2',
-  'ink-quill-settings',
-  'ink-quill-ai-storage',
-  'ink-quill-ui-storage',
+  "ink-quill-editor-storage-v2",
+  "ink-quill-settings",
+  "ink-quill-ai-storage",
+  "ink-quill-ui-storage",
 ]);
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function hasIndexedDB(): boolean {
-  return typeof indexedDB !== 'undefined';
+  return typeof indexedDB !== "undefined";
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -26,7 +26,7 @@ function openDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+        db.createObjectStore(STORE_NAME, { keyPath: "key" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -36,7 +36,7 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 function localGet(key: string): string | null {
-  if (typeof window === 'undefined' || !window.localStorage) return null;
+  if (typeof window === "undefined" || !window.localStorage) return null;
   try {
     return window.localStorage.getItem(key);
   } catch {
@@ -45,7 +45,7 @@ function localGet(key: string): string | null {
 }
 
 function localSet(key: string, value: string): void {
-  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (typeof window === "undefined" || !window.localStorage) return;
   try {
     window.localStorage.setItem(key, value);
   } catch {
@@ -54,7 +54,7 @@ function localSet(key: string, value: string): void {
 }
 
 function localRemove(key: string): void {
-  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (typeof window === "undefined" || !window.localStorage) return;
   try {
     window.localStorage.removeItem(key);
   } catch {
@@ -68,7 +68,7 @@ function idbGet(key: string): Promise<string | null> {
     .then(
       (db) =>
         new Promise<string | null>((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, 'readonly');
+          const tx = db.transaction(STORE_NAME, "readonly");
           const req = tx.objectStore(STORE_NAME).get(key);
           req.onsuccess = () => {
             const record = req.result as { key: string; value: string } | undefined;
@@ -81,7 +81,7 @@ function idbGet(key: string): Promise<string | null> {
       if (value !== null) return value;
       // IndexedDB had nothing for this key — attempt a one-time migration
       // from the legacy localStorage entry before giving up.
-      if (typeof window !== 'undefined' && LEGACY_KEYS.has(key)) {
+      if (typeof window !== "undefined" && LEGACY_KEYS.has(key)) {
         const legacy = window.localStorage.getItem(key);
         if (legacy != null) {
           void idbSet(key, legacy);
@@ -103,7 +103,7 @@ function idbSet(key: string, value: string): Promise<void> {
     .then(
       (db) =>
         new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const tx = db.transaction(STORE_NAME, "readwrite");
           tx.objectStore(STORE_NAME).put({ key, value });
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
@@ -124,7 +124,7 @@ function idbRemove(key: string): Promise<void> {
     .then(
       (db) =>
         new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const tx = db.transaction(STORE_NAME, "readwrite");
           tx.objectStore(STORE_NAME).delete(key);
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);

@@ -37,10 +37,7 @@ describe("diagramTransform", () => {
   });
 
   it("is case-insensitive about the language", () => {
-    const cb = schema.nodes.code_block.create(
-      { params: "MERMAID" },
-      schema.text("A-->B"),
-    );
+    const cb = schema.nodes.code_block.create({ params: "MERMAID" }, schema.text("A-->B"));
     const out = diagramTransform(schema.nodes.doc.create(null, cb));
     expect(out.firstChild!.type.name).toBe("diagram");
   });
@@ -56,7 +53,10 @@ describe("diagramTransform", () => {
 
   it("converts multiple diagram blocks", () => {
     const a = schema.nodes.code_block.create({ params: "mermaid" }, schema.text("A-->B"));
-    const b = schema.nodes.code_block.create({ params: "plantuml" }, schema.text("@startuml\n@enduml"));
+    const b = schema.nodes.code_block.create(
+      { params: "plantuml" },
+      schema.text("@startuml\n@enduml"),
+    );
     const out = diagramTransform(schema.nodes.doc.create(null, [a, b]));
     expect(out.childCount).toBe(2);
     expect(out.child(0).type.name).toBe("diagram");

@@ -1,27 +1,13 @@
 import React, { useState } from "react";
-import {
-  Plus,
-  X,
-  Target,
-  FileDown,
-  ALargeSmall,
-  ChevronsUpDown,
-  Minus,
-  Sparkles,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "../../lib/utils";
-import ProseMirrorEditor, { EditorRef } from "../ProseMirrorEditor";
+import type { EditorRef } from "../ProseMirrorEditor";
 import { useEditorStore } from "../../stores/editorStore";
-import { useUIStore } from "../../stores/uiStore";
-import { useAIStore } from "../../stores/aiStore";
 import { useSettingsStore } from "../../stores/settingsStore";
-import { AI_ACTIONS } from "../../constants";
 import type { LoadedPlugins } from "../../plugins";
-import { SnapshotsMenu } from "../overlays/SnapshotsMenu";
-import { FileActionsMenu } from "../overlays/FileActionsMenu";
 import { motion, AnimatePresence, Reorder } from "motion/react";
 import { ActivePageEditor } from "./ActivePageEditor";
-import { Page } from "../../stores/editorStore";
+import type { Page } from "../../stores/editorStore";
 
 interface EditorContainerProps {
   editorRefs: React.MutableRefObject<Record<string, EditorRef | null>>;
@@ -34,61 +20,10 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
   fileInputRef,
   onLoaded,
 }) => {
-  const {
-    pages,
-    activePageIds,
-    activeFocusedPageId,
-    setPageContent,
-    addPage,
-    togglePageOpen,
-    setActiveFocusedPageId,
-    setPageSettings,
-    setPageCursor,
-    addSnapshot,
-    reorderPages,
-  } = useEditorStore();
-  const {
-    fontSize: globalFontSize,
-    setTheme,
-    setFontFamily,
-    theme: globalTheme,
-    enableHeadingNumbering
-  } = useSettingsStore();
-  const { direction, showSearch } = useUIStore();
-  const {
-    personalInstructions: aiPersonalInstructions,
-    serviceConfigs,
-    apiKeys,
-    providerConfigs,
-  } = useAIStore();
-  const { setAIAssistant, setAutoSaving, isAutoSaving } = useUIStore();
+  const { pages, activePageIds, addPage, reorderPages } = useEditorStore();
+  const { setTheme, setFontFamily, theme: globalTheme } = useSettingsStore();
 
   const [quoteIndex, setQuoteIndex] = useState(0);
-  const [visibleSnapshots, setVisibleSnapshots] = useState<
-    Record<string, boolean>
-  >({});
-  const [visibleFileActions, setVisibleFileActions] = useState<
-    Record<string, boolean>
-  >({});
-  const [editingGoal, setEditingGoal] = useState<string | null>(null);
-  const [customInstruction, setCustomInstruction] = useState("");
-  const autoSaveTimeout = React.useRef<NodeJS.Timeout | null>(null);
-
-  const handleScroll = (id: string) => {
-    if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
-    setAutoSaving(true);
-    autoSaveTimeout.current = setTimeout(() => {
-      setAutoSaving(false);
-    }, 1500);
-  };
-
-  const toggleSnapshots = (pageId: string) => {
-    setVisibleSnapshots((prev) => ({ ...prev, [pageId]: !prev[pageId] }));
-  };
-
-  const toggleFileActions = (pageId: string) => {
-    setVisibleFileActions((prev) => ({ ...prev, [pageId]: !prev[pageId] }));
-  };
 
   const sortedActivePageIds = [...activePageIds].sort((a, b) => {
     const indexA = pages.findIndex((p) => p.id === a);
@@ -122,7 +57,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     >
       {sortedActivePageIds.length === 0 ? (
         <div className="flex-1 overflow-y-auto p-6 md:p-16 flex flex-col items-center justify-center min-h-full custom-scrollbar scroll-smooth bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-minimal-accent/5 via-transparent to-transparent select-none">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
@@ -137,15 +72,20 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                 </span>
               </div>
               <h1 className="text-4xl md:text-6xl font-black tracking-tight text-minimal-text font-serif bg-gradient-to-r from-minimal-text via-minimal-accent to-minimal-text bg-clip-text text-transparent">
-                حبرٌ وريشة <span className="font-sans font-light text-2xl md:text-3xl text-minimal-muted align-middle mx-2">|</span> Ink & Quill
+                حبرٌ وريشة{" "}
+                <span className="font-sans font-light text-2xl md:text-3xl text-minimal-muted align-middle mx-2">
+                  |
+                </span>{" "}
+                Ink & Quill
               </h1>
               <p className="text-xs md:text-sm text-minimal-muted max-w-lg mx-auto leading-relaxed">
-                صمّم فضاء كتابتك الفاخر، ودع سحر الكلمات يتدفق بلا حدود في واجهتك المخصصة للأدب والتفكير العالي.
+                صمّم فضاء كتابتك الفاخر، ودع سحر الكلمات يتدفق بلا حدود في واجهتك المخصصة للأدب
+                والتفكير العالي.
               </p>
             </div>
 
             {/* Quote of the Day Section */}
-            <motion.div 
+            <motion.div
               key={quoteIndex}
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -159,7 +99,10 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
               <div className="absolute bottom-3 right-3 w-3 h-3 border-b-2 border-r-2 border-minimal-accent/20 rounded-br" />
 
               <div className="space-y-4">
-                <p className="text-lg md:text-2xl font-serif text-minimal-text leading-relaxed font-semibold italic text-center px-4" style={{ fontFamily: '"Amiri", serif' }}>
+                <p
+                  className="text-lg md:text-2xl font-serif text-minimal-text leading-relaxed font-semibold italic text-center px-4"
+                  style={{ fontFamily: '"Amiri", serif' }}
+                >
                   « {POETIC_QUOTES[quoteIndex].ar} »
                 </p>
                 <div className="w-12 h-px bg-minimal-accent/30 mx-auto" />
@@ -188,7 +131,8 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                   شغّل فضاءً إبداعياً متكاملاً / Select Visual Workspace
                 </h3>
                 <p className="text-[9px] text-minimal-muted mt-1">
-                  سيقوم النظام بإنشاء فصل جديد تلقائياً وتفعيل المظهر والخط المناسبين للنوع المحدد فوراً.
+                  سيقوم النظام بإنشاء فصل جديد تلقائياً وتفعيل المظهر والخط المناسبين للنوع المحدد
+                  فوراً.
                 </p>
               </div>
 
@@ -203,7 +147,8 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                     docTitle: "الأندلس والفردوس المفقود",
                     icon: "🕌",
                     badge: "مظهر دافئ & خط كلاسيكي",
-                    color: "border-emerald-500/20 hover:border-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-800"
+                    color:
+                      "border-emerald-500/20 hover:border-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-800",
                   },
                   {
                     title: "الكون الساحر",
@@ -214,7 +159,8 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                     docTitle: "سديم الجبار وحواضن النجوم",
                     icon: "🌌",
                     badge: "مظهر داكن & خط هندسي",
-                    color: "border-purple-500/20 hover:border-purple-500 bg-purple-500/5 hover:bg-purple-500/10 text-purple-400"
+                    color:
+                      "border-purple-500/20 hover:border-purple-500 bg-purple-500/5 hover:bg-purple-500/10 text-purple-400",
                   },
                   {
                     title: "الوثيقة العتيقة",
@@ -225,7 +171,8 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                     docTitle: "حبر وريشة: فلسفة الكتابة",
                     icon: "📜",
                     badge: "ورق معتق & خط أنيق",
-                    color: "border-amber-600/20 hover:border-amber-600 bg-amber-600/5 hover:bg-amber-600/10 text-amber-800"
+                    color:
+                      "border-amber-600/20 hover:border-amber-600 bg-amber-600/5 hover:bg-amber-600/10 text-amber-800",
                   },
                   {
                     title: "طوكيو النيون",
@@ -236,8 +183,9 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                     docTitle: "Tokyo Cyber Cores",
                     icon: "🌆",
                     badge: "مظهر مستقبلي & خط تقني",
-                    color: "border-pink-500/20 hover:border-pink-500 bg-pink-500/5 hover:bg-pink-500/10 text-pink-400"
-                  }
+                    color:
+                      "border-pink-500/20 hover:border-pink-500 bg-pink-500/5 hover:bg-pink-500/10 text-pink-400",
+                  },
                 ].map((preset) => (
                   <button
                     key={preset.theme}
@@ -247,31 +195,33 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
                       addPage(preset.docTitle, preset.content);
                     }}
                     className={cn(
-                      "flex flex-col p-5 rounded-3xl border text-right justify-between transition-all hover:scale-[1.03] active:scale-95 shadow-md hover:shadow-xl cursor-pointer h-52 group relative overflow-hidden bg-minimal-sidebar/60 border-minimal-border"
+                      "flex flex-col p-5 rounded-3xl border text-right justify-between transition-all hover:scale-[1.03] active:scale-95 shadow-md hover:shadow-xl cursor-pointer h-52 group relative overflow-hidden bg-minimal-sidebar/60 border-minimal-border",
                     )}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-minimal-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    
+
                     <div className="w-full">
                       <div className="flex justify-between items-start w-full mb-3">
                         <span className="text-[8px] bg-minimal-accent/10 text-minimal-accent px-2 py-0.5 rounded-full font-black uppercase tracking-tight">
                           {preset.theme.toUpperCase()}
                         </span>
-                        <span className="text-2xl group-hover:scale-125 transition-transform duration-300">{preset.icon}</span>
+                        <span className="text-2xl group-hover:scale-125 transition-transform duration-300">
+                          {preset.icon}
+                        </span>
                       </div>
                       <h4 className="text-[13px] font-black text-minimal-text leading-tight mb-1">
                         {preset.title}
                       </h4>
-                      <p className="text-[10px] text-minimal-muted leading-snug">
-                        {preset.desc}
-                      </p>
+                      <p className="text-[10px] text-minimal-muted leading-snug">{preset.desc}</p>
                     </div>
 
                     <div className="w-full mt-4 pt-3 border-t border-minimal-border/40 flex items-center justify-between text-[8px] font-bold text-minimal-muted">
                       <span className="text-[8px] font-extrabold text-minimal-accent/80">
                         {preset.badge}
                       </span>
-                      <span className="text-[11px] group-hover:translate-x-1 transition-transform">←</span>
+                      <span className="text-[11px] group-hover:translate-x-1 transition-transform">
+                        ←
+                      </span>
                     </div>
                   </button>
                 ))}
@@ -316,9 +266,7 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
             <div className="p-4 bg-minimal-sidebar rounded-full group-hover:rotate-180 transition-transform duration-500">
               <Plus className="w-6 h-6" />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-              New Chapter
-            </span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">New Chapter</span>
           </button>
         </Reorder.Group>
       )}
@@ -334,23 +282,23 @@ const POETIC_QUOTES = [
   {
     ar: "الخط هندسة روحانية ظهرت بآلة جسدانية",
     en: "Writing is a spiritual geometry, manifested through a physical tool.",
-    author: "ياقوت المستعصمي"
+    author: "ياقوت المستعصمي",
   },
   {
     ar: "إن حبر القلم حبلٌ سري يربط بين روحين يفصل بينهما الدهر",
     en: "The ink of the pen is an umbilical cord connecting two souls across epochs.",
-    author: "خليل جبران"
+    author: "خليل جبران",
   },
   {
     ar: "الكتابة تنهض من عتمة الفكر لتنير دروب الحقيقة ببريق الكلمات",
     en: "Writing rises from the darkness of thought to illuminate the paths of truth with the glitter of words.",
-    author: "أنيس منصور"
+    author: "أنيس منصور",
   },
   {
     ar: "الكلمة الجميلة كشجرة طيبة أصلها ثابت وفرعها في السماء",
     en: "A beautiful word is like a beautiful tree, its root is firm and its branches reach the sky.",
-    author: "فلسفة الكلمة والأثر"
-  }
+    author: "فلسفة الكلمة والأثر",
+  },
 ];
 
 const ANDALUSIA_CONTENT = `# الأندلس: الفردوس المفقود وطوق الحمامة

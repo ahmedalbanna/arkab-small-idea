@@ -29,9 +29,7 @@ describe("PluginRegistryContext", () => {
     }
 
     render(
-      <PluginRegistryContext.Provider
-        value={{ registry, setRegistry: () => {} }}
-      >
+      <PluginRegistryContext.Provider value={{ registry, setRegistry: () => {} }}>
         <Consumer />
       </PluginRegistryContext.Provider>,
     );

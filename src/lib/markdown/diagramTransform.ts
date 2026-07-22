@@ -1,4 +1,5 @@
-import { Node, Slice, Fragment } from "prosemirror-model";
+import type { Node } from "prosemirror-model";
+import { Slice, Fragment } from "prosemirror-model";
 import { isDiagramLang } from "../diagrams/engine";
 
 /**
@@ -37,11 +38,7 @@ export function diagramTransform(doc: Node): Node {
   let result = doc;
   for (const m of matches) {
     const diagramNode = diagramType.create({ lang: m.lang, source: m.source });
-    result = result.replace(
-      m.pos,
-      m.pos + m.size,
-      new Slice(Fragment.from(diagramNode), 0, 0),
-    );
+    result = result.replace(m.pos, m.pos + m.size, new Slice(Fragment.from(diagramNode), 0, 0));
   }
   return result;
 }

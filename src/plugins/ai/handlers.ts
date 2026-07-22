@@ -30,7 +30,6 @@ export function insertText(before: string, after = "") {
 export function handleKeyDown(e: KeyboardEvent) {
   if (e.ctrlKey || e.metaKey) {
     const ui = useUIStore.getState();
-    const editor = useEditorStore.getState();
     const aiUI = useAIUIStore.getState();
     if (e.key === "k") {
       e.preventDefault();
@@ -46,10 +45,7 @@ export function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
-export function applyContent(
-  content: string,
-  method: "append" | "insert" | "replace" | "suggest",
-) {
+export function applyContent(content: string, method: "append" | "insert" | "replace" | "suggest") {
   const activePage = getActivePage();
   if (!activePage) return;
   const editor = getEditorRef(activePage.id);
@@ -73,11 +69,7 @@ export function applyContent(
   useUIStore.getState().setAIAssistant(false);
 }
 
-export async function handleAiAction(
-  actionId: string,
-  customInstruction?: string,
-) {
-  const editorState = useEditorStore.getState();
+export async function handleAiAction(actionId: string, customInstruction?: string) {
   const activePage = getActivePage();
   if (!activePage) return;
   const editor = getEditorRef(activePage.id);
@@ -87,7 +79,7 @@ export async function handleAiAction(
   const selectedText = editor.getSelectedText();
   const contextText = selectedText || markdown.substring(0, 5000);
 
-  let prompt = "";
+  let prompt: string;
   if (actionId.startsWith("custom:")) {
     prompt = actionId.replace("custom:", "");
   } else {
@@ -149,8 +141,7 @@ export async function handleAiAction(
     let fullResponse = "";
     const embeddingOptions = {
       provider: ai.serviceConfigs.embeddings.provider,
-      apiKey:
-        ai.apiKeys?.[ai.serviceConfigs.embeddings.provider as keyof typeof ai.apiKeys],
+      apiKey: ai.apiKeys?.[ai.serviceConfigs.embeddings.provider as keyof typeof ai.apiKeys],
       model: ai.serviceConfigs.embeddings.model,
     };
 
@@ -241,9 +232,7 @@ export function handleReplace() {
   const start = searchIndex;
   if (start !== -1) {
     const newMarkdown =
-      markdown.substring(0, start) +
-      replaceText +
-      markdown.substring(start + findText.length);
+      markdown.substring(0, start) + replaceText + markdown.substring(start + findText.length);
     setPageContent(activePage.id, newMarkdown);
     getEditorRef(activePage.id)?.setMarkdown(newMarkdown);
     setTimeout(handleFindNext, 0);
@@ -254,8 +243,7 @@ export function handleReplace() {
 
 export function handleReplaceAll() {
   const aiUI = useAIUIStore.getState();
-  const { findText, replaceText, matchCount, isCaseSensitive, isWholeWord } =
-    aiUI;
+  const { findText, replaceText, matchCount, isCaseSensitive, isWholeWord } = aiUI;
   if (!findText || matchCount === 0) return;
 
   if (
@@ -287,8 +275,7 @@ export function indexActiveDocument() {
   const markdown = getActivePage()?.content || "";
   const embeddingOptions = {
     provider: ai.serviceConfigs.embeddings.provider,
-    apiKey:
-      ai.apiKeys?.[ai.serviceConfigs.embeddings.provider as keyof typeof ai.apiKeys],
+    apiKey: ai.apiKeys?.[ai.serviceConfigs.embeddings.provider as keyof typeof ai.apiKeys],
     model: ai.serviceConfigs.embeddings.model,
   };
   ragService.indexDocument(markdown, embeddingOptions);

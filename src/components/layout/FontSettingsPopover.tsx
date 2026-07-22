@@ -1,35 +1,43 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Type, Minus, Plus } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { useSettingsStore } from '../../stores/settingsStore';
+import React, { useEffect, useRef, useState } from "react";
+import { Type, Minus, Plus } from "lucide-react";
+import { cn } from "../../lib/utils";
+import { useSettingsStore } from "../../stores/settingsStore";
 
 interface FontSettingsPopoverProps {
   className?: string;
 }
 
 const FONT_OPTIONS = [
-  'Inter, sans-serif',
-  'Georgia, serif',
-  'Merriweather, serif',
-  'Source Sans Pro, sans-serif',
-  'System UI, sans-serif',
-  'Monaco, monospace',
-  'Crimson Text, serif',
+  "Inter, sans-serif",
+  "Georgia, serif",
+  "Merriweather, serif",
+  "Source Sans Pro, sans-serif",
+  "System UI, sans-serif",
+  "Monaco, monospace",
+  "Crimson Text, serif",
 ];
 
 const MAX_WIDTH_OPTIONS = [
-  { label: 'Narrow', value: '600px' },
-  { label: 'Normal', value: '800px' },
-  { label: 'Wide', value: '1000px' },
-  { label: 'Full', value: '100%' },
+  { label: "Narrow", value: "600px" },
+  { label: "Normal", value: "800px" },
+  { label: "Wide", value: "1000px" },
+  { label: "Full", value: "100%" },
 ];
 
 /**
  * Compact font/typography settings popover for the status bar.
  */
 export const FontSettingsPopover: React.FC<FontSettingsPopoverProps> = ({ className }) => {
-  const { fontFamily, fontSize, lineHeight, maxWidth, setFontFamily, setFontSize, setLineHeight, setMaxWidth } =
-    useSettingsStore();
+  const {
+    fontFamily,
+    fontSize,
+    lineHeight,
+    maxWidth,
+    setFontFamily,
+    setFontSize,
+    setLineHeight,
+    setMaxWidth,
+  } = useSettingsStore();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -39,20 +47,20 @@ export const FontSettingsPopover: React.FC<FontSettingsPopoverProps> = ({ classN
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
 
-  const shortFontName = fontFamily.split(',')[0].replace(/['"]/g, '');
+  const shortFontName = fontFamily.split(",")[0].replace(/['"]/g, "");
 
   return (
-    <div className={cn('relative', className)} ref={rootRef}>
+    <div className={cn("relative", className)} ref={rootRef}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -60,11 +68,11 @@ export const FontSettingsPopover: React.FC<FontSettingsPopoverProps> = ({ classN
         aria-expanded={open}
         aria-label="Font settings"
         className={cn(
-          'flex items-center justify-center rounded-md border px-1.5 py-1 transition-colors',
-          'border-minimal-border bg-minimal-sidebar text-minimal-muted',
-          'hover:border-minimal-accent/30 hover:text-minimal-text',
-          open && 'border-minimal-accent/40 text-minimal-accent',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent'
+          "flex items-center justify-center rounded-md border px-1.5 py-1 transition-colors",
+          "border-minimal-border bg-minimal-sidebar text-minimal-muted",
+          "hover:border-minimal-accent/30 hover:text-minimal-text",
+          open && "border-minimal-accent/40 text-minimal-accent",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
         )}
         title={`Font: ${shortFontName}, ${fontSize}px`}
       >
@@ -89,13 +97,13 @@ export const FontSettingsPopover: React.FC<FontSettingsPopoverProps> = ({ classN
                   type="button"
                   onClick={() => setFontFamily(f)}
                   className={cn(
-                    'rounded-lg px-2 py-1 text-[9px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent',
+                    "rounded-lg px-2 py-1 text-[9px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
                     fontFamily === f
-                      ? 'bg-minimal-accent text-white'
-                      : 'bg-minimal-sidebar text-minimal-muted hover:text-minimal-text'
+                      ? "bg-minimal-accent text-white"
+                      : "bg-minimal-sidebar text-minimal-muted hover:text-minimal-text",
                   )}
                 >
-                  {f.split(',')[0].replace(/['"]/g, '')}
+                  {f.split(",")[0].replace(/['"]/g, "")}
                 </button>
               ))}
             </div>
@@ -144,10 +152,10 @@ export const FontSettingsPopover: React.FC<FontSettingsPopoverProps> = ({ classN
                   type="button"
                   onClick={() => setLineHeight(lh)}
                   className={cn(
-                    'flex-1 rounded-lg py-1 text-[9px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent',
+                    "flex-1 rounded-lg py-1 text-[9px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
                     Math.abs(lineHeight - lh) < 0.01
-                      ? 'bg-minimal-accent text-white'
-                      : 'bg-minimal-sidebar text-minimal-muted hover:text-minimal-text'
+                      ? "bg-minimal-accent text-white"
+                      : "bg-minimal-sidebar text-minimal-muted hover:text-minimal-text",
                   )}
                 >
                   {lh}
@@ -168,10 +176,10 @@ export const FontSettingsPopover: React.FC<FontSettingsPopoverProps> = ({ classN
                   type="button"
                   onClick={() => setMaxWidth(opt.value)}
                   className={cn(
-                    'flex-1 rounded-lg py-1 text-[8px] font-bold uppercase tracking-tight transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent',
+                    "flex-1 rounded-lg py-1 text-[8px] font-bold uppercase tracking-tight transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
                     maxWidth === opt.value
-                      ? 'bg-minimal-accent text-white'
-                      : 'bg-minimal-sidebar text-minimal-muted hover:text-minimal-text'
+                      ? "bg-minimal-accent text-white"
+                      : "bg-minimal-sidebar text-minimal-muted hover:text-minimal-text",
                   )}
                 >
                   {opt.label}

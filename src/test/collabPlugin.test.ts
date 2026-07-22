@@ -59,9 +59,7 @@ describe("collab plugin (registry lifecycle)", () => {
     // ySync, yCursor, yUndo, keymap
     expect(registered).toHaveLength(4);
     expect(BroadcastChannelMock.instances).toHaveLength(1);
-    expect(BroadcastChannelMock.instances[0].name).toBe(
-      "ink-quill-collab-doc-1",
-    );
+    expect(BroadcastChannelMock.instances[0].name).toBe("ink-quill-collab-doc-1");
   });
 
   it("closes the channel and releases Yjs resources on destroy (idempotent)", () => {
@@ -80,9 +78,7 @@ describe("collab plugin (registry lifecycle)", () => {
 
   it("runs through the registry lifecycle without leaking resources", async () => {
     const registry = new PluginRegistry();
-    registry.register(
-      createCollabPlugin({ docId: "doc-reg", username: "Reg" }),
-    );
+    registry.register(createCollabPlugin({ docId: "doc-reg", username: "Reg" }));
 
     const registered: unknown[] = [];
     const ctx = makeMockContext(registered);

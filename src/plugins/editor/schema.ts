@@ -30,11 +30,7 @@ export function buildEditorSchema(extra?: SchemaContribution): Schema {
       ],
       toDOM(node) {
         const { align } = node.attrs;
-        return [
-          "p",
-          { style: align && align !== "left" ? `text-align: ${align}` : null },
-          0,
-        ];
+        return ["p", { style: align && align !== "left" ? `text-align: ${align}` : null }, 0];
       },
     })
     .update("heading", {
@@ -98,14 +94,12 @@ export function buildEditorSchema(extra?: SchemaContribution): Schema {
       ],
       toDOM(node) {
         const { level, align, id } = node.attrs;
-        const autoId =
-          id || (node.textContent ? slugify(node.textContent) : null);
+        const autoId = id || (node.textContent ? slugify(node.textContent) : null);
         return [
           "h" + level,
           {
             id: autoId,
-            style:
-              align && align !== "left" ? `text-align: ${align}` : null,
+            style: align && align !== "left" ? `text-align: ${align}` : null,
           },
           0,
         ];
@@ -132,8 +126,7 @@ export function buildEditorSchema(extra?: SchemaContribution): Schema {
               return (dom as HTMLElement).style.backgroundColor || null;
             },
             setDOMAttr(value, attrs) {
-              if (value)
-                attrs.style = (attrs.style || "") + `background-color: ${value};`;
+              if (value) attrs.style = (attrs.style || "") + `background-color: ${value};`;
             },
           },
           sort: {
@@ -175,7 +168,7 @@ export function buildEditorSchema(extra?: SchemaContribution): Schema {
         },
       ],
       toDOM(node) {
-        let { src, alt, title, align, width, float } = node.attrs;
+        const { src, alt, title, align, width, float } = node.attrs;
         return [
           "img",
           {
@@ -204,11 +197,7 @@ export function buildEditorSchema(extra?: SchemaContribution): Schema {
           },
         ],
         toDOM(node) {
-          return [
-            "div",
-            { class: "image-gallery", "data-layout": node.attrs.layout },
-            0,
-          ];
+          return ["div", { class: "image-gallery", "data-layout": node.attrs.layout }, 0];
         },
       },
       scribble: {

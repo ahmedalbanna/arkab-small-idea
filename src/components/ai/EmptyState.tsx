@@ -1,5 +1,5 @@
-import React from 'react';
-import { Sparkles } from 'lucide-react';
+import React from "react";
+import { Sparkles } from "lucide-react";
 
 interface EmptyStateProps {
   onAction: (actionId: string) => void;
@@ -7,12 +7,12 @@ interface EmptyStateProps {
 }
 
 const TEMPLATES = [
-  'Summarize the key points of my document',
-  'Make this writing more concise',
-  'Rewrite this in a formal tone',
-  'Generate an outline for a research paper',
-  'Explain this paragraph to a beginner',
-  'Suggest a compelling title',
+  "Summarize the key points of my document",
+  "Make this writing more concise",
+  "Rewrite this in a formal tone",
+  "Generate an outline for a research paper",
+  "Explain this paragraph to a beginner",
+  "Suggest a compelling title",
 ];
 
 /**
@@ -27,7 +27,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onTemplate }) => {
       </div>
       <h2 className="text-base font-bold text-minimal-text">Your AI writing partner</h2>
       <p className="mt-1 max-w-xs text-xs leading-relaxed text-minimal-muted">
-        Ask a question about your document, draft new sections, or refine what you’ve written — right here.
+        Ask a question about your document, draft new sections, or refine what you’ve written —
+        right here.
       </p>
 
       <div className="mt-6 grid w-full gap-2">

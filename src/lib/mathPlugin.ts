@@ -82,15 +82,14 @@ export function getMathRanges(text: string): MathRange[] {
   }
 
   // 2. Find inline math: $([^\$\n]+?)$
-  const inlineRegex = /(?<!\\)\$(?!\s)([^\$\n]+?)(?<!\s)(?<!\\)\$/g;
+  const inlineRegex = /(?<!\\)\$(?!\s)([^$\n]+?)(?<!\s)(?<!\\)\$/g;
   while ((match = inlineRegex.exec(text)) !== null) {
     const start = match.index;
     const end = match.index + match[0].length;
 
     // Avoid overlap with block math ranges
     const overlaps = ranges.some(
-      (r) =>
-        (start >= r.start && start < r.end) || (end > r.start && end <= r.end)
+      (r) => (start >= r.start && start < r.end) || (end > r.start && end <= r.end),
     );
     if (!overlaps) {
       ranges.push({
@@ -134,46 +133,64 @@ export function buildMathDecorations(state: any): DecorationSet {
 
       // Check if cursor is currently inside or touching the math block
       const isEditing =
-        (from >= mathStart && from <= mathEnd) ||
-        (to >= mathStart && to <= mathEnd);
+        (from >= mathStart && from <= mathEnd) || (to >= mathStart && to <= mathEnd);
 
       if (isEditing) {
         // Highlight the math block being edited
         decorations.push(
           Decoration.inline(mathStart, mathEnd, {
-            class: "math-editing bg-minimal-accent/10 text-minimal-accent font-mono px-1.5 py-0.5 rounded border border-minimal-accent/20 font-bold",
-          })
+            class:
+              "math-editing bg-minimal-accent/10 text-minimal-accent font-mono px-1.5 py-0.5 rounded border border-minimal-accent/20 font-bold",
+          }),
         );
 
         // Render an elegant inline live-updating preview widget directly adjacent!
         const previewWidget = (view: any) => {
           const dom = document.createElement("div");
-          dom.className = "math-live-preview-bubble absolute mt-2 bg-minimal-bg border border-minimal-border rounded-xl shadow-2xl p-3 z-50 text-xs flex flex-col gap-2 w-72 backdrop-blur-md transition-all";
+          dom.className =
+            "math-live-preview-bubble absolute mt-2 bg-minimal-bg border border-minimal-border rounded-xl shadow-2xl p-3 z-50 text-xs flex flex-col gap-2 w-72 backdrop-blur-md transition-all";
           dom.style.pointerEvents = "auto";
 
           // Title header
           const header = document.createElement("div");
-          header.className = "flex items-center justify-between text-[9px] font-bold text-minimal-muted uppercase tracking-widest border-b border-minimal-border/30 pb-1.5 select-none";
-          header.innerHTML = `<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Live Math Preview</span><span class="text-minimal-accent font-mono text-[8px]">ACTIVE</span>`;
+          header.className =
+            "flex items-center justify-between text-[9px] font-bold text-minimal-muted uppercase tracking-widest border-b border-minimal-border/30 pb-1.5 select-none";
+          {
+            const left = document.createElement("span");
+            left.className = "flex items-center gap-1";
+            const dot = document.createElement("span");
+            dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse";
+            left.appendChild(dot);
+            left.appendChild(document.createTextNode("Live Math Preview"));
+            header.appendChild(left);
+            const right = document.createElement("span");
+            right.className = "text-minimal-accent font-mono text-[8px]";
+            right.textContent = "ACTIVE";
+            header.appendChild(right);
+          }
           dom.appendChild(header);
 
           // Content render container
           const renderContainer = document.createElement("div");
-          renderContainer.className = "py-2 px-1.5 flex justify-center items-center overflow-x-auto min-h-[2.5rem] bg-minimal-sidebar/40 rounded-lg border border-minimal-border/30";
+          renderContainer.className =
+            "py-2 px-1.5 flex justify-center items-center overflow-x-auto min-h-[2.5rem] bg-minimal-sidebar/40 rounded-lg border border-minimal-border/30";
           dom.appendChild(renderContainer);
 
           // Error container
           const errorContainer = document.createElement("div");
-          errorContainer.className = "hidden text-[10px] text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 p-2 rounded-lg font-mono leading-tight flex flex-col gap-1";
+          errorContainer.className =
+            "hidden text-[10px] text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 p-2 rounded-lg font-mono leading-tight flex flex-col gap-1";
           dom.appendChild(errorContainer);
 
           // Quick Symbols toolbar
           const symbolToolbar = document.createElement("div");
-          symbolToolbar.className = "flex items-center gap-1 overflow-x-auto py-1 border-t border-minimal-border/30 mt-1 scrollbar-none";
+          symbolToolbar.className =
+            "flex items-center gap-1 overflow-x-auto py-1 border-t border-minimal-border/30 mt-1 scrollbar-none";
 
           symbols.forEach((sym) => {
             const symBtn = document.createElement("button");
-            symBtn.className = "px-1.5 py-0.5 bg-minimal-sidebar hover:bg-minimal-accent/10 hover:text-minimal-accent border border-minimal-border rounded text-[9px] font-semibold transition-all select-none cursor-pointer flex-shrink-0";
+            symBtn.className =
+              "px-1.5 py-0.5 bg-minimal-sidebar hover:bg-minimal-accent/10 hover:text-minimal-accent border border-minimal-border rounded text-[9px] font-semibold transition-all select-none cursor-pointer flex-shrink-0";
             symBtn.textContent = sym.label;
             symBtn.onclick = (e) => {
               e.preventDefault();
@@ -197,19 +214,60 @@ export function buildMathDecorations(state: any): DecorationSet {
             katex.render(compiledKatexStr, renderContainer, {
               displayMode: false,
               throwOnError: true,
-              trust: true,
+              trust: false,
             });
-          } catch (e: any) {
-            renderContainer.innerHTML = `<span class="text-minimal-muted/50 italic text-[11px]">Typing equation...</span>`;
+          } catch (e: unknown) {
+            renderContainer.innerHTML =
+              '<span class="text-minimal-muted/50 italic text-[11px]">Typing equation...</span>';
 
-            const rawErrorMsg = e.message || "Parse error";
+            const rawErrorMsg = (e instanceof Error ? e.message : String(e)) || "Parse error";
             const recommendation = getMathErrorRecommendation(rawErrorMsg);
 
-            errorContainer.innerHTML = `
-              <div class="font-bold flex items-center gap-1 text-[10px]"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Error Feedback</div>
-              <div class="text-[9px] opacity-80">${rawErrorMsg.replace("KaTeX parse error: ", "")}</div>
-              <div class="mt-1 text-emerald-600 dark:text-emerald-400 font-semibold font-sans">${recommendation}</div>
-            `;
+            // Build error DOM with textContent to prevent XSS from user-controlled
+            // error messages (e.g. malicious LaTeX that produces crafted parse errors).
+            errorContainer.innerHTML = "";
+            {
+              const titleRow = document.createElement("div");
+              titleRow.className = "font-bold flex items-center gap-1 text-[10px]";
+              const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+              icon.setAttribute("width", "10");
+              icon.setAttribute("height", "10");
+              icon.setAttribute("viewBox", "0 0 24 24");
+              icon.setAttribute("fill", "none");
+              icon.setAttribute("stroke", "currentColor");
+              icon.setAttribute("stroke-width", "2.5");
+              const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+              circle.setAttribute("cx", "12");
+              circle.setAttribute("cy", "12");
+              circle.setAttribute("r", "10");
+              icon.appendChild(circle);
+              const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+              line1.setAttribute("x1", "12");
+              line1.setAttribute("y1", "8");
+              line1.setAttribute("x2", "12");
+              line1.setAttribute("y2", "12");
+              icon.appendChild(line1);
+              const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+              line2.setAttribute("x1", "12");
+              line2.setAttribute("y1", "16");
+              line2.setAttribute("x2", "12.01");
+              line2.setAttribute("y2", "16");
+              icon.appendChild(line2);
+              titleRow.appendChild(icon);
+              titleRow.appendChild(document.createTextNode(" Error Feedback"));
+              errorContainer.appendChild(titleRow);
+
+              const msgRow = document.createElement("div");
+              msgRow.className = "text-[9px] opacity-80";
+              msgRow.textContent = rawErrorMsg.replace("KaTeX parse error: ", "");
+              errorContainer.appendChild(msgRow);
+
+              const recRow = document.createElement("div");
+              recRow.className =
+                "mt-1 text-emerald-600 dark:text-emerald-400 font-semibold font-sans";
+              recRow.textContent = recommendation;
+              errorContainer.appendChild(recRow);
+            }
             errorContainer.classList.remove("hidden");
           }
 
@@ -220,18 +278,18 @@ export function buildMathDecorations(state: any): DecorationSet {
           Decoration.widget(mathEnd, previewWidget, {
             key: `math-preview-${mathEnd}`,
             stopEvent: () => true,
-          })
+          }),
         );
       } else {
         // Hide raw LaTeX text
         decorations.push(
           Decoration.inline(mathStart, mathEnd, {
             style: "display: none;",
-          })
+          }),
         );
 
         // Insert interactive widget
-        const widget = (view: any, getPos: () => number | undefined) => {
+        const widget = (view: any, _getPos: () => number | undefined) => {
           const dom = document.createElement(range.isBlock ? "div" : "span");
           dom.className = range.isBlock
             ? "math-block-rendered my-4 py-2 flex flex-col justify-center items-center overflow-x-auto select-all cursor-pointer hover:bg-minimal-sidebar/40 rounded-xl transition-all border border-transparent hover:border-minimal-border"
@@ -248,26 +306,42 @@ export function buildMathDecorations(state: any): DecorationSet {
             katex.render(katexStr, mathRenderBox, {
               displayMode: range.isBlock,
               throwOnError: false,
-              trust: true,
+              trust: false,
             });
-          } catch (e: any) {
+          } catch (e: unknown) {
             mathRenderBox.textContent = range.math;
-            mathRenderBox.className += " text-red-500 border border-red-200 bg-red-50 px-1.5 rounded text-xs";
-            mathRenderBox.title = e.message || "KaTeX rendering error";
+            mathRenderBox.className +=
+              " text-red-500 border border-red-200 bg-red-50 px-1.5 rounded text-xs";
+            mathRenderBox.title = e instanceof Error ? e.message : "KaTeX rendering error";
           }
 
           // If there are slideable interactive parameters, render interactive controls panel!
           if (params.length > 0) {
             const controls = document.createElement("div");
-            controls.className = "math-controls-panel mt-3 p-3 bg-minimal-sidebar rounded-xl border border-minimal-border flex flex-col gap-2.5 w-full max-w-[400px] mx-auto select-none pointer-events-auto shadow-sm";
+            controls.className =
+              "math-controls-panel mt-3 p-3 bg-minimal-sidebar rounded-xl border border-minimal-border flex flex-col gap-2.5 w-full max-w-[400px] mx-auto select-none pointer-events-auto shadow-sm";
 
             params.forEach((param) => {
               const row = document.createElement("div");
               row.className = "flex flex-col gap-1 text-[10px]";
 
               const labelRow = document.createElement("div");
-              labelRow.className = "flex justify-between items-center font-bold text-minimal-muted uppercase tracking-wider";
-              labelRow.innerHTML = `<span>Variable: <strong class="text-minimal-accent font-mono">${param.name}</strong></span><span class="font-mono text-[10px] text-minimal-accent bg-minimal-accent/10 border border-minimal-accent/20 px-1.5 py-0.5 rounded">${param.value}</span>`;
+              labelRow.className =
+                "flex justify-between items-center font-bold text-minimal-muted uppercase tracking-wider";
+              {
+                const left = document.createElement("span");
+                left.appendChild(document.createTextNode("Variable: "));
+                const strong = document.createElement("strong");
+                strong.className = "text-minimal-accent font-mono";
+                strong.textContent = param.name;
+                left.appendChild(strong);
+                labelRow.appendChild(left);
+                const right = document.createElement("span");
+                right.className =
+                  "font-mono text-[10px] text-minimal-accent bg-minimal-accent/10 border border-minimal-accent/20 px-1.5 py-0.5 rounded";
+                right.textContent = param.value.toString();
+                labelRow.appendChild(right);
+              }
               row.appendChild(labelRow);
 
               const sliderContainer = document.createElement("div");
@@ -284,23 +358,22 @@ export function buildMathDecorations(state: any): DecorationSet {
               slider.max = param.max.toString();
               slider.step = param.step.toString();
               slider.value = param.value.toString();
-              slider.className = "flex-1 h-1 bg-minimal-border rounded-lg appearance-none cursor-pointer accent-minimal-accent focus:outline-none transition-all";
+              slider.className =
+                "flex-1 h-1 bg-minimal-border rounded-lg appearance-none cursor-pointer accent-minimal-accent focus:outline-none transition-all";
 
               slider.addEventListener("input", (event) => {
                 const newVal = parseFloat((event.target as HTMLInputElement).value);
                 // Replace the exact occurrences of that specific parameter inside raw math content
                 const updatedMath = range.math.replace(
                   param.raw,
-                  `[${param.name}:${newVal}:${param.min}:${param.max}${param.step !== 1 ? `:${param.step}` : ""}]`
+                  `[${param.name}:${newVal}:${param.min}:${param.max}${param.step !== 1 ? `:${param.step}` : ""}]`,
                 );
 
                 // Dispatch transaction to update the editor document cleanly
                 const tr = view.state.tr.replaceWith(
                   mathStart,
                   mathEnd,
-                  view.state.schema.text(
-                    range.isBlock ? `$$${updatedMath}$$` : `$${updatedMath}$`
-                  )
+                  view.state.schema.text(range.isBlock ? `$$${updatedMath}$$` : `$${updatedMath}$`),
                 );
                 view.dispatch(tr);
               });
@@ -333,7 +406,7 @@ export function buildMathDecorations(state: any): DecorationSet {
 
             const targetCursorPos = mathStart;
             const tr = view.state.tr.setSelection(
-              view.state.selection.constructor.near(view.state.doc.resolve(targetCursorPos))
+              view.state.selection.constructor.near(view.state.doc.resolve(targetCursorPos)),
             );
             view.dispatch(tr);
           });
@@ -351,7 +424,7 @@ export function buildMathDecorations(state: any): DecorationSet {
               }
               return true;
             },
-          })
+          }),
         );
       }
     }

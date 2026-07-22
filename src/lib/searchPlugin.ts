@@ -1,5 +1,5 @@
-import { Node } from "prosemirror-model";
-import { Plugin, PluginKey, Transaction, EditorState } from "prosemirror-state";
+import type { Node } from "prosemirror-model";
+import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { cn } from "./utils";
 import { ragService } from "../services/ragService";
@@ -56,9 +56,7 @@ class SearchIndex {
     doc: Node,
     query: string,
     options: SearchOptions,
-  ): Promise<
-    { start: number; end: number; isCurrent: boolean; relevance?: number }[]
-  > {
+  ): Promise<{ start: number; end: number; isCurrent: boolean; relevance?: number }[]> {
     if (!query) return [];
 
     if (options.isSemantic) {
@@ -87,8 +85,7 @@ class SearchIndex {
       positions.forEach((pos, idx) => {
         const matchCount = idx + 1;
         const isCurrent =
-          options.currentMatchIndex !== 0 &&
-          matchCount === options.currentMatchIndex;
+          options.currentMatchIndex !== 0 && matchCount === options.currentMatchIndex;
         matches.push({ start: pos, end: pos + query.length, isCurrent });
       });
       return matches;
@@ -110,8 +107,7 @@ class SearchIndex {
           const start = pos + m.index;
           const end = start + m[0].length;
           const isCurrent =
-            options.currentMatchIndex !== 0 &&
-            matchCount === options.currentMatchIndex;
+            options.currentMatchIndex !== 0 && matchCount === options.currentMatchIndex;
           matches.push({ start, end, isCurrent });
         }
       }
@@ -120,11 +116,7 @@ class SearchIndex {
     return matches;
   }
 
-  private async findSemanticMatches(
-    doc: Node,
-    query: string,
-    options: SearchOptions,
-  ) {
+  private async findSemanticMatches(doc: Node, query: string, options: SearchOptions) {
     // Only search semantic if query is long enough and changed
     if (query !== this.lastSemanticQuery) {
       if (query.trim().length < 3) {
@@ -132,12 +124,7 @@ class SearchIndex {
         return [];
       }
 
-      const results = await ragService.searchDetailed(
-        query,
-        10,
-        0.2,
-        options.embeddingOptions,
-      ); // threshold 0.2 for broader discovery
+      const results = await ragService.searchDetailed(query, 10, 0.2, options.embeddingOptions); // threshold 0.2 for broader discovery
 
       const fullText = doc.textContent;
       const matches: { start: number; end: number; score: number }[] = [];
@@ -162,9 +149,7 @@ class SearchIndex {
 
     return this.semanticMatches.map((m, idx) => ({
       ...m,
-      isCurrent:
-        options.currentMatchIndex !== 0 &&
-        idx + 1 === options.currentMatchIndex,
+      isCurrent: options.currentMatchIndex !== 0 && idx + 1 === options.currentMatchIndex,
       relevance: m.score,
     }));
   }
@@ -190,7 +175,7 @@ export const createSearchPlugin = () => {
           } as SearchOptions,
         };
       },
-      apply(tr, value, oldState, newState) {
+      apply(tr, value, _oldState, newState) {
         const query = tr.getMeta("searchQuery");
         const options = tr.getMeta("searchOptions");
         const refresh = tr.getMeta("searchRefresh");
@@ -212,33 +197,19 @@ export const createSearchPlugin = () => {
         }
 
         // Re-calculate decorations if query/options changed or doc changed or refresh triggered
-        if (
-          query !== undefined ||
-          options !== undefined ||
-          tr.docChanged ||
-          refresh
-        ) {
+        if (query !== undefined || options !== undefined || tr.docChanged || refresh) {
           // We can't await in apply, so we handle it asynchronously
           // In a real plugin, you'd use a meta action to update decorations after the async part
           // For now, we'll use a hack or just trigger a follow-up transaction
 
-          const matchesPromise = searchIndex.findMatches(
-            newState.doc,
-            nextQuery,
-            nextOptions,
-          );
+          const matchesPromise = searchIndex.findMatches(newState.doc, nextQuery, nextOptions);
 
           // Trigger a follow-up if it was an async operation (semantic)
-          if (
-            nextOptions.isSemantic &&
-            (query !== undefined || tr.docChanged)
-          ) {
+          if (nextOptions.isSemantic && (query !== undefined || tr.docChanged)) {
             matchesPromise.then(() => {
               // Dispatch a transaction to refresh view with new matches
               if (editorView && editorView.state.doc === newState.doc) {
-                editorView.dispatch(
-                  editorView.state.tr.setMeta("searchRefresh", true),
-                );
+                editorView.dispatch(editorView.state.tr.setMeta("searchRefresh", true));
               }
             });
           }
@@ -254,31 +225,20 @@ export const createSearchPlugin = () => {
 
           const matches =
             (searchIndex as any).semanticMatches && nextOptions.isSemantic
-              ? (searchIndex as any).semanticMatches.map(
-                  (m: any, idx: number) => ({
-                    ...m,
-                    isCurrent:
-                      nextOptions.currentMatchIndex !== 0 &&
-                      idx + 1 === nextOptions.currentMatchIndex,
-                    relevance: m.score,
-                  }),
-                )
-              : (searchIndex as any).findMatchesSync?.(
-                  newState.doc,
-                  nextQuery,
-                  nextOptions,
-                ) || [];
+              ? (searchIndex as any).semanticMatches.map((m: any, idx: number) => ({
+                  ...m,
+                  isCurrent:
+                    nextOptions.currentMatchIndex !== 0 &&
+                    idx + 1 === nextOptions.currentMatchIndex,
+                  relevance: m.score,
+                }))
+              : (searchIndex as any).findMatchesSync?.(newState.doc, nextQuery, nextOptions) || [];
 
           const decorations = matches.map((m: any) => {
-            const intensity = m.relevance
-              ? Math.min(1, Math.max(0.1, m.relevance))
-              : 0.2;
+            const intensity = m.relevance ? Math.min(1, Math.max(0.1, m.relevance)) : 0.2;
 
             // Ensure positions are within valid bounds of the new document
-            const start = Math.max(
-              0,
-              Math.min(m.start, newState.doc.content.size),
-            );
+            const start = Math.max(0, Math.min(m.start, newState.doc.content.size));
             const end = Math.max(0, Math.min(m.end, newState.doc.content.size));
 
             return Decoration.inline(start, end, {

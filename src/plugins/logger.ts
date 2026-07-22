@@ -78,46 +78,26 @@ function emit(
   const extra = meta ?? "";
   switch (level) {
     case "error":
-      // eslint-disable-next-line no-console
       console.error(tag, message, extra);
       break;
     case "warn":
-      // eslint-disable-next-line no-console
       console.warn(tag, message, extra);
       break;
     case "info":
-      // eslint-disable-next-line no-console
       console.info(tag, message, extra);
       break;
     default:
-      // eslint-disable-next-line no-console
       console.debug(tag, message, extra);
   }
 }
 
 export const pluginLogger = {
-  debug: (
-    plugin: string,
-    event: string,
-    message: string,
-    meta?: Record<string, unknown>,
-  ) => emit("debug", plugin, event, message, meta),
-  info: (
-    plugin: string,
-    event: string,
-    message: string,
-    meta?: Record<string, unknown>,
-  ) => emit("info", plugin, event, message, meta),
-  warn: (
-    plugin: string,
-    event: string,
-    message: string,
-    meta?: Record<string, unknown>,
-  ) => emit("warn", plugin, event, message, meta),
-  error: (
-    plugin: string,
-    event: string,
-    message: string,
-    meta?: Record<string, unknown>,
-  ) => emit("error", plugin, event, message, meta),
+  debug: (plugin: string, event: string, message: string, meta?: Record<string, unknown>) =>
+    emit("debug", plugin, event, message, meta),
+  info: (plugin: string, event: string, message: string, meta?: Record<string, unknown>) =>
+    emit("info", plugin, event, message, meta),
+  warn: (plugin: string, event: string, message: string, meta?: Record<string, unknown>) =>
+    emit("warn", plugin, event, message, meta),
+  error: (plugin: string, event: string, message: string, meta?: Record<string, unknown>) =>
+    emit("error", plugin, event, message, meta),
 };

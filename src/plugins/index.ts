@@ -3,14 +3,10 @@ import type { Plugin } from "prosemirror-state";
 import type { NodeViewConstructor } from "prosemirror-view";
 import { PluginRegistry } from "./registry";
 import { CoreEditor } from "@core/CoreEditor";
-import {
-  buildPluginContext,
-  createCollectors,
-  type ContextCollectors,
-} from "./context";
+import { buildPluginContext, createCollectors, type ContextCollectors } from "./context";
 import { buildEditorSchema } from "./editor/schema";
 import type { EditorAPI, InkPlugin, PluginContext, SchemaContribution } from "./types";
-import { defaultEditorCommandBus } from "./editorCommandBus";
+import { defaultEditorCommandBus, type EditorCommandBus } from "./editorCommandBus";
 import { pluginLogger } from "./logger";
 
 import { corePlugin } from "./core";
@@ -131,7 +127,7 @@ export async function loadPlugins(
   options?: {
     disabled?: string[];
     collab?: CollabPluginOptions;
-    commandBus?: import("./editorCommandBus").EditorCommandBus;
+    commandBus?: EditorCommandBus;
     /**
      * Post-process applied to parsed markdown documents (e.g. converting
      * diagram code blocks to `diagram` nodes). Supplied by the UI so the core
@@ -163,9 +159,7 @@ export async function loadPlugins(
 
     // Apply the persisted enable/disable state, dropping ids that aren't part of
     // the live registry so stale/removed/renamed plugins can't break startup.
-    const disabled = new Set(
-      validateDisabledPlugins(options?.disabled, registry),
-    );
+    const disabled = new Set(validateDisabledPlugins(options?.disabled, registry));
     for (const plugin of buildPluginModules()) {
       plugin.enabled = !disabled.has(plugin.id);
     }

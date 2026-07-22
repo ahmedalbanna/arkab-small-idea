@@ -21,23 +21,25 @@ export class SemanticService {
    */
   async clusterDocument(markdown: string, options: SemanticOptions): Promise<SemanticCluster[]> {
     const { provider, model, apiKeys, providerConfigs } = options;
-    
+
     // 1. Chunk by paragraphs
-    const paragraphs = markdown.split(/\n\n+/).filter(p => p.trim().length > 20);
+    const paragraphs = markdown.split(/\n\n+/).filter((p) => p.trim().length > 20);
     if (paragraphs.length < 2) return [];
 
     // Check if local model is needed
-    if (provider === 'pipeline' && !embeddingService.isReady()) {
+    if (provider === "pipeline" && !embeddingService.isReady()) {
       await embeddingService.loadModel();
     }
 
     // 2. Get embeddings for each paragraph
     const embeddings = await Promise.all(
-      paragraphs.map(p => embeddingService.generateEmbedding(p, { 
-        provider, 
-        apiKey: apiKeys[provider as keyof typeof apiKeys],
-        model: provider === 'google' ? 'text-embedding-004' : undefined 
-      }))
+      paragraphs.map((p) =>
+        embeddingService.generateEmbedding(p, {
+          provider,
+          apiKey: apiKeys[provider as keyof typeof apiKeys],
+          model: provider === "google" ? "text-embedding-004" : undefined,
+        }),
+      ),
     );
 
     // 3. Simple clustering
@@ -50,7 +52,7 @@ export class SemanticService {
       const currentCluster = {
         name: `Cluster ${clusters.length + 1}`,
         paragraphs: [paragraphs[i]],
-        indices: [i]
+        indices: [i],
       };
       usedIndices.add(i);
 
@@ -69,11 +71,11 @@ export class SemanticService {
 
     // 4. Label clusters using selected AI Provider
     const aiProvider = getProvider(provider, { apiKeys, providerConfigs });
-    
+
     const labeledClusters = await Promise.all(
       clusters.map(async (c, idx) => {
         const sampleText = c.paragraphs.slice(0, 3).join("\n\n");
-        
+
         try {
           const prompt = `Analyze these related paragraphs from a document and provide:
             1. A concise folder name (3-5 words) representing the shared topic.
@@ -83,17 +85,21 @@ export class SemanticService {
             ${sampleText}
             
             Return JSON format: { "name": "...", "summary": "..." }`;
-          
-          const responseText = await aiProvider.generate(prompt, "You are a structural analyzer. Return JSON.", model);
-          
+
+          const responseText = await aiProvider.generate(
+            prompt,
+            "You are a structural analyzer. Return JSON.",
+            model,
+          );
+
           const cleanJson = responseText.replace(/```json|```/g, "").trim();
           const data = JSON.parse(cleanJson);
-          
+
           return {
             id: `cluster-${idx}`,
             name: data.name,
             summary: data.summary,
-            paragraphIndices: c.indices
+            paragraphIndices: c.indices,
           };
         } catch (e) {
           console.error("Cluster labeling failed:", e);
@@ -101,10 +107,10 @@ export class SemanticService {
             id: `cluster-${idx}`,
             name: `Group: ${c.paragraphs[0].substring(0, 20)}...`,
             summary: "Semantic grouping of related content.",
-            paragraphIndices: c.indices
+            paragraphIndices: c.indices,
           };
         }
-      })
+      }),
     );
 
     return labeledClusters;

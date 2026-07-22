@@ -6,10 +6,7 @@ import { Z_LAYERS } from "../../lib/zIndex";
  * Identifiers for the side panels / overlays the layout system manages.
  * Each maps to a boolean in the existing uiStore.
  */
-export type PanelId =
-  | "ai"
-  | "search"
-  | "tts";
+export type PanelId = "ai" | "search" | "tts";
 
 /** Map each PanelId to its uiStore setter name and boolean getter. */
 const PANEL_MAP: Record<
@@ -63,11 +60,7 @@ function useLayoutContextValue(): LayoutContextValue {
       if (PANEL_MAP[id].get(store)) return id;
     }
     return null;
-  }, [
-    store.showAIAssistant,
-    store.showSearch,
-    store.showTTS,
-  ]);
+  }, [store.showAIAssistant, store.showSearch, store.showTTS]);
 
   const isModalOpen = store.showImportModal;
 
@@ -109,7 +102,7 @@ function useLayoutContextValue(): LayoutContextValue {
         }
       },
 
-      setModalOpen: (open: boolean) => {
+      setModalOpen: (_open: boolean) => {
         // For now, modals manage their own state via uiStore.
         // This hook allows centralised coordination in future phases.
       },

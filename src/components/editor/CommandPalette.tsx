@@ -35,7 +35,7 @@ export function CommandPalette({ commands, onRun, onClose }: CommandPaletteProps
 
   // Keep the highlighted index within bounds as the result set changes.
   useEffect(() => {
-    setActive((a) => Math.min(a, Math.max(0, filtered.length - 1)));
+    setActive((a) => Math.min(a, Math.max(0, filtered.length - 1))); // eslint-disable-line react-hooks/set-state-in-effect
   }, [filtered.length]);
 
   useEffect(() => {
@@ -100,14 +100,10 @@ export function CommandPalette({ commands, onRun, onClose }: CommandPaletteProps
                 onClick={() => onRun(cmd)}
                 className={cn(
                   "flex w-full items-center justify-between px-3 py-2 text-left transition-colors",
-                  i === active
-                    ? "bg-minimal-accent/20"
-                    : "hover:bg-white/5",
+                  i === active ? "bg-minimal-accent/20" : "hover:bg-white/5",
                 )}
               >
-                <span className="text-sm text-minimal-text">
-                  {cmd.label ?? cmd.id}
-                </span>
+                <span className="text-sm text-minimal-text">{cmd.label ?? cmd.id}</span>
                 {cmd.key && (
                   <kbd className="rounded bg-minimal-sidebar px-1.5 py-0.5 text-[10px] text-minimal-muted">
                     {cmd.key}

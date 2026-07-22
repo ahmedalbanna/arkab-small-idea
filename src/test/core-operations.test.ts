@@ -100,9 +100,7 @@ describe("operations/markdown", () => {
     const doc = paragraphDoc("Keep REPLACE Keep");
     const sel = TextSelection.create(doc, 6, 13); // "REPLACE"
     let state = EditorState.create({ schema, doc, selection: sel });
-    state = state.apply(
-      replaceSelectionWithMarkdown(state, "**NEW**", io).tr,
-    );
+    state = state.apply(replaceSelectionWithMarkdown(state, "**NEW**", io).tr);
     expect(state.doc.textContent).toBe("Keep NEW Keep");
   });
 

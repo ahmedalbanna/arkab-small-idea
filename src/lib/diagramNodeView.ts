@@ -1,10 +1,12 @@
-import { EditorView } from "prosemirror-view";
-import { Node as PMNode } from "prosemirror-model";
+import type { EditorView } from "prosemirror-view";
+import type { Node as PMNode } from "prosemirror-model";
+import DOMPurify from "dompurify";
 import type { DiagramFailure } from "./diagrams/types";
 import { renderDiagram } from "./diagrams/engine";
 import { resolveTheme } from "./diagrams/theme";
 import { saveAs } from "file-saver";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface DiagramNodeViewOptions {
   /** Reserved for future configuration (e.g. max render size). */
 }
@@ -81,12 +83,7 @@ class DiagramNodeView {
   private buildToolbar() {
     this.toolbarEl.innerHTML = "";
 
-    const mk = (
-      label: string,
-      title: string,
-      onClick: () => void,
-      extraClass = "",
-    ) => {
+    const mk = (label: string, title: string, onClick: () => void, extraClass = "") => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "diagram-toolbar-btn " + extraClass;
@@ -106,12 +103,8 @@ class DiagramNodeView {
       mk("Edit", "Edit diagram source", () => this.startEditing(), "diagram-edit-btn"),
     );
     this.toolbarEl.appendChild(mk("Copy", "Copy source", () => this.copySource()));
-    this.toolbarEl.appendChild(
-      mk("SVG", "Download as SVG", () => this.downloadSvg()),
-    );
-    this.toolbarEl.appendChild(
-      mk("Open", "Open rendered diagram", () => this.openDiagram()),
-    );
+    this.toolbarEl.appendChild(mk("SVG", "Download as SVG", () => this.downloadSvg()));
+    this.toolbarEl.appendChild(mk("Open", "Open rendered diagram", () => this.openDiagram()));
     this.toolbarEl.appendChild(
       mk("Delete", "Delete diagram", () => this.deleteNode(), "diagram-delete-btn"),
     );
@@ -223,16 +216,104 @@ class DiagramNodeView {
       this.previewEl.classList.remove("is-rendering");
       if (result.ok) {
         this.lastSvg = result.svg;
-        this.previewEl.innerHTML = result.svg;
+        // Sanitize the SVG to prevent XSS from untrusted diagram sources
+        // (e.g. malicious mermaid/vega/graphviz output, or compromised Kroki).
+        // ALLOWED TAGS include SVG elements; script/on* handlers are stripped.
+        const cleanSvg = DOMPurify.sanitize(result.svg, {
+          ALLOWED_TAGS: [
+            "svg",
+            "g",
+            "path",
+            "rect",
+            "circle",
+            "ellipse",
+            "line",
+            "polyline",
+            "polygon",
+            "text",
+            "tspan",
+            "tref",
+            "defs",
+            "pattern",
+            "linearGradient",
+            "radialGradient",
+            "stop",
+            "mask",
+            "clipPath",
+            "marker",
+            "use",
+            "filter",
+            "feGaussianBlur",
+            "feOffset",
+            "feMerge",
+            "feMergeNode",
+            "feFlood",
+            "feComposite",
+            "image",
+          ],
+          ALLOWED_ATTR: [
+            "d",
+            "x",
+            "y",
+            "x1",
+            "y1",
+            "x2",
+            "y2",
+            "cx",
+            "cy",
+            "r",
+            "rx",
+            "ry",
+            "width",
+            "height",
+            "viewBox",
+            "preserveAspectRatio",
+            "transform",
+            "fill",
+            "stroke",
+            "stroke-width",
+            "stroke-linecap",
+            "stroke-linejoin",
+            "stroke-dasharray",
+            "stroke-dashoffset",
+            "fill-opacity",
+            "opacity",
+            "font-family",
+            "font-size",
+            "font-weight",
+            "text-anchor",
+            "class",
+            "id",
+            "style",
+            "href",
+            "xlink:href",
+            "xmlns",
+            "xmlns:xlink",
+            "data-*",
+            "marker-end",
+            "marker-start",
+            "marker-mid",
+          ],
+          ADD_ATTR: ["data-*"],
+          FORBID_ATTR: [
+            "onload",
+            "onerror",
+            "onclick",
+            "onmouseover",
+            "onfocus",
+            "onanimationstart",
+          ],
+        });
+        this.previewEl.innerHTML = cleanSvg;
         this.decorateSvg();
       } else if (!result.ok) {
         this.showError((result as DiagramFailure).error);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (token !== this.renderToken) return;
       this.previewEl.classList.remove("is-rendering");
-      if (e?.name === "AbortError") return;
-      this.showError(e?.message || "Failed to render diagram.");
+      if (e instanceof Error && e.name === "AbortError") return;
+      this.showError(e instanceof Error ? e.message : "Failed to render diagram.");
     }
   }
 

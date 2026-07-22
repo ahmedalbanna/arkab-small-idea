@@ -4,20 +4,14 @@ import { addPluginLogSink, type PluginLogEntry } from "../plugins/logger";
 import type { InkPlugin } from "../plugins/types";
 
 function makePlugin(
-  overrides: Partial<InkPlugin> &
-    Pick<InkPlugin, "id" | "name" | "version" | "init">,
+  overrides: Partial<InkPlugin> & Pick<InkPlugin, "id" | "name" | "version" | "init">,
 ): InkPlugin {
   return { ...overrides };
 }
 
-async function initRegistry(
-  registry: PluginRegistry,
-  plugins: InkPlugin[],
-): Promise<void> {
+async function initRegistry(registry: PluginRegistry, plugins: InkPlugin[]): Promise<void> {
   for (const p of plugins) registry.register(p);
-  await registry.initAll(
-    async () => ({ schema: {} as any, context: {} as any }),
-  );
+  await registry.initAll(async () => ({ schema: {} as any, context: {} as any }));
 }
 
 describe("PluginRegistry cleanup contract", () => {

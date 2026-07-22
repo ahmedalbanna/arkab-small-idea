@@ -55,9 +55,7 @@ export function PluginProvider({
 }) {
   return (
     <AppApiContext.Provider value={appApi}>
-      <PluginServicesContext.Provider
-        value={pluginContext ? { appApi, pluginContext } : null}
-      >
+      <PluginServicesContext.Provider value={pluginContext ? { appApi, pluginContext } : null}>
         {children}
       </PluginServicesContext.Provider>
     </AppApiContext.Provider>

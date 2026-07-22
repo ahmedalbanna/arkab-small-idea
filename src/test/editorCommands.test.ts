@@ -63,9 +63,7 @@ describe("editorCommands plugin", () => {
   it("registers a toolbar item that opens the palette", () => {
     const { ctx, toolbarItems } = buildContext();
     editorCommandsPlugin.init(ctx);
-    const item = toolbarItems.find(
-      (i) => (i as any).id === "command-palette",
-    ) as any;
+    const item = toolbarItems.find((i) => (i as any).id === "command-palette") as any;
     expect(item).toBeTruthy();
     expect(item.label).toBe("Command Palette");
     // Invoking it flips the palette open in the shared UI store.

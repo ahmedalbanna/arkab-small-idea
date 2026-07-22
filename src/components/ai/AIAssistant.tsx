@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
-import { AssistantHeader, OllamaStatus } from './AssistantHeader';
-import { ChatThread } from './ChatThread';
-import { Composer } from './Composer';
-import { ApplyMethod } from './MessageBubble';
-import { ChatMessage } from '../../services/aiService';
+import React, { useMemo } from "react";
+import type { OllamaStatus } from "./AssistantHeader";
+import { AssistantHeader } from "./AssistantHeader";
+import { ChatThread } from "./ChatThread";
+import { Composer } from "./Composer";
+import type { ApplyMethod } from "./MessageBubble";
+import type { ChatMessage } from "../../services/aiService";
 
 export interface AIAssistantProps {
   ollamaStatus: OllamaStatus;
@@ -18,7 +19,7 @@ export interface AIAssistantProps {
   scrollRef: React.RefObject<HTMLDivElement>;
   handleAiGenerate: () => void;
   handleChatImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  formatChatInput: (type: 'bold' | 'italic' | 'list') => void;
+  formatChatInput: (type: "bold" | "italic" | "list") => void;
   stopAiGenerate: () => void;
   handleAiAction: (actionId: string) => void;
   handleDismissMessage: (index: number) => void;
@@ -29,9 +30,9 @@ export interface AIAssistantProps {
 }
 
 const FOLLOW_UPS = [
-  'Make it more concise',
-  'Rewrite in a formal tone',
-  'Give me three alternatives',
+  "Make it more concise",
+  "Rewrite in a formal tone",
+  "Give me three alternatives",
 ];
 
 /**
@@ -65,7 +66,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   const suggestions = useMemo(() => {
     if (isGenerating || chatHistory.length === 0) return [];
     const last = chatHistory[chatHistory.length - 1];
-    return last.role === 'model' ? FOLLOW_UPS : [];
+    return last.role === "model" ? FOLLOW_UPS : [];
   }, [chatHistory, isGenerating]);
 
   const handleSuggest = (prompt: string) => {
@@ -75,10 +76,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      <AssistantHeader
-        ollamaStatus={ollamaStatus}
-        onClose={onClose}
-      />
+      <AssistantHeader ollamaStatus={ollamaStatus} onClose={onClose} />
 
       <ChatThread
         chatHistory={chatHistory}

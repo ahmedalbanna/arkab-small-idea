@@ -1,8 +1,8 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { snapshotService, type Snapshot } from '../services/snapshotService';
-import type { SemanticCluster } from '../services/semanticService';
-import { idbStorage } from '../lib/idbStorage';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { snapshotService, type Snapshot } from "../services/snapshotService";
+import type { SemanticCluster } from "../services/semanticService";
+import { idbStorage } from "../lib/idbStorage";
 
 export interface Page {
   id: string;
@@ -21,9 +21,12 @@ interface EditorState {
   activePageIds: string[]; // Pages currently visible/open horizontally
   activeFocusedPageId: string | null;
   semanticClusters: SemanticCluster[];
-  
+
   setPageContent: (id: string, content: string) => void;
-  setPageSettings: (id: string, settings: Partial<Pick<Page, 'wordGoal' | 'fontSize' | 'lineHeight'>>) => void;
+  setPageSettings: (
+    id: string,
+    settings: Partial<Pick<Page, "wordGoal" | "fontSize" | "lineHeight">>,
+  ) => void;
   addPage: (title?: string, content?: string) => void;
   removePage: (id: string) => void;
   togglePageOpen: (id: string) => void;
@@ -35,112 +38,138 @@ interface EditorState {
   loadSnapshots: (pageId: string) => Promise<void>;
   wipePage: (id: string) => void;
   clearSnapshots: (pageId: string) => Promise<void>;
-  setSnapshots: (pageId: string, snapshots: Snapshot[] | ((prev: Snapshot[]) => Snapshot[])) => void;
+  setSnapshots: (
+    pageId: string,
+    snapshots: Snapshot[] | ((prev: Snapshot[]) => Snapshot[]),
+  ) => void;
 }
 
 export const useEditorStore = create<EditorState>()(
   persist(
     (set) => ({
-      pages: [{ 
-          id: 'default', 
-          title: 'Chapter 1', 
-          content: '# Welcome to Ink & Quill\n\nStart writing...',
+      pages: [
+        {
+          id: "default",
+          title: "Chapter 1",
+          content: "# Welcome to Ink & Quill\n\nStart writing...",
           wordGoal: 0,
-          fontSize: undefined,
-          lineHeight: undefined,
-          snapshots: [],
-          updatedAt: Date.now()
-        }],
-      activePageIds: ['default'],
-      activeFocusedPageId: 'default',
-      semanticClusters: [],
-      
-      setPageContent: (id, content) => set((state) => ({
-        pages: state.pages.map(p => p.id === id ? { ...p, content, updatedAt: Date.now() } : p)
-      })),
-      setPageSettings: (id, settings) => set((state) => ({
-        pages: state.pages.map(p => p.id === id ? { ...p, ...settings } : p)
-      })),
-      addPage: (title = 'New Page', content = '') => set((state) => {
-        const id = Math.random().toString(36).substring(2, 9);
-        const newPage: Page = { 
-          id, 
-          title, 
-          content,
-          wordGoal: 0,
-          fontSize: undefined,
-          lineHeight: undefined,
-          snapshots: [],
-          updatedAt: Date.now()
-        };
-        return {
-          pages: [...state.pages, newPage],
-          activePageIds: [...state.activePageIds, id],
-          activeFocusedPageId: id
-        };
-      }),
-      removePage: (id) => set((state) => ({
-        pages: state.pages.filter(p => p.id !== id),
-        activePageIds: state.activePageIds.filter(pid => pid !== id),
-        activeFocusedPageId: state.activeFocusedPageId === id ? (state.activePageIds.filter(pid => pid !== id)[0] || null) : state.activeFocusedPageId
-      })),
-      togglePageOpen: (id) => set((state) => {
-        const isOpen = state.activePageIds.includes(id);
-        const nextActivePageIds = isOpen 
-          ? state.activePageIds.filter(pid => pid !== id)
-          : [...state.activePageIds, id];
-        
-        return {
-          activePageIds: nextActivePageIds,
-          activeFocusedPageId: isOpen 
-            ? (state.activeFocusedPageId === id ? (nextActivePageIds[nextActivePageIds.length - 1] || null) : state.activeFocusedPageId)
-            : id
-        };
-      }),
+          fontSize: undefined as number | undefined,
+          lineHeight: undefined as number | undefined,
+          snapshots: [] as Snapshot[],
+          updatedAt: Date.now(),
+        },
+      ],
+      activePageIds: ["default"],
+      activeFocusedPageId: "default",
+      semanticClusters: [] as SemanticCluster[],
+
+      setPageContent: (id, content) =>
+        set((state) => ({
+          pages: state.pages.map((p) =>
+            p.id === id ? { ...p, content, updatedAt: Date.now() } : p,
+          ),
+        })),
+      setPageSettings: (id, settings) =>
+        set((state) => ({
+          pages: state.pages.map((p) => (p.id === id ? { ...p, ...settings } : p)),
+        })),
+      addPage: (title = "New Page", content = "") =>
+        set((state) => {
+          const id = Math.random().toString(36).substring(2, 9);
+          const newPage: Page = {
+            id,
+            title,
+            content,
+            wordGoal: 0,
+            fontSize: undefined,
+            lineHeight: undefined,
+            snapshots: [],
+            updatedAt: Date.now(),
+          };
+          return {
+            pages: [...state.pages, newPage],
+            activePageIds: [...state.activePageIds, id],
+            activeFocusedPageId: id,
+          };
+        }),
+      removePage: (id) =>
+        set((state) => ({
+          pages: state.pages.filter((p) => p.id !== id),
+          activePageIds: state.activePageIds.filter((pid) => pid !== id),
+          activeFocusedPageId:
+            state.activeFocusedPageId === id
+              ? state.activePageIds.filter((pid) => pid !== id)[0] || null
+              : state.activeFocusedPageId,
+        })),
+      togglePageOpen: (id) =>
+        set((state) => {
+          const isOpen = state.activePageIds.includes(id);
+          const nextActivePageIds = isOpen
+            ? state.activePageIds.filter((pid) => pid !== id)
+            : [...state.activePageIds, id];
+
+          return {
+            activePageIds: nextActivePageIds,
+            activeFocusedPageId: isOpen
+              ? state.activeFocusedPageId === id
+                ? nextActivePageIds[nextActivePageIds.length - 1] || null
+                : state.activeFocusedPageId
+              : id,
+          };
+        }),
       setActiveFocusedPageId: (id) => set({ activeFocusedPageId: id }),
       reorderPages: (pages) => set({ pages }),
-      setPageCursor: (id, cursor) => set((state) => ({
-        pages: state.pages.map(p => p.id === id ? { ...p, cursor: cursor || undefined } : p)
-      })),
+      setPageCursor: (id, cursor) =>
+        set((state) => ({
+          pages: state.pages.map((p) => (p.id === id ? { ...p, cursor: cursor || undefined } : p)),
+        })),
       setSemanticClusters: (semanticClusters) => set({ semanticClusters }),
       addSnapshot: async (pageId, content, userNote) => {
         const snapshot = await snapshotService.saveSnapshot(pageId, content, userNote);
         set((state) => ({
-          pages: state.pages.map(p => p.id === pageId 
-            ? { ...p, snapshots: [snapshot, ...(p.snapshots || [])].slice(0, 50) } 
-            : p)
+          pages: state.pages.map((p) =>
+            p.id === pageId
+              ? { ...p, snapshots: [snapshot, ...(p.snapshots || [])].slice(0, 50) }
+              : p,
+          ),
         }));
       },
       loadSnapshots: async (pageId) => {
         const snapshots = await snapshotService.getSnapshots(pageId);
         set((state) => ({
-          pages: state.pages.map(p => p.id === pageId ? { ...p, snapshots } : p)
+          pages: state.pages.map((p) => (p.id === pageId ? { ...p, snapshots } : p)),
         }));
       },
-      wipePage: (id) => set((state) => ({
-        pages: state.pages.map(p => p.id === id ? { ...p, content: '' } : p)
-      })),
+      wipePage: (id) =>
+        set((state) => ({
+          pages: state.pages.map((p) => (p.id === id ? { ...p, content: "" } : p)),
+        })),
       clearSnapshots: async (pageId) => {
         await snapshotService.clearAllSnapshots(pageId);
         set((state) => ({
-          pages: state.pages.map(p => p.id === pageId ? { ...p, snapshots: [] } : p)
+          pages: state.pages.map((p) => (p.id === pageId ? { ...p, snapshots: [] } : p)),
         }));
       },
-      setSnapshots: (pageId, snapshots) => set((state) => ({
-        pages: state.pages.map(p => p.id === pageId 
-          ? { ...p, snapshots: typeof snapshots === 'function' ? snapshots(p.snapshots) : snapshots } 
-          : p)
-      })),
+      setSnapshots: (pageId, snapshots) =>
+        set((state) => ({
+          pages: state.pages.map((p) =>
+            p.id === pageId
+              ? {
+                  ...p,
+                  snapshots: typeof snapshots === "function" ? snapshots(p.snapshots) : snapshots,
+                }
+              : p,
+          ),
+        })),
     }),
     {
-      name: 'ink-quill-editor-storage-v2',
+      name: "ink-quill-editor-storage-v2",
       storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
         pages: state.pages.map(({ snapshots, ...p }) => p),
         activePageIds: state.activePageIds,
         activeFocusedPageId: state.activeFocusedPageId,
       }),
-    }
-  )
+    },
+  ),
 );
-

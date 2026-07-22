@@ -1,5 +1,6 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RotateCcw } from 'lucide-react';
+import type { ErrorInfo, ReactNode } from "react";
+import { Component } from "react";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -22,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error("Uncaught error:", error, errorInfo);
   }
 
   private handleReset = () => {
@@ -43,7 +44,8 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
           <h2 className="text-xl font-bold text-minimal-text mb-2">Something went wrong</h2>
           <p className="text-sm text-minimal-muted mb-8 text-center max-w-md leading-relaxed">
-            The editor encountered an unexpected error. Don't worry, your work is auto-saved in your browser.
+            The editor encountered an unexpected error. Don't worry, your work is auto-saved in your
+            browser.
           </p>
           <div className="flex items-center gap-3">
             <button
@@ -54,7 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
               Reset Editor
             </button>
           </div>
-          {process.env.NODE_ENV === 'development' && (
+          {process.env.NODE_ENV === "development" && (
             <pre className="mt-8 p-4 bg-minimal-sidebar rounded-lg text-[10px] text-red-400 overflow-auto max-w-full font-mono">
               {this.state.error?.toString()}
             </pre>

@@ -1,4 +1,11 @@
-import { useEffect, useImperativeHandle, useMemo, type Ref, type MutableRefObject, type RefObject } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  type Ref,
+  type MutableRefObject,
+  type RefObject,
+} from "react";
 import type { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import type { EditorRef } from "../../ProseMirrorEditor";
@@ -81,13 +88,10 @@ export function useImperativeEditorApi({
     ref,
     (): EditorRef => ({
       focus: () => bus.dispatch({ type: "focus" }),
-      insertText: (before, after) =>
-        bus.dispatch({ type: "insertText", before, after }),
-      insertImage: (src, alt, title) =>
-        bus.dispatch({ type: "insertImage", src, alt, title }),
+      insertText: (before, after) => bus.dispatch({ type: "insertText", before, after }),
+      insertImage: (src, alt, title) => bus.dispatch({ type: "insertImage", src, alt, title }),
       insertGallery: (srcs) => bus.dispatch({ type: "insertGallery", srcs }),
-      appendMarkdown: (markdown) =>
-        bus.dispatch({ type: "appendMarkdown", markdown }),
+      appendMarkdown: (markdown) => bus.dispatch({ type: "appendMarkdown", markdown }),
       replaceSelectionWithMarkdown: (markdown) =>
         bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown }),
       setMarkdown: (content) => {
@@ -107,15 +111,12 @@ export function useImperativeEditorApi({
         bus.query<{ text: string; level: number; pos: number; id: string }[]>({
           type: "getHeadings",
         }) ?? [],
-      setTTSHighlight: (range) =>
-        bus.dispatch({ type: "setTTSHighlight", range }),
+      setTTSHighlight: (range) => bus.dispatch({ type: "setTTSHighlight", range }),
       handleFormat: (type) => bus.dispatch({ type: "format", format: type }),
-      getCursorContext: () =>
-        bus.query<string>({ type: "getCursorContext" }) ?? "",
+      getCursorContext: () => bus.query<string>({ type: "getCursorContext" }) ?? "",
       scrollToText: (text) => bus.dispatch({ type: "scrollToText", text }),
       scrollToPos: (pos) => bus.dispatch({ type: "scrollToPos", pos }),
-      streamMarkdown: (content, isNew) =>
-        bus.dispatch({ type: "streamMarkdown", content, isNew }),
+      streamMarkdown: (content, isNew) => bus.dispatch({ type: "streamMarkdown", content, isNew }),
     }),
     [bus, isUpdatingFromProps],
   );

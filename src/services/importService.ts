@@ -1,9 +1,9 @@
-import mammoth from 'mammoth';
-import TurndownService from 'turndown';
+import mammoth from "mammoth";
+import TurndownService from "turndown";
 
 const turndownService = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced'
+  headingStyle: "atx",
+  codeBlockStyle: "fenced",
 });
 
 export const importFromDOCX = async (file: File): Promise<string> => {
@@ -22,16 +22,16 @@ export const importFromMarkdown = async (file: File): Promise<string> => {
 };
 
 export const importFile = async (file: File): Promise<string> => {
-  const extension = file.name.split('.').pop()?.toLowerCase();
+  const extension = file.name.split(".").pop()?.toLowerCase();
 
-  if (extension === 'docx') {
+  if (extension === "docx") {
     return await importFromDOCX(file);
-  } else if (extension === 'html' || extension === 'htm') {
+  } else if (extension === "html" || extension === "htm") {
     const html = await file.text();
     return importFromHTML(html);
-  } else if (extension === 'md' || extension === 'markdown' || extension === 'txt') {
+  } else if (extension === "md" || extension === "markdown" || extension === "txt") {
     return await importFromMarkdown(file);
   } else {
-    throw new Error('Unsupported file format');
+    throw new Error("Unsupported file format");
   }
 };

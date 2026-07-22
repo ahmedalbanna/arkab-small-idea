@@ -24,9 +24,8 @@ function runCommand(
   return handled ? tr : null;
 }
 
-const wrapInBlock =
-  (type: any) => (state: EditorState, dispatch?: (tr: Transaction) => void) =>
-    wrapIn(type)(state, dispatch);
+const wrapInBlock = (type: any) => (state: EditorState, dispatch?: (tr: Transaction) => void) =>
+  wrapIn(type)(state, dispatch);
 
 /**
  * Apply a formatting action identified by `format` (the same strings the
@@ -44,13 +43,10 @@ export function applyFormat(
 ): Transaction | null {
   const setAlign = (alignment: string): Transaction | null => {
     const { from, to } = state.selection;
-    let tr = state.tr;
+    const tr = state.tr;
     let changed = false;
     state.doc.nodesBetween(from, to, (node, pos) => {
-      if (
-        node.type.name === "paragraph" ||
-        node.type.name === "heading"
-      ) {
+      if (node.type.name === "paragraph" || node.type.name === "heading") {
         tr.setNodeMarkup(pos, null, { ...node.attrs, align: alignment });
         changed = true;
       }
@@ -95,9 +91,7 @@ export function applyFormat(
       const { from, to } = state.selection;
       const selectedText = state.doc.textBetween(from, to, "\n");
       if (!selectedText.trim()) return null;
-      const lines = selectedText
-        .split("\n")
-        .filter((l) => l.trim().length > 0);
+      const lines = selectedText.split("\n").filter((l) => l.trim().length > 0);
       if (lines.length === 0) return null;
 
       const delimiters = ["|", "\t", ","];
@@ -115,8 +109,7 @@ export function applyFormat(
         let cols = line.split(bestDelimiter);
         if (bestDelimiter === "|") {
           cols = cols.filter((c, i) => {
-            if ((i === 0 || i === cols.length - 1) && c.trim() === "")
-              return false;
+            if ((i === 0 || i === cols.length - 1) && c.trim() === "") return false;
             return true;
           });
         }

@@ -14,9 +14,7 @@ function fakeEditor() {
 }
 
 /** Captures only the registrations a plugin performs during `init`. */
-function captureInit(plugin: {
-  init?: (ctx: PluginContext) => void;
-}) {
+function captureInit(plugin: { init?: (ctx: PluginContext) => void }) {
   const prosePlugins: unknown[] = [];
   const overlays: unknown[] = [];
   plugin.init?.({

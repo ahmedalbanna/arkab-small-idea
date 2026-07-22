@@ -30,19 +30,11 @@ vi.mock("../services/embeddingService", () => {
   };
 });
 
-import {
-  addPluginLogSink,
-  pluginLogger,
-  type PluginLogEntry,
-} from "../plugins/logger";
+import { addPluginLogSink, pluginLogger, type PluginLogEntry } from "../plugins/logger";
 import { PluginRegistry } from "../plugins/registry";
 import { loadPlugins } from "../plugins";
 import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
-import type {
-  InkPlugin,
-  PluginContext,
-  EditorAPI,
-} from "../plugins/types";
+import type { InkPlugin, PluginContext, EditorAPI } from "../plugins/types";
 
 function fakeEditor(): EditorAPI {
   return { getView: () => null, isReady: () => false, focus: () => {} };
@@ -118,24 +110,18 @@ describe("plugin structured logger", () => {
       destroy,
     };
     registry.register(plugin);
-    expect(captured.some((e) => e.event === "register" && e.plugin === "sample")).toBe(
-      true,
-    );
+    expect(captured.some((e) => e.event === "register" && e.plugin === "sample")).toBe(true);
 
     await registry.initAll(async () => ({
       schema: {} as any,
       context: fakeContext(),
     }));
     expect(init).toHaveBeenCalledTimes(1);
-    expect(
-      captured.some((e) => e.event === "init:done" && e.plugin === "sample"),
-    ).toBe(true);
+    expect(captured.some((e) => e.event === "init:done" && e.plugin === "sample")).toBe(true);
 
     registry.destroyAll();
     expect(destroy).toHaveBeenCalledTimes(1);
-    expect(
-      captured.some((e) => e.event === "destroy:done" && e.plugin === "sample"),
-    ).toBe(true);
+    expect(captured.some((e) => e.event === "destroy:done" && e.plugin === "sample")).toBe(true);
     expect(captured.some((e) => e.event === "destroy:all")).toBe(true);
   });
 
@@ -178,8 +164,6 @@ describe("plugin structured logger", () => {
     });
     expect((done!.meta as any).plugins).toBeGreaterThan(0);
     // Core plugin should report a successful init.
-    expect(captured.some((e) => e.event === "init:done" && e.plugin === "core")).toBe(
-      true,
-    );
+    expect(captured.some((e) => e.event === "init:done" && e.plugin === "core")).toBe(true);
   });
 });

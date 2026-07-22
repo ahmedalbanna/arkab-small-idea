@@ -57,19 +57,10 @@ describe("CoreEditor <-> EditorView integration (Phase 6)", () => {
       loaded = l;
     });
 
-    render(
-      <ProseMirrorEditor
-        ref={ref}
-        value=""
-        onChange={onChange}
-        onLoaded={onLoaded}
-      />,
-    );
+    render(<ProseMirrorEditor ref={ref} value="" onChange={onChange} onLoaded={onLoaded} />);
 
     await waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
-    );
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
     expect(loaded).not.toBeNull();
     expect(loaded!.core).toBeTruthy();
 
@@ -105,18 +96,11 @@ describe("CoreEditor <-> EditorView integration (Phase 6)", () => {
     // --- External value sync does not echo back as onChange ---------------
     const callsBefore = onChange.mock.calls.length;
     const { rerender } = render(
-      <ProseMirrorEditor
-        ref={ref}
-        value="# New Title"
-        onChange={onChange}
-        onLoaded={onLoaded}
-      />,
+      <ProseMirrorEditor ref={ref} value="# New Title" onChange={onChange} onLoaded={onLoaded} />,
     );
     // (rerender triggers a new render; value sync runs in an effect)
     await waitFor(() => {
-      const heading = loaded!.core
-        .getState()
-        .doc.firstChild;
+      const heading = loaded!.core.getState().doc.firstChild;
       expect(heading?.type.name).toBe("heading");
     });
     // The programmatic external sync must NOT fire onChange (guarded).
@@ -125,8 +109,6 @@ describe("CoreEditor <-> EditorView integration (Phase 6)", () => {
     // And the core document now matches the externally supplied value.
     expect(loaded!.core.getState().doc.textContent).toContain("New Title");
 
-    rerender(
-      <ProseMirrorEditor ref={ref} value="# New Title" onChange={onChange} />,
-    );
+    rerender(<ProseMirrorEditor ref={ref} value="# New Title" onChange={onChange} />);
   });
 });

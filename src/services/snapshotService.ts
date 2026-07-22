@@ -1,5 +1,5 @@
-const DB_NAME = 'ink-quill-snapshots';
-const STORE_NAME = 'snapshots';
+const DB_NAME = "ink-quill-snapshots";
+const STORE_NAME = "snapshots";
 const DB_VERSION = 1;
 
 export interface Snapshot {
@@ -23,12 +23,12 @@ class SnapshotService {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          store.createIndex('pageId', 'pageId', { unique: false });
+          const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+          store.createIndex("pageId", "pageId", { unique: false });
         } else {
           const store = (event.target as IDBOpenDBRequest).transaction?.objectStore(STORE_NAME);
-          if (store && !store.indexNames.contains('pageId')) {
-            store.createIndex('pageId', 'pageId', { unique: false });
+          if (store && !store.indexNames.contains("pageId")) {
+            store.createIndex("pageId", "pageId", { unique: false });
           }
         }
       };
@@ -46,7 +46,7 @@ class SnapshotService {
 
   async saveSnapshot(pageId: string, content: string, userNote?: string): Promise<Snapshot> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
 
     const wordCount = content.split(/\s+/).filter(Boolean).length;
     const snapshot: Snapshot = {
@@ -59,7 +59,7 @@ class SnapshotService {
     };
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db!.transaction([STORE_NAME], "readwrite");
       const store = transaction.objectStore(STORE_NAME);
       const request = store.add(snapshot);
 
@@ -70,12 +70,12 @@ class SnapshotService {
 
   async getSnapshots(pageId: string): Promise<Snapshot[]> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readonly');
+      const transaction = this.db!.transaction([STORE_NAME], "readonly");
       const store = transaction.objectStore(STORE_NAME);
-      const index = store.index('pageId');
+      const index = store.index("pageId");
       const request = index.getAll(pageId);
 
       request.onsuccess = () => {
@@ -89,10 +89,10 @@ class SnapshotService {
 
   async deleteSnapshot(id: string): Promise<void> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db!.transaction([STORE_NAME], "readwrite");
       const store = transaction.objectStore(STORE_NAME);
       const request = store.delete(id);
 
@@ -103,13 +103,13 @@ class SnapshotService {
 
   async clearAllSnapshots(pageId?: string): Promise<void> {
     await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
 
     if (pageId) {
       return new Promise((resolve, reject) => {
-        const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+        const transaction = this.db!.transaction([STORE_NAME], "readwrite");
         const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('pageId');
+        const index = store.index("pageId");
         const request = index.openCursor(IDBKeyRange.only(pageId));
 
         request.onsuccess = (event) => {
@@ -125,7 +125,7 @@ class SnapshotService {
       });
     } else {
       return new Promise((resolve, reject) => {
-        const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+        const transaction = this.db!.transaction([STORE_NAME], "readwrite");
         const store = transaction.objectStore(STORE_NAME);
         const request = store.clear();
 

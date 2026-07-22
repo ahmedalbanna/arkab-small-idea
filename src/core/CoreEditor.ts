@@ -1,4 +1,5 @@
-import { EditorState, Transaction } from "prosemirror-state";
+import type { Transaction } from "prosemirror-state";
+import { EditorState } from "prosemirror-state";
 import type { Schema, Node } from "prosemirror-model";
 import { EditorCommandBus } from "./commands/commandBus";
 import type { EditorCommandAction } from "./commands/commandBus";
@@ -13,7 +14,6 @@ import {
   getCursorContext,
 } from "./operations/query";
 import { applyUndo, applyRedo } from "./operations/history";
-import { setMarkdown } from "./operations/markdown";
 import { noopStorage, type CoreConfig, type Draft, type StorageAdapter } from "./types";
 import { countWords } from "./util/words";
 
@@ -192,11 +192,7 @@ export class CoreEditor {
    */
   replaceDoc(markdown: string, opts?: { recordHistory?: boolean }): void {
     const doc = this.io.parse(markdown);
-    const tr = this._state.tr.replaceWith(
-      0,
-      this._state.doc.content.size,
-      doc.content,
-    );
+    const tr = this._state.tr.replaceWith(0, this._state.doc.content.size, doc.content);
     if (opts?.recordHistory === false) tr.setMeta("addToHistory", false);
     this.apply(tr);
   }

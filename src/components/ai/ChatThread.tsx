@@ -1,8 +1,9 @@
-import React from 'react';
-import { ChatMessage } from '../../services/aiService';
-import { MessageBubble, ApplyMethod } from './MessageBubble';
-import { EmptyState } from './EmptyState';
-import { SuggestedPrompts } from './SuggestedPrompts';
+import React from "react";
+import type { ChatMessage } from "../../services/aiService";
+import type { ApplyMethod } from "./MessageBubble";
+import { MessageBubble } from "./MessageBubble";
+import { EmptyState } from "./EmptyState";
+import { SuggestedPrompts } from "./SuggestedPrompts";
 
 interface ChatThreadProps {
   chatHistory: ChatMessage[];
@@ -44,7 +45,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
   }
 
   const lastIndex = chatHistory.length - 1;
-  const lastIsModel = chatHistory[lastIndex].role === 'model';
+  const lastIsModel = chatHistory[lastIndex].role === "model";
 
   return (
     <div
@@ -66,7 +67,9 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
           onRetry={onRetry}
         />
       ))}
-      {!isGenerating && lastIsModel && <SuggestedPrompts suggestions={suggestions} onSuggest={onSuggest} />}
+      {!isGenerating && lastIsModel && (
+        <SuggestedPrompts suggestions={suggestions} onSuggest={onSuggest} />
+      )}
     </div>
   );
 };

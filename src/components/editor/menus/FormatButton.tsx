@@ -1,5 +1,5 @@
-import React from 'react';
-import { cn } from '../../../lib/utils';
+import React from "react";
+import { cn } from "../../../lib/utils";
 
 interface FormatButtonProps {
   onClick: () => void;
@@ -28,8 +28,8 @@ export const FormatButton: React.FC<FormatButtonProps> = ({
     aria-label={title}
     aria-pressed={active}
     className={cn(
-      'p-1.5 hover:bg-minimal-sidebar rounded text-minimal-text transition-colors',
-      active && 'bg-minimal-accent/20 text-minimal-accent',
+      "p-1.5 hover:bg-minimal-sidebar rounded text-minimal-text transition-colors",
+      active && "bg-minimal-accent/20 text-minimal-accent",
       className,
     )}
   >

@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
-import { Bot, Check, Copy, MessageSquarePlus, Pencil, RefreshCw, Trash2, Wand2 } from 'lucide-react';
-import Markdown from 'react-markdown';
-import { cn } from '../../lib/utils';
-import { ChatMessage } from '../../services/aiService';
+import React, { useState } from "react";
+import {
+  Bot,
+  Check,
+  Copy,
+  MessageSquarePlus,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  Wand2,
+} from "lucide-react";
+import Markdown from "react-markdown";
+import { cn } from "../../lib/utils";
+import type { ChatMessage } from "../../services/aiService";
 
-export type ApplyMethod = 'append' | 'insert' | 'replace' | 'suggest';
+export type ApplyMethod = "append" | "insert" | "replace" | "suggest";
 
 interface MessageBubbleProps {
   msg: ChatMessage;
@@ -28,8 +37,10 @@ const ActionButton: React.FC<{
     aria-label={label}
     title={label}
     className={cn(
-      'flex h-7 w-7 items-center justify-center rounded-lg text-minimal-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent',
-      danger ? 'hover:bg-rose-500/10 hover:text-rose-500' : 'hover:bg-minimal-sidebar hover:text-minimal-text'
+      "flex h-7 w-7 items-center justify-center rounded-lg text-minimal-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
+      danger
+        ? "hover:bg-rose-500/10 hover:text-rose-500"
+        : "hover:bg-minimal-sidebar hover:text-minimal-text",
     )}
   >
     {children}
@@ -51,8 +62,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onRetry,
 }) => {
   const [copied, setCopied] = useState(false);
-  const isUser = msg.role === 'user';
-  const text = msg.parts?.map((p) => p.text || '').join('') ?? '';
+  const isUser = msg.role === "user";
+  const text = msg.parts?.map((p) => p.text || "").join("") ?? "";
   const images = msg.images ?? [];
 
   const copy = async () => {
@@ -106,15 +117,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         <div className="ms-9 mt-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover/msg:opacity-100">
           <ActionButton label="Copy response" onClick={copy}>
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
           </ActionButton>
-          <ActionButton label="Replace document" onClick={() => onApply(text, 'replace')}>
+          <ActionButton label="Replace document" onClick={() => onApply(text, "replace")}>
             <Wand2 className="h-3.5 w-3.5" />
           </ActionButton>
-          <ActionButton label="Append to end" onClick={() => onApply(text, 'append')}>
+          <ActionButton label="Append to end" onClick={() => onApply(text, "append")}>
             <MessageSquarePlus className="h-3.5 w-3.5" />
           </ActionButton>
-          <ActionButton label="Use as suggestion" onClick={() => onApply(text, 'suggest')}>
+          <ActionButton label="Use as suggestion" onClick={() => onApply(text, "suggest")}>
             <Pencil className="h-3.5 w-3.5" />
           </ActionButton>
           <ActionButton label="Revise this response" onClick={() => onRevise(text)}>

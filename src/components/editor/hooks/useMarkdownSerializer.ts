@@ -27,9 +27,7 @@ export const editorSerializer = new MarkdownSerializer(
     },
     heading: (state, node) => {
       if (node.attrs.align && node.attrs.align !== "left") {
-        state.write(
-          `<h${node.attrs.level} style="text-align: ${node.attrs.align}">`,
-        );
+        state.write(`<h${node.attrs.level} style="text-align: ${node.attrs.align}">`);
         state.renderInline(node);
         state.write(`</h${node.attrs.level}>\n\n`);
       } else {
@@ -139,15 +137,11 @@ export function useMarkdownSerializer(loaded: LoadedPlugins | null) {
           block: "scribble",
           getAttrs: (tok: any) => {
             const lines = tok.content.split("\n");
-            const aspectLine = lines.find((l: string) =>
-              l.startsWith("aspect:"),
-            );
+            const aspectLine = lines.find((l: string) => l.startsWith("aspect:"));
             const data = lines.find((l: string) => l.startsWith("data:image"));
             return {
               data: data || null,
-              aspectRatio: aspectLine
-                ? parseFloat(aspectLine.split(":")[1])
-                : 0.5,
+              aspectRatio: aspectLine ? parseFloat(aspectLine.split(":")[1]) : 0.5,
             };
           },
         },

@@ -6,7 +6,7 @@ function firstLine(message: string, fallback: string): string {
   return line.trim() || fallback;
 }
 
-export const nomnomlAdapter: DiagramAdapter = async (lang, source, opts) => {
+export const nomnomlAdapter: DiagramAdapter = async (_lang, source, _opts) => {
   try {
     const mod = await import("nomnoml");
     const nomnoml = (mod as any).default ?? mod;

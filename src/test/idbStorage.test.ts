@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createJSONStorage } from 'zustand/middleware';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { createJSONStorage } from "zustand/middleware";
 
 // Minimal in-memory IndexedDB stub — just enough to exercise the real
 // idbStorage code path (open / onupgradeneeded / transaction / get / put / delete)
@@ -104,41 +104,41 @@ beforeEach(() => {
   (globalThis as any).indexedDB = createFakeIndexedDB();
 });
 
-describe('idbStorage', () => {
-  it('round-trips values through IndexedDB via createJSONStorage', async () => {
-    const { idbStorage } = await import('../lib/idbStorage');
+describe("idbStorage", () => {
+  it("round-trips values through IndexedDB via createJSONStorage", async () => {
+    const { idbStorage } = await import("../lib/idbStorage");
     const storage = createJSONStorage(() => idbStorage);
 
-    await storage.setItem('test-key', { state: { foo: 'bar', n: 1 }, version: 0 });
-    expect(await storage.getItem('test-key')).toEqual({ state: { foo: 'bar', n: 1 }, version: 0 });
+    await storage.setItem("test-key", { state: { foo: "bar", n: 1 }, version: 0 });
+    expect(await storage.getItem("test-key")).toEqual({ state: { foo: "bar", n: 1 }, version: 0 });
 
-    await storage.removeItem('test-key');
-    expect(await storage.getItem('test-key')).toBeNull();
+    await storage.removeItem("test-key");
+    expect(await storage.getItem("test-key")).toBeNull();
   });
 
-  it('migrates a legacy localStorage key into IndexedDB and clears the old entry', async () => {
-    const { idbStorage } = await import('../lib/idbStorage');
-    const legacyValue = JSON.stringify({ state: { theme: 'dark' }, version: 1 });
-    localStorageMock.setItem('ink-quill-settings', legacyValue);
+  it("migrates a legacy localStorage key into IndexedDB and clears the old entry", async () => {
+    const { idbStorage } = await import("../lib/idbStorage");
+    const legacyValue = JSON.stringify({ state: { theme: "dark" }, version: 1 });
+    localStorageMock.setItem("ink-quill-settings", legacyValue);
 
-    const result = await idbStorage.getItem('ink-quill-settings');
+    const result = await idbStorage.getItem("ink-quill-settings");
     expect(result).toBe(legacyValue);
     // The legacy entry should have been migrated out of localStorage.
-    expect(localStorageMock.getItem('ink-quill-settings')).toBeNull();
+    expect(localStorageMock.getItem("ink-quill-settings")).toBeNull();
   });
 
-  it('falls back to localStorage when IndexedDB is unavailable', async () => {
+  it("falls back to localStorage when IndexedDB is unavailable", async () => {
     delete (globalThis as any).indexedDB;
-    const { idbStorage } = await import('../lib/idbStorage');
+    const { idbStorage } = await import("../lib/idbStorage");
     const storage = createJSONStorage(() => idbStorage);
 
-    await storage.setItem('fb-key', { state: { hello: 'world' }, version: 0 });
-    expect(localStorageMock.getItem('fb-key')).not.toBeNull();
-    expect(await storage.getItem('fb-key')).toEqual({ state: { hello: 'world' }, version: 0 });
+    await storage.setItem("fb-key", { state: { hello: "world" }, version: 0 });
+    expect(localStorageMock.getItem("fb-key")).not.toBeNull();
+    expect(await storage.getItem("fb-key")).toEqual({ state: { hello: "world" }, version: 0 });
   });
 
-  it('returns null for unknown keys without throwing', async () => {
-    const { idbStorage } = await import('../lib/idbStorage');
-    expect(await idbStorage.getItem('does-not-exist')).toBeNull();
+  it("returns null for unknown keys without throwing", async () => {
+    const { idbStorage } = await import("../lib/idbStorage");
+    expect(await idbStorage.getItem("does-not-exist")).toBeNull();
   });
 });

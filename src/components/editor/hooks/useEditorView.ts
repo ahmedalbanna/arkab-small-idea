@@ -1,20 +1,11 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  type MutableRefObject,
-  type RefObject,
-} from "react";
-import { EditorState, PluginKey } from "prosemirror-state";
+import { useEffect, useLayoutEffect, useRef, type MutableRefObject, type RefObject } from "react";
+import { EditorState } from "prosemirror-state";
 import { DOMSerializer, Slice, type Schema, type Node } from "prosemirror-model";
 import { EditorView } from "prosemirror-view";
 import { searchPluginKey } from "../../../plugins/search";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { LoadedPlugins } from "../../../plugins";
-import type {
-  SlashMenuState,
-  ContextMenuState,
-} from "../../../stores/aiUIStore";
+import type { SlashMenuState, ContextMenuState } from "../../../stores/aiUIStore";
 
 interface EditorViewParams {
   editorRef: RefObject<HTMLDivElement | null>;
@@ -32,12 +23,8 @@ interface EditorViewParams {
   /** Stale snapshot captured at editor build time (mirrors prior closure). */
   slashMenu: SlashMenuState;
   editorId: string;
-  setSlashMenu: (
-    v: SlashMenuState | ((prev: SlashMenuState) => SlashMenuState),
-  ) => void;
-  setContextMenu: (
-    v: ContextMenuState | ((prev: ContextMenuState) => ContextMenuState),
-  ) => void;
+  setSlashMenu: (v: SlashMenuState | ((prev: SlashMenuState) => SlashMenuState)) => void;
+  setContextMenu: (v: ContextMenuState | ((prev: ContextMenuState) => ContextMenuState)) => void;
   /** Guards external prop updates from echoing back out via onChange. */
   isUpdatingFromProps: MutableRefObject<boolean>;
 }
@@ -73,6 +60,7 @@ export function useEditorView({
   // rebuilt when `loaded` changes, so we mirror the live `slashMenu` prop in a
   // ref to avoid acting on a stale snapshot of the menu state.
   const slashMenuRef = useRef(slashMenu);
+  // eslint-disable-next-line react-hooks/refs
   slashMenuRef.current = slashMenu;
 
   // Close menus on outside click. The menu state is a single shared slot keyed
@@ -81,13 +69,9 @@ export function useEditorView({
   // one currently showing because it opened last).
   useEffect(() => {
     const handleClick = () => {
-      setContextMenu((prev) =>
-        prev.editorId === editorId ? { ...prev, show: false } : prev,
-      );
+      setContextMenu((prev) => (prev.editorId === editorId ? { ...prev, show: false } : prev));
       setSlashMenu((prev) =>
-        prev.editorId === editorId
-          ? { ...prev, show: false, query: "" }
-          : prev,
+        prev.editorId === editorId ? { ...prev, show: false, query: "" } : prev,
       );
       // The bubble menu is selection-driven: the `editorUI` plugin shows it when
       // the selection is non-empty and hides it when empty. We must NOT force-close
@@ -113,10 +97,10 @@ export function useEditorView({
     scrollContainer.addEventListener("scroll", handleScroll, {
       passive: true,
     });
-    return () =>
-      scrollContainer.removeEventListener("scroll", handleScroll);
+    return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [editorRef, latestProps]);
 
+  // eslint-disable-next-line react-hooks/immutability
   useLayoutEffect(() => {
     if (!editorRef.current) return;
     if (!loaded) return;
@@ -133,7 +117,7 @@ export function useEditorView({
     // before building the controlled view. Wrapped so the seed doesn't echo
     // back out as an `onChange`.
     if (core) {
-      isUpdatingFromProps.current = true;
+      isUpdatingFromProps.current = true; // eslint-disable-line react-hooks/immutability
       core.initDoc(value);
       isUpdatingFromProps.current = false;
     }
@@ -142,8 +126,7 @@ export function useEditorView({
       ? core.getState()
       : EditorState.create({
           schema: editorSchema,
-          doc:
-            parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
+          doc: parseMarkdownDoc(value) || editorSchema.nodes.doc.createAndFill()!,
           plugins: [
             // All ProseMirror plugins — collaboration (when enabled), core base
             // plugins, feature plugins, the editor UI plugins (side menu, context
@@ -170,12 +153,11 @@ export function useEditorView({
       },
       clipboardSerializer: DOMSerializer.fromSchema(editorSchema),
       clipboardTextSerializer(slice) {
-        return editorSerializer.serialize(
-          editorSchema.nodes.doc.create(null, slice.content),
-        );
+        return editorSerializer.serialize(editorSchema.nodes.doc.create(null, slice.content));
       },
-      clipboardTextParser(text, $context) {
+      clipboardTextParser(text, _$context) {
         // Detect if text is markdown-like
+        // eslint-disable-next-line no-useless-escape
         const isMarkdown = /[#*`\[]|^\s*[-+]\s|^\s*\d+\.\s/m.test(text);
         if (isMarkdown) {
           return new Slice(parseMarkdownDoc(text).content, 0, 0);
@@ -205,17 +187,13 @@ export function useEditorView({
           const { selection } = view.state;
           if (selection.empty) {
             const $from = selection.$from;
-            const before = $from.parent.textContent.substring(
-              0,
-              $from.parentOffset,
-            );
+            const before = $from.parent.textContent.substring(0, $from.parentOffset);
             const isStartOfLine = $from.parentOffset === 0;
             const isAfterSpace = before.endsWith(" ");
 
             if (isStartOfLine || isAfterSpace) {
               const coords = view.coordsAtPos(selection.from);
-              const editorRect =
-                containerRef.current?.getBoundingClientRect();
+              const editorRect = containerRef.current?.getBoundingClientRect();
               if (editorRect) {
                 setSlashMenu({
                   x: coords.left - editorRect.left,
@@ -237,9 +215,7 @@ export function useEditorView({
       handleDrop(view, event) {
         const files = event.dataTransfer?.files;
         if (files && files.length > 0) {
-          const imageFiles = Array.from(files).filter((f) =>
-            f.type.startsWith("image/"),
-          );
+          const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
           if (imageFiles.length === 0) return false;
 
           const pos = view.posAtCoords({
@@ -259,13 +235,8 @@ export function useEditorView({
             });
 
             Promise.all(promises).then((srcs) => {
-              const imageNodes = srcs.map((src) =>
-                editorSchema.nodes.image.create({ src }),
-              );
-              const galleryNode = editorSchema.nodes.gallery.create(
-                { layout: "grid" },
-                imageNodes,
-              );
+              const imageNodes = srcs.map((src) => editorSchema.nodes.image.create({ src }));
+              const galleryNode = editorSchema.nodes.gallery.create({ layout: "grid" }, imageNodes);
               view.dispatch(view.state.tr.insert(insertPos, galleryNode));
             });
           } else {
@@ -285,7 +256,6 @@ export function useEditorView({
       },
       handlePaste(view, event) {
         const text = event.clipboardData?.getData("text/plain");
-        const html = event.clipboardData?.getData("text/html");
 
         // Handle images
         const items = event.clipboardData?.items;
@@ -324,8 +294,7 @@ export function useEditorView({
             "Detected a URL. Would you like to insert it as a Markdown link?",
           );
           if (confirmed) {
-            const label =
-              window.prompt("Enter link label:", "Link") || "Link";
+            const label = window.prompt("Enter link label:", "Link") || "Link";
             const markdownLink = `[${label}](${text.trim()})`;
             const node = parseMarkdownDoc(markdownLink);
             view.dispatch(view.state.tr.replaceSelectionWith(node));
@@ -356,11 +325,7 @@ export function useEditorView({
               Math.max(0, liveSlash.pos - 1),
               Math.max(0, liveSlash.pos),
             );
-            if (
-              selection.from < liveSlash.pos ||
-              charBefore !== "/" ||
-              !selection.empty
-            ) {
+            if (selection.from < liveSlash.pos || charBefore !== "/" || !selection.empty) {
               setSlashMenu((prev) => ({ ...prev, show: false, query: "" }));
             } else {
               const text = doc.textBetween(liveSlash.pos, selection.from);
@@ -392,11 +357,7 @@ export function useEditorView({
           }
 
           // Emit selection-change when the selection actually moved.
-          if (
-            tr &&
-            (tr.selection.from !== lastSel.from ||
-              tr.selection.to !== lastSel.to)
-          ) {
+          if (tr && (tr.selection.from !== lastSel.from || tr.selection.to !== lastSel.to)) {
             lastSel.from = tr.selection.from;
             lastSel.to = tr.selection.to;
             latestProps.current.onSelectionChange?.({

@@ -1,20 +1,10 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type MutableRefObject,
-  type RefObject,
-} from "react";
+import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import { TextSelection } from "prosemirror-state";
 import { setBlockType } from "prosemirror-commands";
 import type { Schema, Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
-import { slugify } from "../../../lib/utils";
 import { draftHighlightKey } from "../../../lib/draftPlugin";
-import {
-  processAIAction,
-  type AIAssistantAction,
-} from "../../../services/aiService";
+import { processAIAction, type AIAssistantAction } from "../../../services/aiService";
 import { setAiActionHandler } from "../../../plugins/ai";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { PluginContext, EditorCommand } from "../../../plugins/types";
@@ -39,9 +29,7 @@ export interface AIDraftState {
 type AIDecision = "replace" | "append" | "retry" | "cancel";
 
 /** Builds the surrounding heading path + current block text for AI context. */
-export function getCursorContextInternal(
-  viewRef: RefObject<EditorView | null>,
-): string {
+export function getCursorContextInternal(viewRef: RefObject<EditorView | null>): string {
   if (!viewRef.current) return "";
   const { state } = viewRef.current;
   const { $from } = state.selection;
@@ -69,8 +57,7 @@ export function getCursorContextInternal(
     if (pos === 0) break;
   }
 
-  const pathStr =
-    headingPath.length > 0 ? `Path: ${headingPath.join(" > ")}` : "";
+  const pathStr = headingPath.length > 0 ? `Path: ${headingPath.join(" > ")}` : "";
   return `${pathStr}\n\n${currentPara}`.trim();
 }
 
@@ -110,8 +97,6 @@ export function useAIStreaming({
   setBubbleMenu,
   handleFormat,
   onImageUploadRequest,
-  streamStartRef,
-  streamEndRef,
 }: AIStreamingParams) {
   // AI Draft State
   const [aiDraft, setAiDraft] = useState<AIDraftState | null>(null);
@@ -132,7 +117,7 @@ export function useAIStreaming({
   ) => {
     if (!viewRef.current) return;
 
-    const { state, dispatch } = viewRef.current;
+    const { state } = viewRef.current;
     const from = retryFrom ?? state.selection.from;
     const to = retryTo ?? state.selection.to;
     const selectedText = retryText ?? state.doc.textBetween(from, to, " ");
@@ -169,64 +154,54 @@ export function useAIStreaming({
       const cursorContext = getCursorContextInternal(viewRef);
 
       let fullResponse = "";
-      let streamStart = from;
+      const streamStart = from;
       let streamEnd = to;
 
-      await processAIAction(
-        selectedText,
-        retryAction ?? action,
-        {
-          personalInstructions: latestProps.current.personalInstructions,
-          model: latestProps.current.selectedModel,
-          provider: latestProps.current.provider as any,
-          apiKeys: latestProps.current.apiKeys,
-          providerConfigs: latestProps.current.providerConfigs,
-          signal: abortController.signal,
-          onChunk: (chunk) => {
-            fullResponse += chunk;
+      await processAIAction(selectedText, retryAction ?? action, {
+        personalInstructions: latestProps.current.personalInstructions,
+        model: latestProps.current.selectedModel,
+        provider: latestProps.current.provider as any,
+        apiKeys: latestProps.current.apiKeys,
+        providerConfigs: latestProps.current.providerConfigs,
+        signal: abortController.signal,
+        onChunk: (chunk) => {
+          fullResponse += chunk;
 
-            if (viewRef.current) {
-              const { state: curState, dispatch: curDispatch } =
-                viewRef.current;
-              const parsed = parseMarkdownDoc(fullResponse);
+          if (viewRef.current) {
+            const { state: curState, dispatch: curDispatch } = viewRef.current;
+            const parsed = parseMarkdownDoc(fullResponse);
 
-              const tr = curState.tr.replaceWith(
-                streamStart,
-                streamEnd,
-                parsed.content,
-              );
+            const tr = curState.tr.replaceWith(streamStart, streamEnd, parsed.content);
 
-              streamEnd = streamStart + parsed.content.size;
+            streamEnd = streamStart + parsed.content.size;
 
-              tr.setMeta(draftHighlightKey, {
-                from: streamStart,
-                to: streamEnd,
-                isGenerating: true,
-              });
-              tr.scrollIntoView();
-              curDispatch(tr);
+            tr.setMeta(draftHighlightKey, {
+              from: streamStart,
+              to: streamEnd,
+              isGenerating: true,
+            });
+            tr.scrollIntoView();
+            curDispatch(tr);
 
-              setAiDraft((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      content: fullResponse,
-                      to: streamEnd,
-                      streamEnd,
-                    }
-                  : null,
-              );
-            }
-          },
-          documentContext: fullDoc,
-          cursorContext: cursorContext,
-          customInstruction,
+            setAiDraft((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    content: fullResponse,
+                    to: streamEnd,
+                    streamEnd,
+                  }
+                : null,
+            );
+          }
         },
-      );
+        documentContext: fullDoc,
+        cursorContext: cursorContext,
+        customInstruction,
+      });
 
       if (viewRef.current) {
-        const { state: finalState, dispatch: finalDispatch } =
-          viewRef.current;
+        const { state: finalState, dispatch: finalDispatch } = viewRef.current;
         const tr = finalState.tr;
         tr.setMeta(draftHighlightKey, {
           from: streamStart,
@@ -258,8 +233,7 @@ export function useAIStreaming({
         alert("Failed to process AI request. Check console for details.");
       }
       if (viewRef.current) {
-        const { state: finalState, dispatch: finalDispatch } =
-          viewRef.current;
+        const { state: finalState, dispatch: finalDispatch } = viewRef.current;
         const tr = finalState.tr;
 
         const parsed = parseMarkdownDoc(initialDraftState.originalText);
@@ -294,10 +268,7 @@ export function useAIStreaming({
 
       tr.replaceWith(draft.from, draft.streamEnd, parsedOrg.content);
 
-      tr.insert(
-        draft.from + parsedOrg.content.size,
-        parsedDraft.content,
-      );
+      tr.insert(draft.from + parsedOrg.content.size, parsedDraft.content);
       tr.scrollIntoView();
     } else if (decision === "retry") {
       const parsedOrg = parseMarkdownDoc(draft.originalText);
@@ -331,10 +302,7 @@ export function useAIStreaming({
     const endPos = state.selection.from;
     const startPos = slashMenu.pos - 1;
     const finalStart = Math.max(0, Math.min(startPos, state.doc.content.size));
-    const finalEnd = Math.max(
-      finalStart,
-      Math.min(endPos, state.doc.content.size),
-    );
+    const finalEnd = Math.max(finalStart, Math.min(endPos, state.doc.content.size));
     viewRef.current.dispatch(state.tr.delete(finalStart, finalEnd));
     return finalStart;
   };
@@ -372,15 +340,10 @@ export function useAIStreaming({
       );
       viewRef.current.dispatch(tr);
     } else if (action === "code")
-      setBlockType(editorSchema.nodes.code_block)(
-        afterDeleteState,
-        viewRef.current.dispatch,
-      );
+      setBlockType(editorSchema.nodes.code_block)(afterDeleteState, viewRef.current.dispatch);
     else if (action === "scribble") {
       const node = editorSchema.nodes.scribble.create({ aspectRatio: 0.5 });
-      viewRef.current.dispatch(
-        afterDeleteState.tr.replaceSelectionWith(node),
-      );
+      viewRef.current.dispatch(afterDeleteState.tr.replaceSelectionWith(node));
     } else if (action === "tableify") {
       handleFormat("tableify");
     } else if (action === "image") onImageUploadRequest?.();
@@ -389,9 +352,7 @@ export function useAIStreaming({
     } else if (action === "quote") {
       handleFormat("quote");
     } else if (
-      ["improve", "outline", "summarize", "rewrite", "complete-text"].includes(
-        action,
-      ) ||
+      ["improve", "outline", "summarize", "rewrite", "complete-text"].includes(action) ||
       action.startsWith("ai-")
     ) {
       const type = action.replace("ai-", "") as AIAssistantAction;
@@ -402,10 +363,7 @@ export function useAIStreaming({
       const depth = resolvedPos.depth;
 
       const start = depth > 0 ? resolvedPos.start(depth) : 0;
-      const end =
-        depth > 0
-          ? resolvedPos.end(depth)
-          : afterDeleteState.doc.content.size;
+      const end = depth > 0 ? resolvedPos.end(depth) : afterDeleteState.doc.content.size;
 
       try {
         const trSelect = afterDeleteState.tr.setSelection(
@@ -435,10 +393,18 @@ export function useAIStreaming({
   // disabled). The handler is coupled to this component's local `aiDraft`
   // state, so it is registered here on mount.
   const handleAIActionRef = useRef(handleAIAction);
+  // eslint-disable-next-line react-hooks/refs
   handleAIActionRef.current = handleAIAction;
   useEffect(() => {
     setAiActionHandler((a, ci) =>
-      handleAIActionRef.current(a as AIAssistantAction, undefined, undefined, undefined, undefined, ci),
+      handleAIActionRef.current(
+        a as AIAssistantAction,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        ci,
+      ),
     );
     return () => setAiActionHandler(null);
   }, []);

@@ -6,7 +6,7 @@ function firstLine(message: string, fallback: string): string {
   return line.trim() || fallback;
 }
 
-export const vegaLiteAdapter: DiagramAdapter = async (lang, source, opts) => {
+export const vegaLiteAdapter: DiagramAdapter = async (_lang, source, _opts) => {
   try {
     const spec = JSON.parse(source);
 

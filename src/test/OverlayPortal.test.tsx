@@ -5,16 +5,9 @@ import { OverlayPortal } from "../components/layout/OverlayPortal";
 
 afterEach(cleanup);
 
-function Fixture({
-  isOpen = true,
-  onClose,
-}: { isOpen?: boolean; onClose?: () => void }) {
+function Fixture({ isOpen = true, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   return (
-    <OverlayPortal
-      isOpen={isOpen}
-      onClose={onClose ?? vi.fn()}
-      ariaLabel="Test overlay"
-    >
+    <OverlayPortal isOpen={isOpen} onClose={onClose ?? vi.fn()} ariaLabel="Test overlay">
       <button>First</button>
       <button>Second</button>
       <button>Third</button>
@@ -51,12 +44,7 @@ describe("OverlayPortal", () => {
   it("does not close on Escape when closeOnEscape is false", () => {
     const onClose = vi.fn();
     render(
-      <OverlayPortal
-        isOpen
-        onClose={onClose}
-        ariaLabel="Test"
-        closeOnEscape={false}
-      >
+      <OverlayPortal isOpen onClose={onClose} ariaLabel="Test" closeOnEscape={false}>
         <button>OK</button>
       </OverlayPortal>,
     );
@@ -73,9 +61,7 @@ describe("OverlayPortal", () => {
     const fixedContainer = document.querySelector(".fixed.inset-0");
     if (fixedContainer) {
       // Click directly on the backdrop element
-      const backdropElement = fixedContainer.querySelector(
-        '[class*="bg-black"]',
-      );
+      const backdropElement = fixedContainer.querySelector('[class*="bg-black"]');
       if (backdropElement) {
         fireEvent.click(backdropElement);
         expect(onClose).toHaveBeenCalledTimes(1);
@@ -86,12 +72,7 @@ describe("OverlayPortal", () => {
   it("does not close on backdrop click when closeOnBackdrop is false", () => {
     const onClose = vi.fn();
     render(
-      <OverlayPortal
-        isOpen
-        onClose={onClose}
-        ariaLabel="Test"
-        closeOnBackdrop={false}
-      >
+      <OverlayPortal isOpen onClose={onClose} ariaLabel="Test" closeOnBackdrop={false}>
         <button>OK</button>
       </OverlayPortal>,
     );

@@ -1,11 +1,5 @@
 export type AppThemeName =
-  | "light"
-  | "dark"
-  | "system"
-  | "andalusia"
-  | "cosmos"
-  | "parchment"
-  | "tokyo";
+  "light" | "dark" | "system" | "andalusia" | "cosmos" | "parchment" | "tokyo";
 
 // Named themes that read as "dark" for diagram engines (mermaid/vega/etc.).
 const DARK_THEMES = new Set(["dark", "andalusia", "cosmos", "tokyo"]);
@@ -15,12 +9,10 @@ const DARK_THEMES = new Set(["dark", "andalusia", "cosmos", "tokyo"]);
  * local diagram engines understand. `system` follows the OS preference.
  */
 export function resolveTheme(name: string | null | undefined): "dark" | "light" {
-  let current = name;
+  const current = name;
   if (!current || current === "system") {
     if (typeof window !== "undefined" && window.matchMedia) {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
     return "light";
   }

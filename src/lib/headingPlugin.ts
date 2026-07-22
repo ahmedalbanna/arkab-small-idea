@@ -80,11 +80,11 @@ function buildHeadingDecorations(doc: any, collapsedSet: DecorationSet): Decorat
     );
 
     decorations.push(
-      Decoration.widget(
-        pos + 1,
-        (view) => buildChevron(view, pos, isCollapsed),
-        { side: -1, key: `heading-chevron-${pos}-${isCollapsed}`, stopEvent: () => true },
-      ),
+      Decoration.widget(pos + 1, (view) => buildChevron(view, pos, isCollapsed), {
+        side: -1,
+        key: `heading-chevron-${pos}-${isCollapsed}`,
+        stopEvent: () => true,
+      }),
     );
   });
 
@@ -97,13 +97,17 @@ function buildHeadingDecorations(doc: any, collapsedSet: DecorationSet): Decorat
       const level = headingNode.attrs.level;
       let endPos = doc.content.size;
 
-      doc.nodesBetween(startPos + headingNode.nodeSize, doc.content.size, (node, pos) => {
-        if (endPos !== doc.content.size) return false;
-        if (node.type.name === "heading" && node.attrs.level <= level) {
-          endPos = pos;
-          return false;
-        }
-      });
+      doc.nodesBetween(
+        startPos + headingNode.nodeSize,
+        doc.content.size,
+        (node: any, pos: number) => {
+          if (endPos !== doc.content.size) return false;
+          if (node.type.name === "heading" && node.attrs.level <= level) {
+            endPos = pos;
+            return false;
+          }
+        },
+      );
 
       if (endPos > startPos + headingNode.nodeSize) {
         decorations.push(

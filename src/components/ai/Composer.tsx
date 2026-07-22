@@ -1,7 +1,7 @@
-import React from 'react';
-import { Bold, Image as ImageIcon, Italic, Send, Square, X } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { QuickActions } from './QuickActions';
+import React from "react";
+import { Bold, Image as ImageIcon, Italic, Send, Square, X } from "lucide-react";
+import { cn } from "../../lib/utils";
+import { QuickActions } from "./QuickActions";
 
 interface ComposerProps {
   aiPrompt: string;
@@ -12,7 +12,7 @@ interface ComposerProps {
   setChatAttachedImages: (value: string[]) => void;
   handleAiGenerate: () => void;
   handleChatImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  formatChatInput: (type: 'bold' | 'italic' | 'list') => void;
+  formatChatInput: (type: "bold" | "italic" | "list") => void;
   stopAiGenerate: () => void;
   isGenerating: boolean;
   isEmpty: boolean;
@@ -31,7 +31,6 @@ export const Composer: React.FC<ComposerProps> = ({
   chatAttachedImages,
   setChatAttachedImages,
   handleAiGenerate,
-  handleChatImageUpload,
   formatChatInput,
   stopAiGenerate,
   isGenerating,
@@ -51,7 +50,9 @@ export const Composer: React.FC<ComposerProps> = ({
               <img src={src} alt="" className="h-14 w-14 rounded-lg object-cover" />
               <button
                 type="button"
-                onClick={() => setChatAttachedImages(chatAttachedImages.filter((_, idx) => idx !== i))}
+                onClick={() =>
+                  setChatAttachedImages(chatAttachedImages.filter((_, idx) => idx !== i))
+                }
                 aria-label="Remove image"
                 className="absolute -end-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-minimal-text text-minimal-bg opacity-0 transition-opacity group-hover:opacity-100"
               >
@@ -74,7 +75,7 @@ export const Composer: React.FC<ComposerProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => formatChatInput('bold')}
+            onClick={() => formatChatInput("bold")}
             aria-label="Bold"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-minimal-muted transition-colors hover:bg-minimal-sidebar hover:text-minimal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent"
           >
@@ -82,7 +83,7 @@ export const Composer: React.FC<ComposerProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => formatChatInput('italic')}
+            onClick={() => formatChatInput("italic")}
             aria-label="Italic"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-minimal-muted transition-colors hover:bg-minimal-sidebar hover:text-minimal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent"
           >
@@ -95,7 +96,7 @@ export const Composer: React.FC<ComposerProps> = ({
           value={aiPrompt}
           onChange={(e) => setAiPrompt(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               handleAiGenerate();
             }
@@ -110,17 +111,21 @@ export const Composer: React.FC<ComposerProps> = ({
           type="button"
           onClick={isGenerating ? stopAiGenerate : handleAiGenerate}
           disabled={!isGenerating && !canSend}
-          aria-label={isGenerating ? 'Stop generating' : 'Send message'}
+          aria-label={isGenerating ? "Stop generating" : "Send message"}
           className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent',
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
             isGenerating
-              ? 'bg-rose-500 text-white hover:bg-rose-600'
+              ? "bg-rose-500 text-white hover:bg-rose-600"
               : canSend
-              ? 'bg-minimal-accent text-white hover:opacity-90'
-              : 'cursor-not-allowed bg-minimal-sidebar text-minimal-muted'
+                ? "bg-minimal-accent text-white hover:opacity-90"
+                : "cursor-not-allowed bg-minimal-sidebar text-minimal-muted",
           )}
         >
-          {isGenerating ? <Square className="h-3.5 w-3.5 fill-current" /> : <Send className="h-4 w-4" />}
+          {isGenerating ? (
+            <Square className="h-3.5 w-3.5 fill-current" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
         </button>
       </div>
     </div>

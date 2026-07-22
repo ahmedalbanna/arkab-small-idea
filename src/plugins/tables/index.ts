@@ -69,9 +69,7 @@ const tableSortPlugin = new Plugin({
           const isNumB = !isNaN(Number(cellB)) && cellB !== "";
 
           if (isNumA && isNumB) {
-            return ascending
-              ? Number(cellA) - Number(cellB)
-              : Number(cellB) - Number(cellA);
+            return ascending ? Number(cellA) - Number(cellB) : Number(cellB) - Number(cellA);
           }
 
           return ascending
@@ -85,15 +83,8 @@ const tableSortPlugin = new Plugin({
               });
         });
 
-        const newTable = tableNode.type.create(
-          tableNode.attrs,
-          [headerRow, ...bodyRows],
-        );
-        const tr = view.state.tr.replaceWith(
-          tablePos,
-          tablePos + tableNode.nodeSize,
-          newTable,
-        );
+        const newTable = tableNode.type.create(tableNode.attrs, [headerRow, ...bodyRows]);
+        const tr = view.state.tr.replaceWith(tablePos, tablePos + tableNode.nodeSize, newTable);
 
         // Update data-sort attribute on the new table's header cell if possible
         const finalTable = tr.doc.nodeAt(tablePos);
@@ -103,23 +94,14 @@ const tableSortPlugin = new Plugin({
           headerRow.forEach((cell: any, _: any, i: number) => {
             if (i === columnIndex) {
               cells.push(
-                cell.type.create(
-                  { ...cell.attrs, sort: ascending ? "asc" : "desc" },
-                  cell.content,
-                ),
+                cell.type.create({ ...cell.attrs, sort: ascending ? "asc" : "desc" }, cell.content),
               );
             } else {
-              cells.push(
-                cell.type.create({ ...cell.attrs, sort: null }, cell.content),
-              );
+              cells.push(cell.type.create({ ...cell.attrs, sort: null }, cell.content));
             }
           });
           const newHeader = headerRow.type.create(headerRow.attrs, cells);
-          tr.replaceWith(
-            tablePos + 1,
-            tablePos + 1 + headerRow.nodeSize,
-            newHeader,
-          );
+          tr.replaceWith(tablePos + 1, tablePos + 1 + headerRow.nodeSize, newHeader);
         }
 
         view.dispatch(tr);
@@ -153,9 +135,7 @@ const tableRowActionsPlugin = new Plugin({
             widget.setAttribute("data-pos", pos.toString());
             widget.setAttribute("data-size", node.nodeSize.toString());
 
-            decorations.push(
-              Decoration.widget(pos + 1, widget, { key: `delete-${pos}` }),
-            );
+            decorations.push(Decoration.widget(pos + 1, widget, { key: `delete-${pos}` }));
           }
         });
         return DecorationSet.create(tr.doc, decorations);
@@ -190,13 +170,9 @@ const tableRowActionsPlugin = new Plugin({
           const tableNode = $pos.node($pos.depth - 1);
           if (tableNode.childCount <= 1) {
             const tablePos = $pos.before($pos.depth - 1);
-            view.dispatch(
-              view.state.tr.delete(tablePos, tablePos + tableNode.nodeSize),
-            );
+            view.dispatch(view.state.tr.delete(tablePos, tablePos + tableNode.nodeSize));
           } else {
-            view.dispatch(
-              view.state.tr.delete(rowPos, rowPos + rowNode.nodeSize),
-            );
+            view.dispatch(view.state.tr.delete(rowPos, rowPos + rowNode.nodeSize));
           }
           return true;
         }

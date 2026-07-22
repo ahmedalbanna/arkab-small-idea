@@ -1,10 +1,10 @@
-import React, { useId, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { Z_CLASS } from '../../lib/zIndex';
-import { VARIANTS, SPRING } from '../../lib/themeTokens';
-import { useFocusTrap } from '../../lib/useFocusTrap';
+import React, { useId, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { X } from "lucide-react";
+import { cn } from "../../lib/utils";
+import { Z_CLASS } from "../../lib/zIndex";
+import { VARIANTS, SPRING } from "../../lib/themeTokens";
+import { useFocusTrap } from "../../lib/useFocusTrap";
 
 export interface DialogProps {
   isOpen: boolean;
@@ -41,12 +41,7 @@ export function Dialog({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div
-          className={cn(
-            "fixed inset-0 flex items-center justify-center px-4",
-            Z_CLASS.modal,
-          )}
-        >
+        <div className={cn("fixed inset-0 flex items-center justify-center px-4", Z_CLASS.modal)}>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -86,9 +81,7 @@ export function Dialog({
                 )}
               </div>
             )}
-            <div className="flex-1 overflow-y-auto custom-scrollbar pe-2 -me-2">
-              {children}
-            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar pe-2 -me-2">{children}</div>
           </motion.div>
         </div>
       )}

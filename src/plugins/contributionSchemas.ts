@@ -11,9 +11,7 @@ const callable = z.custom((v) => typeof v === "function", {
  * `$$typeof` marker, which the function check would wrongly reject.
  */
 const reactComponent = z.custom(
-  (v) =>
-    typeof v === "function" ||
-    (typeof v === "object" && v !== null && "$$typeof" in v),
+  (v) => typeof v === "function" || (typeof v === "object" && v !== null && "$$typeof" in v),
   { message: "must be a React component" },
 );
 
@@ -62,9 +60,7 @@ export const pluginSettingSchema = z.object({
   type: z.enum(["toggle", "select", "text", "number", "slider"]),
   defaultValue: z.unknown(),
   description: z.string().optional(),
-  options: z
-    .array(z.object({ label: z.string(), value: z.string() }))
-    .optional(),
+  options: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
   group: z.string().optional(),
 });
 

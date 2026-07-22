@@ -5,15 +5,13 @@ import {
   type EditorCommandResult,
 } from "../plugins/editorCommandBus";
 
-function mockExecutor(
-  run?: (a: EditorCommandAction) => EditorCommandResult,
-): { run: ReturnType<typeof vi.fn<(a: EditorCommandAction) => EditorCommandResult>> } {
+function mockExecutor(run?: (a: EditorCommandAction) => EditorCommandResult): {
+  run: ReturnType<typeof vi.fn<(a: EditorCommandAction) => EditorCommandResult>>;
+} {
   const fn = vi.fn<(a: EditorCommandAction) => EditorCommandResult>(
     run ??
       ((a: EditorCommandAction) =>
-        a.type === "setMarkdown"
-          ? { inverse: { type: "setMarkdown", content: "BEFORE" } }
-          : {}),
+        a.type === "setMarkdown" ? { inverse: { type: "setMarkdown", content: "BEFORE" } } : {}),
   );
   return { run: fn };
 }
@@ -35,8 +33,7 @@ describe("EditorCommandBus", () => {
   it("query returns the executor's value", () => {
     const bus = new EditorCommandBus();
     bus.setExecutor({
-      run: (a) =>
-        a.type === "getHtml" ? { value: "<p>x</p>" } : { value: undefined },
+      run: (a) => (a.type === "getHtml" ? { value: "<p>x</p>" } : { value: undefined }),
     });
     expect(bus.query<string>({ type: "getHtml" })).toBe("<p>x</p>");
   });
@@ -70,7 +67,7 @@ describe("EditorCommandBus", () => {
       "setMarkdown", // redo TWO
     ]);
     expect(bus.canRedo).toBe(false); // redo stack exhausted
-    expect(bus.canUndo).toBe(true);  // both back in undo stack
+    expect(bus.canUndo).toBe(true); // both back in undo stack
   });
 
   it("dispatching a new command after undo clears the redo stack", () => {
@@ -81,11 +78,11 @@ describe("EditorCommandBus", () => {
 
     bus.dispatch({ type: "setMarkdown", content: "A" });
     bus.dispatch({ type: "setMarkdown", content: "B" });
-    bus.undo();                        // back to A
+    bus.undo(); // back to A
     expect(bus.canRedo).toBe(true);
 
     bus.dispatch({ type: "setMarkdown", content: "C" }); // new branch
-    expect(bus.canRedo).toBe(false);   // redo stack cleared
+    expect(bus.canRedo).toBe(false); // redo stack cleared
   });
 
   it("non-undoable commands (no inverse) are not recorded", () => {
@@ -108,9 +105,7 @@ describe("EditorCommandBus", () => {
 
   it("dispatch / query are safe no-ops without an executor", () => {
     const bus = new EditorCommandBus();
-    expect(() =>
-      bus.dispatch({ type: "setMarkdown", content: "x" }),
-    ).not.toThrow();
+    expect(() => bus.dispatch({ type: "setMarkdown", content: "x" })).not.toThrow();
     expect(bus.query({ type: "getHtml" })).toBeUndefined();
   });
 

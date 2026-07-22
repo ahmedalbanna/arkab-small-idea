@@ -86,10 +86,7 @@ export function PanelSlot({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={handleBackdropClick}
-              className={cn(
-                "fixed inset-0 bg-black/30 backdrop-blur-sm",
-                Z_CLASS[zLevel],
-              )}
+              className={cn("fixed inset-0 bg-black/30 backdrop-blur-sm", Z_CLASS[zLevel])}
             />
           )}
 
@@ -109,9 +106,7 @@ export function PanelSlot({
               "fixed top-0 bottom-0 flex flex-col bg-minimal-bg border-minimal-border shadow-2xl",
               "outline-none overflow-hidden",
               // Side-specific positioning
-              side === "end"
-                ? "end-0 border-s"
-                : "start-0 border-e",
+              side === "end" ? "end-0 border-s" : "start-0 border-e",
               className,
             )}
             style={{ width }}
@@ -139,9 +134,7 @@ export function PanelSlot({
             )}
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {children}
-            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar">{children}</div>
           </motion.div>
         </>
       )}

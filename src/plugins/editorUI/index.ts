@@ -32,8 +32,7 @@ export const editorUIPlugin: InkPlugin = {
           handleDOMEvents: {
             mousemove(view, event) {
               const aiUI = useAIUIStore.getState();
-              if (aiUI.bubbleMenu.show || !useUIStore.getState().showQuickCommands)
-                return false;
+              if (aiUI.bubbleMenu.show || !useUIStore.getState().showQuickCommands) return false;
 
               if (sideMenuHideTimeout) clearTimeout(sideMenuHideTimeout);
 
@@ -69,9 +68,7 @@ export const editorUIPlugin: InkPlugin = {
             mouseleave() {
               if (sideMenuHideTimeout) clearTimeout(sideMenuHideTimeout);
               sideMenuHideTimeout = setTimeout(() => {
-                useAIUIStore
-                  .getState()
-                  .setSideMenu((prev) => ({ ...prev, show: false }));
+                useAIUIStore.getState().setSideMenu((prev) => ({ ...prev, show: false }));
               }, 400);
               return false;
             },
@@ -116,9 +113,7 @@ export const editorUIPlugin: InkPlugin = {
               const { from, to } = state.selection;
 
               if (from === to) {
-                useAIUIStore
-                  .getState()
-                  .setBubbleMenu((prev) => ({ ...prev, show: false }));
+                useAIUIStore.getState().setBubbleMenu((prev) => ({ ...prev, show: false }));
                 return;
               }
 
@@ -133,46 +128,23 @@ export const editorUIPlugin: InkPlugin = {
                 const formats: Record<string, boolean> = {
                   bold:
                     state.doc.rangeHasMark(from, to, schema.marks.strong) ||
-                    (empty &&
-                      !!schema.marks.strong.isInSet(
-                        state.storedMarks || $from.marks(),
-                      )),
+                    (empty && !!schema.marks.strong.isInSet(state.storedMarks || $from.marks())),
                   italic:
                     state.doc.rangeHasMark(from, to, schema.marks.em) ||
-                    (empty &&
-                      !!schema.marks.em.isInSet(
-                        state.storedMarks || $from.marks(),
-                      )),
+                    (empty && !!schema.marks.em.isInSet(state.storedMarks || $from.marks())),
                   underline:
                     state.doc.rangeHasMark(from, to, schema.marks.underline) ||
-                    (empty &&
-                      !!schema.marks.underline.isInSet(
-                        state.storedMarks || $from.marks(),
-                      )),
+                    (empty && !!schema.marks.underline.isInSet(state.storedMarks || $from.marks())),
                   strike:
                     state.doc.rangeHasMark(from, to, schema.marks.strike) ||
-                    (empty &&
-                      !!schema.marks.strike.isInSet(
-                        state.storedMarks || $from.marks(),
-                      )),
+                    (empty && !!schema.marks.strike.isInSet(state.storedMarks || $from.marks())),
                   code:
                     state.doc.rangeHasMark(from, to, schema.marks.code) ||
-                    (empty &&
-                      !!schema.marks.code.isInSet(
-                        state.storedMarks || $from.marks(),
-                      )),
-                  h1:
-                    $from.parent.type.name === "heading" &&
-                    $from.parent.attrs.level === 1,
-                  h2:
-                    $from.parent.type.name === "heading" &&
-                    $from.parent.attrs.level === 2,
-                  h3:
-                    $from.parent.type.name === "heading" &&
-                    $from.parent.attrs.level === 3,
-                  alignLeft:
-                    $from.parent.attrs.align === "left" ||
-                    !$from.parent.attrs.align,
+                    (empty && !!schema.marks.code.isInSet(state.storedMarks || $from.marks())),
+                  h1: $from.parent.type.name === "heading" && $from.parent.attrs.level === 1,
+                  h2: $from.parent.type.name === "heading" && $from.parent.attrs.level === 2,
+                  h3: $from.parent.type.name === "heading" && $from.parent.attrs.level === 3,
+                  alignLeft: $from.parent.attrs.align === "left" || !$from.parent.attrs.align,
                   alignCenter: $from.parent.attrs.align === "center",
                   alignRight: $from.parent.attrs.align === "right",
                   alignJustify: $from.parent.attrs.align === "justify",

@@ -9,11 +9,7 @@ import type { OpResult } from "./types";
  */
 
 /** Insert `before` (and optionally `after`) at the current selection. */
-export function insertText(
-  state: EditorState,
-  before: string,
-  after = "",
-): OpResult {
+export function insertText(state: EditorState, before: string, after = ""): OpResult {
   const { from, to } = state.selection;
   let tr = state.tr.insertText(before, from);
   tr = tr.insertText(after, to + before.length);
@@ -34,16 +30,9 @@ export function insertImage(
 }
 
 /** Insert a gallery node (grid of images) at the current selection. */
-export function insertGallery(
-  state: EditorState,
-  schema: Schema,
-  srcs: string[],
-): OpResult {
+export function insertGallery(state: EditorState, schema: Schema, srcs: string[]): OpResult {
   const { from } = state.selection;
   const imageNodes = srcs.map((src) => schema.nodes.image.create({ src }));
-  const galleryNode = schema.nodes.gallery.create(
-    { layout: "grid" },
-    imageNodes,
-  );
+  const galleryNode = schema.nodes.gallery.create({ layout: "grid" }, imageNodes);
   return { tr: state.tr.insert(from, galleryNode) };
 }

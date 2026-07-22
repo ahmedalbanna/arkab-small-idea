@@ -1,11 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { editorUIPlugin } from "../plugins/editorUI";
-import {
-  aiPlugin,
-  selectBlock,
-  setAiActionHandler,
-  runAiAction,
-} from "../plugins/ai";
+import { aiPlugin, selectBlock, setAiActionHandler, runAiAction } from "../plugins/ai";
 import { useAIUIStore } from "../stores/aiUIStore";
 import type { PluginContext } from "../plugins/types";
 import type { Plugin } from "prosemirror-state";
@@ -117,9 +112,7 @@ describe("editorUI plugin", () => {
     };
     editorUIPlugin.init(ctx as any);
     const plugins = resolve(registered);
-    const sideMenuPlugin = plugins.find(
-      (p) => p.props?.handleDOMEvents?.mousemove,
-    );
+    const sideMenuPlugin = plugins.find((p) => p.props?.handleDOMEvents?.mousemove);
     const view: any = {
       posAtCoords: () => ({ pos: 5 }),
       state: {

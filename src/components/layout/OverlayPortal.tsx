@@ -72,12 +72,7 @@ export function OverlayPortal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div
-          className={cn(
-            "fixed inset-0 flex items-center justify-center",
-            Z_CLASS[zLevel],
-          )}
-        >
+        <div className={cn("fixed inset-0 flex items-center justify-center", Z_CLASS[zLevel])}>
           {/* Backdrop */}
           {showBackdrop && (
             <motion.div

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   Settings,
   BookOpen,
@@ -9,15 +9,15 @@ import {
   Sparkles,
   Check,
   ChevronDown,
-} from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { useAIStore } from '../../stores/aiStore';
-import { STATIC_MODELS } from '../../constants';
+} from "lucide-react";
+import { cn } from "../../lib/utils";
+import { useAIStore } from "../../stores/aiStore";
+import { STATIC_MODELS } from "../../constants";
 
-const PROVIDERS = ['ollama', 'openai', 'anthropic', 'google', 'pipeline'] as const;
+const PROVIDERS = ["ollama", "openai", "anthropic", "google", "pipeline"] as const;
 type Provider = (typeof PROVIDERS)[number];
 
-type ServiceKey = 'chat' | 'actions' | 'semantic' | 'embeddings';
+type ServiceKey = "chat" | "actions" | "semantic" | "embeddings";
 
 interface ServiceMeta {
   key: ServiceKey;
@@ -26,10 +26,10 @@ interface ServiceMeta {
 }
 
 const SERVICES: ServiceMeta[] = [
-  { key: 'chat', label: 'Chat', icon: MessageSquare },
-  { key: 'actions', label: 'Actions', icon: Wand2 },
-  { key: 'semantic', label: 'Semantic', icon: Search },
-  { key: 'embeddings', label: 'Embeddings', icon: Sparkles },
+  { key: "chat", label: "Chat", icon: MessageSquare },
+  { key: "actions", label: "Actions", icon: Wand2 },
+  { key: "semantic", label: "Semantic", icon: Search },
+  { key: "embeddings", label: "Embeddings", icon: Sparkles },
 ];
 
 interface AISettingsPopoverProps {
@@ -60,7 +60,7 @@ export const AISettingsPopover: React.FC<AISettingsPopoverProps> = ({ className 
   // Sync drafts when the popover opens / store changes
   useEffect(() => {
     if (open) {
-      setInstructionsDraft(personalInstructions);
+      setInstructionsDraft(personalInstructions); // eslint-disable-line react-hooks/set-state-in-effect
       setHostDraft(providerConfigs.ollama.host);
     }
   }, [open, personalInstructions, providerConfigs.ollama.host]);
@@ -71,13 +71,13 @@ export const AISettingsPopover: React.FC<AISettingsPopoverProps> = ({ className 
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
 
@@ -94,14 +94,14 @@ export const AISettingsPopover: React.FC<AISettingsPopoverProps> = ({ className 
   };
 
   const modelsFor = (provider: Provider, currentModel: string): string[] => {
-    if (provider === 'ollama') {
+    if (provider === "ollama") {
       return availableModels.length ? availableModels : [currentModel];
     }
     return STATIC_MODELS[provider] ?? [currentModel];
   };
 
   return (
-    <div className={cn('relative', className)} ref={rootRef}>
+    <div className={cn("relative", className)} ref={rootRef}>
       {/* Trigger button */}
       <button
         type="button"
@@ -110,11 +110,11 @@ export const AISettingsPopover: React.FC<AISettingsPopoverProps> = ({ className 
         aria-expanded={open}
         aria-label="AI settings"
         className={cn(
-          'flex items-center justify-center rounded-md border px-1.5 py-1 transition-colors',
-          'border-minimal-border bg-minimal-sidebar text-minimal-muted',
-          'hover:border-minimal-accent/30 hover:text-minimal-text',
-          open && 'border-minimal-accent/40 text-minimal-accent',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent'
+          "flex items-center justify-center rounded-md border px-1.5 py-1 transition-colors",
+          "border-minimal-border bg-minimal-sidebar text-minimal-muted",
+          "hover:border-minimal-accent/30 hover:text-minimal-text",
+          open && "border-minimal-accent/40 text-minimal-accent",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
         )}
         title="AI settings"
       >
@@ -247,10 +247,10 @@ const ServiceConfigSection: React.FC<ServiceConfigSectionProps> = ({
             aria-checked={provider === p}
             onClick={() => onProviderChange(p)}
             className={cn(
-              'rounded-lg py-1 text-[8px] font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent',
+              "rounded-lg py-1 text-[8px] font-bold uppercase transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
               provider === p
-                ? 'bg-minimal-accent text-white'
-                : 'bg-minimal-bg text-minimal-muted hover:text-minimal-text'
+                ? "bg-minimal-accent text-white"
+                : "bg-minimal-bg text-minimal-muted hover:text-minimal-text",
             )}
           >
             {p}
@@ -268,10 +268,10 @@ const ServiceConfigSection: React.FC<ServiceConfigSectionProps> = ({
             aria-checked={model === m}
             onClick={() => onModelChange(m)}
             className={cn(
-              'flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent',
+              "flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent",
               model === m
-                ? 'bg-minimal-accent/10 text-minimal-accent ring-1 ring-minimal-accent/30'
-                : 'bg-minimal-bg text-minimal-muted hover:text-minimal-text hover:bg-minimal-sidebar'
+                ? "bg-minimal-accent/10 text-minimal-accent ring-1 ring-minimal-accent/30"
+                : "bg-minimal-bg text-minimal-muted hover:text-minimal-text hover:bg-minimal-sidebar",
             )}
           >
             <span className="truncate max-w-[130px]">{m}</span>

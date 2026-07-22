@@ -42,9 +42,11 @@ describe("renderDiagram routing", () => {
   it("normalizes adapter errors into a failure result", async () => {
     // Force the mermaid adapter mock to fail for this case.
     const { mermaidAdapter } = await import("../../lib/diagrams/adapters/mermaid");
-    (mermaidAdapter as any).mockImplementationOnce(
-      async () => ({ ok: false, error: "bad syntax", engine: "mermaid" }),
-    );
+    (mermaidAdapter as any).mockImplementationOnce(async () => ({
+      ok: false,
+      error: "bad syntax",
+      engine: "mermaid",
+    }));
     const result = await renderDiagram("mermaid", "%%%", { theme: "light" });
     expect(result.ok).toBe(false);
     expect((result as DiagramFailure).error).toBe("bad syntax");

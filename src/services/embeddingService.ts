@@ -5,68 +5,70 @@ export interface Chunk {
   hash?: string; // Add hash for incremental indexing
 }
 
-export type EmbeddingStatus = 'idle' | 'loading' | 'ready' | 'error';
+export type EmbeddingStatus = "idle" | "loading" | "ready" | "error";
 
 class EmbeddingService {
   private worker: Worker | null = null;
   private pendingRequests = new Map<string, (embedding: number[]) => void>();
-  private status: EmbeddingStatus = 'idle';
+  private status: EmbeddingStatus = "idle";
   private progress: number = 0;
   private listeners: Set<(status: EmbeddingStatus, progress: number) => void> = new Set();
   private readyPromise: Promise<void> | null = null;
   private resolveReady: (() => void) | null = null;
 
   constructor() {
-    if (typeof window !== 'undefined') {
-      this.worker = new Worker(new URL('./embedding.worker.ts', import.meta.url), {
-        type: 'module'
+    if (typeof window !== "undefined") {
+      this.worker = new Worker(new URL("./embedding.worker.ts", import.meta.url), {
+        type: "module",
       });
-      
+
       this.readyPromise = new Promise((resolve) => {
         this.resolveReady = resolve;
       });
 
       this.worker.onmessage = (event) => {
         const { type, embedding, id, error, progress: progressData } = event.data;
-        
-        if (type === 'worker-ready') {
+
+        if (type === "worker-ready") {
           // Worker is alive, but model not loaded
-          console.log('Embedding worker ready');
-        } else if (type === 'progress') {
-          if (progressData.status === 'progress' && progressData.progress !== undefined) {
+          console.info("Embedding worker ready");
+        } else if (type === "progress") {
+          if (progressData.status === "progress" && progressData.progress !== undefined) {
             this.progress = progressData.progress;
             this.notify();
           }
-        } else if (type === 'model-ready') {
-          this.status = 'ready';
+        } else if (type === "model-ready") {
+          this.status = "ready";
           this.progress = 100;
           if (this.resolveReady) this.resolveReady();
           this.notify();
-        } else if (type === 'embedding' && id) {
+        } else if (type === "embedding" && id) {
           const resolveReq = this.pendingRequests.get(id);
           if (resolveReq) {
             resolveReq(embedding);
             this.pendingRequests.delete(id);
           }
-        } else if (type === 'error') {
-          this.status = 'error';
-          console.error('Embedding Worker Error:', error);
+        } else if (type === "error") {
+          this.status = "error";
+          console.error("Embedding Worker Error:", error);
           this.notify();
         }
       };
 
-      this.worker.postMessage({ type: 'init' });
+      this.worker.postMessage({ type: "init" });
     }
   }
 
   private notify() {
-    this.listeners.forEach(l => l(this.status, this.progress));
+    this.listeners.forEach((l) => l(this.status, this.progress));
   }
 
   subscribe(callback: (status: EmbeddingStatus, progress: number) => void) {
     this.listeners.add(callback);
     callback(this.status, this.progress);
-    return () => { this.listeners.delete(callback); };
+    return () => {
+      this.listeners.delete(callback);
+    };
   }
 
   getStatus() {
@@ -74,77 +76,85 @@ class EmbeddingService {
   }
 
   isReady() {
-    return this.status === 'ready';
+    return this.status === "ready";
   }
 
   async loadModel() {
-    if (this.status === 'ready' || this.status === 'loading') return this.readyPromise;
-    
-    this.status = 'loading';
+    if (this.status === "ready" || this.status === "loading") return this.readyPromise;
+
+    this.status = "loading";
     this.progress = 0;
     this.notify();
-    
+
     if (this.worker) {
-      this.worker.postMessage({ type: 'load-model' });
+      this.worker.postMessage({ type: "load-model" });
     }
     return this.readyPromise;
   }
 
   async init() {
-    if (this.status === 'idle') {
+    if (this.status === "idle") {
       // If someone calls init but it's idle, we don't want to hang forever.
       // We'll just return a rejected promise or similar.
       // Actually, standard behavior for RAG was to auto-load.
       // With manual load, we should probably throw if not ready.
-      throw new Error('Embedding model not loaded. Please load it from the footer.');
+      throw new Error("Embedding model not loaded. Please load it from the footer.");
     }
     return this.readyPromise;
   }
 
-  async generateEmbedding(text: string, options?: { provider?: string; apiKey?: string; model?: string }): Promise<number[]> {
-    const { provider = 'pipeline', apiKey, model } = options || {};
+  async generateEmbedding(
+    text: string,
+    options?: { provider?: string; apiKey?: string; model?: string },
+  ): Promise<number[]> {
+    const { provider = "pipeline", apiKey, model } = options || {};
 
-    if (provider === 'google') {
-      const key = apiKey || process.env.GEMINI_API_KEY;
-      if (!key) throw new Error('Gemini API key is required for Google embeddings');
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'text-embedding-004'}:embedContent?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: { parts: [{ text }] }
-        })
-      });
+    if (provider === "google") {
+      if (!apiKey)
+        throw new Error(
+          "Gemini API key is required for Google embeddings. Configure it in the AI settings panel.",
+        );
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model || "text-embedding-004"}:embedContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: { parts: [{ text }] },
+          }),
+        },
+      );
       if (!response.ok) throw new Error(`Google Embedding failed: ${response.statusText}`);
       const data = await response.json();
       return data.embedding.values;
     }
 
-    if (provider === 'openai') {
-      if (!apiKey) throw new Error('OpenAI API key is required for embeddings');
-      const response = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
+    if (provider === "openai") {
+      if (!apiKey) throw new Error("OpenAI API key is required for embeddings");
+      const response = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           input: text,
-          model: model || 'text-embedding-3-small'
-        })
+          model: model || "text-embedding-3-small",
+        }),
       });
       if (!response.ok) throw new Error(`OpenAI Embedding failed: ${response.statusText}`);
       const data = await response.json();
       return data.data[0].embedding;
     }
 
-    if (provider === 'ollama') {
-      const response = await fetch('/api/ai/embeddings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    if (provider === "ollama") {
+      const response = await fetch("/api/ai/embeddings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: model || 'nomic-embed-text',
-          prompt: text
-        })
+          model: model || "nomic-embed-text",
+          prompt: text,
+        }),
       });
       if (!response.ok) throw new Error(`Ollama Embedding failed: ${response.statusText}`);
       const data = await response.json();
@@ -153,21 +163,21 @@ class EmbeddingService {
 
     // Default to local pipeline
     await this.init();
-    if (!this.worker) throw new Error('Worker not initialized');
-    
+    if (!this.worker) throw new Error("Worker not initialized");
+
     const id = Math.random().toString(36).substring(7);
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(id);
-        reject(new Error('Embedding request timed out'));
+        reject(new Error("Embedding request timed out"));
       }, 60000);
 
       this.pendingRequests.set(id, (embedding) => {
         clearTimeout(timeout);
         resolve(embedding);
       });
-      
-      this.worker!.postMessage({ type: 'embed', text, id });
+
+      this.worker!.postMessage({ type: "embed", text, id });
     });
   }
 
@@ -189,9 +199,9 @@ export const embeddingService = new EmbeddingService();
 
 export class VectorStore {
   private chunks: Chunk[] = [];
-  private dbName = 'ink-quill-rag';
-  private storeName = 'chunks';
-  private episodesStoreName = 'episodes';
+  private dbName = "ink-quill-rag";
+  private storeName = "chunks";
+  private episodesStoreName = "episodes";
   private db: IDBDatabase | null = null;
   private isInitialized = false;
   private episodes: Chunk[] = [];
@@ -201,7 +211,7 @@ export class VectorStore {
 
     // No IndexedDB available (e.g. Node/tests/SSR or blocked private mode) —
     // fall back to in-memory storage so the app still works.
-    if (typeof indexedDB === 'undefined' || typeof window === 'undefined') {
+    if (typeof indexedDB === "undefined" || typeof window === "undefined") {
       this.isInitialized = true;
       return;
     }
@@ -224,17 +234,17 @@ export class VectorStore {
         request.onupgradeneeded = (event: any) => {
           const db = event.target.result;
           if (!db.objectStoreNames.contains(this.storeName)) {
-            db.createObjectStore(this.storeName, { keyPath: 'id' });
+            db.createObjectStore(this.storeName, { keyPath: "id" });
           }
           if (!db.objectStoreNames.contains(this.episodesStoreName)) {
-            db.createObjectStore(this.episodesStoreName, { keyPath: 'id' });
+            db.createObjectStore(this.episodesStoreName, { keyPath: "id" });
           }
         };
       });
     } catch (error) {
       // IndexedDB failed to open (quota, private mode, corruption) — keep
       // the vector store functional in-memory rather than crashing.
-      console.warn('VectorStore: IndexedDB unavailable, using in-memory storage.', error);
+      console.warn("VectorStore: IndexedDB unavailable, using in-memory storage.", error);
       this.db = null;
       this.isInitialized = true;
     }
@@ -244,11 +254,14 @@ export class VectorStore {
     if (!this.db) return;
 
     return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName, this.episodesStoreName], 'readonly');
-      
+      const transaction = this.db!.transaction(
+        [this.storeName, this.episodesStoreName],
+        "readonly",
+      );
+
       const chunksStore = transaction.objectStore(this.storeName);
       const chunksRequest = chunksStore.getAll();
-      
+
       const episodesStore = transaction.objectStore(this.episodesStoreName);
       const episodesRequest = episodesStore.getAll();
 
@@ -256,7 +269,9 @@ export class VectorStore {
       transaction.oncomplete = () => {
         this.chunks = chunksRequest.result || [];
         this.episodes = episodesRequest.result || [];
-        console.log(`Loaded ${this.chunks.length} chunks and ${this.episodes.length} episodes from IndexedDB.`);
+        console.info(
+          `Loaded ${this.chunks.length} chunks and ${this.episodes.length} episodes from IndexedDB.`,
+        );
         resolve();
       };
     });
@@ -267,10 +282,10 @@ export class VectorStore {
     if (!this.db) return;
 
     return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction(storeName, 'readwrite');
+      const transaction = this.db!.transaction(storeName, "readwrite");
       const store = transaction.objectStore(storeName);
 
-      chunks.forEach(chunk => store.put(chunk));
+      chunks.forEach((chunk) => store.put(chunk));
 
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
@@ -305,9 +320,9 @@ export class VectorStore {
 
     if (storeName === this.storeName) this.chunks = [];
     if (storeName === this.episodesStoreName) this.episodes = [];
-    
+
     return new Promise<void>((resolve, reject) => {
-      const transaction = this.db!.transaction(storeName, 'readwrite');
+      const transaction = this.db!.transaction(storeName, "readwrite");
       const store = transaction.objectStore(storeName);
       const request = store.clear();
 
@@ -325,19 +340,27 @@ export class VectorStore {
   }
 
   search(queryEmbedding: number[], limit = 5, threshold = 0.3): Chunk[] {
-    return this.searchWithScores(queryEmbedding, limit, threshold, this.chunks).map(s => s.chunk);
+    return this.searchWithScores(queryEmbedding, limit, threshold, this.chunks).map((s) => s.chunk);
   }
 
   searchEpisodes(queryEmbedding: number[], limit = 3, threshold = 0.3): Chunk[] {
-    return this.searchWithScores(queryEmbedding, limit, threshold, this.episodes).map(s => s.chunk);
+    return this.searchWithScores(queryEmbedding, limit, threshold, this.episodes).map(
+      (s) => s.chunk,
+    );
   }
 
-  searchWithScores(queryEmbedding: number[], limit = 5, threshold = 0.3, targetChunks = this.chunks): { chunk: Chunk; score: number }[] {
-    return targetChunks.map(chunk => ({
-      chunk,
-      score: embeddingService.cosineSimilarity(queryEmbedding, chunk.embedding)
-    }))
-      .filter(item => item.score >= threshold)
+  searchWithScores(
+    queryEmbedding: number[],
+    limit = 5,
+    threshold = 0.3,
+    targetChunks = this.chunks,
+  ): { chunk: Chunk; score: number }[] {
+    return targetChunks
+      .map((chunk) => ({
+        chunk,
+        score: embeddingService.cosineSimilarity(queryEmbedding, chunk.embedding),
+      }))
+      .filter((item) => item.score >= threshold)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
   }

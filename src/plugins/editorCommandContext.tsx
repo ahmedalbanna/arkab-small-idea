@@ -1,9 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { EditorCommandBus, defaultEditorCommandBus } from "./editorCommandBus";
 
 /**
@@ -12,17 +7,13 @@ import { EditorCommandBus, defaultEditorCommandBus } from "./editorCommandBus";
  * commands (`useEditorCommandBus().dispatch(...)`) instead of holding a
  * reference to a specific editor instance.
  */
-export const EditorCommandBusContext = createContext<EditorCommandBus | null>(
-  null,
-);
+export const EditorCommandBusContext = createContext<EditorCommandBus | null>(null);
 
 /** Provides a fresh command bus to the subtree (shared by the editor + consumers). */
 export function EditorCommandBusProvider({ children }: { children: ReactNode }) {
   const bus = useMemo(() => new EditorCommandBus(), []);
   return (
-    <EditorCommandBusContext.Provider value={bus}>
-      {children}
-    </EditorCommandBusContext.Provider>
+    <EditorCommandBusContext.Provider value={bus}>{children}</EditorCommandBusContext.Provider>
   );
 }
 

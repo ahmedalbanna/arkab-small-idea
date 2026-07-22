@@ -66,15 +66,16 @@ export function useSearchSync({
             const editorRect = editorRef.current?.getBoundingClientRect();
             const scrollContainer = editorRef.current?.parentElement;
             if (scrollContainer && editorRect) {
-              const relativeTop =
-                coords.top - editorRect.top + scrollContainer.scrollTop;
+              const relativeTop = coords.top - editorRect.top + scrollContainer.scrollTop;
               scrollContainer.scrollTo({
                 top: relativeTop - scrollContainer.clientHeight / 3,
                 behavior: "smooth",
               });
             }
           }
-        } catch (e) {}
+        } catch {
+          /* empty */
+        }
       }
     }
   }, [

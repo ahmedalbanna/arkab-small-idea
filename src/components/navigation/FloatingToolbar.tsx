@@ -1,15 +1,15 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Sparkles, Search, Command, Headset } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { Z_CLASS } from '../../lib/zIndex';
-import { useUIStore } from '../../stores/uiStore';
-import { useLayout } from '../layout/LayoutContext';
-import type { PluginContext, ToolbarItem } from '../../plugins/types';
+import React from "react";
+import { motion } from "motion/react";
+import { Sparkles, Search, Command, Headset } from "lucide-react";
+import { cn } from "../../lib/utils";
+import { Z_CLASS } from "../../lib/zIndex";
+import { useUIStore } from "../../stores/uiStore";
+import { useLayout } from "../layout/LayoutContext";
+import type { PluginContext, ToolbarItem } from "../../plugins/types";
 
 interface FloatingToolbarProps {
-  direction: 'ltr' | 'rtl';
-  setDirection: (dir: 'ltr' | 'rtl' | ((prev: 'ltr' | 'rtl') => 'ltr' | 'rtl')) => void;
+  direction: "ltr" | "rtl";
+  setDirection: (dir: "ltr" | "rtl" | ((prev: "ltr" | "rtl") => "ltr" | "rtl")) => void;
   toolbarItems?: ToolbarItem[];
   pluginContext?: PluginContext | null;
 }
@@ -22,12 +22,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   toolbarItems = [],
   pluginContext = null,
 }) => {
-  const {
-    showAIAssistant, setAIAssistant,
-    showSearch, setSearch,
-    showQuickCommands, setQuickCommands,
-    showTTS, setTTS,
-  } = useUIStore();
+  const { showAIAssistant, showSearch, showQuickCommands, setQuickCommands, showTTS, setTTS } =
+    useUIStore();
 
   const { togglePanel } = useLayout();
 
@@ -35,14 +31,44 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 
   // ── Section 1: AI & Tools ──
   const aiTools = [
-    { id: 'ai', icon: Sparkles, active: showAIAssistant, action: () => togglePanel('ai'), title: 'AI Assistant' },
-    { id: 'tts', icon: Headset, active: showTTS, action: () => setTTS(!showTTS), title: 'Text to Speech' },
-    { id: 'search', icon: Search, active: showSearch, action: () => togglePanel('search'), title: 'Find & Replace' },
-    { id: 'commands', icon: Command, active: showQuickCommands, action: () => setQuickCommands(!showQuickCommands), title: 'Toggle Quick Commands Menu' },
+    {
+      id: "ai",
+      icon: Sparkles,
+      active: showAIAssistant,
+      action: () => togglePanel("ai"),
+      title: "AI Assistant",
+    },
+    {
+      id: "tts",
+      icon: Headset,
+      active: showTTS,
+      action: () => setTTS(!showTTS),
+      title: "Text to Speech",
+    },
+    {
+      id: "search",
+      icon: Search,
+      active: showSearch,
+      action: () => togglePanel("search"),
+      title: "Find & Replace",
+    },
+    {
+      id: "commands",
+      icon: Command,
+      active: showQuickCommands,
+      action: () => setQuickCommands(!showQuickCommands),
+      title: "Toggle Quick Commands Menu",
+    },
   ];
 
   const renderButton = (
-    item: { id: string; icon: React.ComponentType<{ className?: string }>; active: boolean; action: () => void; title: string },
+    item: {
+      id: string;
+      icon: React.ComponentType<{ className?: string }>;
+      active: boolean;
+      action: () => void;
+      title: string;
+    },
     idx: number,
   ) => {
     const Icon = item.icon;

@@ -1,6 +1,6 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { useState, useEffect } from 'react';
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import { useState, useEffect } from "react";
 
 /**
  * Merges class names using clsx and tailwind-merge.
@@ -14,9 +14,9 @@ export function slugify(text: string) {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')     // Replace spaces with -
-    .replace(/[^\w-]+/g, '')  // Remove all non-word chars
-    .replace(/--+/g, '-');    // Replace multiple - with single -
+    .replace(/\s+/g, "-") // Replace spaces with -
+    .replace(/[^\w-]+/g, "") // Remove all non-word chars
+    .replace(/--+/g, "-"); // Replace multiple - with single -
 }
 
 /**
@@ -43,11 +43,11 @@ export function useMediaQuery(query: string): boolean {
   useEffect(() => {
     const media = window.matchMedia(query);
     if (media.matches !== matches) {
-      setMatches(media.matches);
+      setMatches(media.matches); // eslint-disable-line react-hooks/set-state-in-effect
     }
     const listener = () => setMatches(media.matches);
-    window.addEventListener('resize', listener);
-    return () => window.removeEventListener('resize', listener);
+    window.addEventListener("resize", listener);
+    return () => window.removeEventListener("resize", listener);
   }, [matches, query]);
 
   return matches;

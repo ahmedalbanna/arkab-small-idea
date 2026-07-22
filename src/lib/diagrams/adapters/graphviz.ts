@@ -6,7 +6,7 @@ function firstLine(message: string, fallback: string): string {
   return line.trim() || fallback;
 }
 
-export const graphvizAdapter: DiagramAdapter = async (lang, source, opts) => {
+export const graphvizAdapter: DiagramAdapter = async (_lang, source, _opts) => {
   try {
     const mod = await import("@hpcc-js/wasm");
     const graphviz = await (mod as any).Graphviz.load();

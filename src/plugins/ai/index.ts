@@ -1,5 +1,5 @@
 import { keymap } from "prosemirror-keymap";
-import { Plugin, TextSelection } from "prosemirror-state";
+import { TextSelection } from "prosemirror-state";
 import type { EditorState, Transaction } from "prosemirror-state";
 import type { InkPlugin, PluginContext } from "../types";
 import type { AIAssistantAction } from "../../services/aiService";
@@ -10,21 +10,14 @@ import { useAIUIStore } from "../../stores/aiUIStore";
  * Selects the block containing the cursor (when the selection is collapsed) so
  * AI actions act on the whole block.
  */
-export function selectBlock(
-  state: EditorState,
-  dispatch?: (tr: Transaction) => void,
-): boolean {
+export function selectBlock(state: EditorState, dispatch?: (tr: Transaction) => void): boolean {
   const { from, to } = state.selection;
   if (from === to) {
     const $from = state.selection.$from;
     const blockFrom = $from.start();
     const blockTo = $from.end();
     if (blockFrom !== blockTo && dispatch) {
-      dispatch(
-        state.tr.setSelection(
-          TextSelection.create(state.doc, blockFrom, blockTo),
-        ),
-      );
+      dispatch(state.tr.setSelection(TextSelection.create(state.doc, blockFrom, blockTo)));
     }
   }
   return true;
@@ -40,17 +33,12 @@ export function selectBlock(
  * handler, matching the registry/context pattern used elsewhere.
  */
 export function setAiActionHandler(
-  handler:
-    | ((action: AIAssistantAction, customInstruction?: string) => void)
-    | null,
+  handler: ((action: AIAssistantAction, customInstruction?: string) => void) | null,
 ): void {
   useAIUIStore.getState().setAiActionHandler(handler);
 }
 
-export function runAiAction(
-  action: AIAssistantAction,
-  customInstruction?: string,
-): void {
+export function runAiAction(action: AIAssistantAction, customInstruction?: string): void {
   useAIUIStore.getState().aiActionHandler?.(action, customInstruction);
 }
 
@@ -91,10 +79,8 @@ export const aiPlugin: InkPlugin = {
 
     ctx.registerProsePlugin(() =>
       keymap({
-        "Mod-j": (state, dispatch) =>
-          selectBlock(state, dispatch),
-        "Mod-Shift-j": (state, dispatch) =>
-          selectBlock(state, dispatch),
+        "Mod-j": (state, dispatch) => selectBlock(state, dispatch),
+        "Mod-Shift-j": (state, dispatch) => selectBlock(state, dispatch),
         "Mod-Shift-i": (state) => {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");

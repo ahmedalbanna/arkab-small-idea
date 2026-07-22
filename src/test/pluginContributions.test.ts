@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Schema } from "prosemirror-model";
 import { createCollectors, buildPluginContext } from "../plugins/context";
 import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
-import {
-  addPluginLogSink,
-  type PluginLogEntry,
-} from "../plugins/logger";
+import { addPluginLogSink, type PluginLogEntry } from "../plugins/logger";
 import { PluginRegistry } from "../plugins/registry";
 import type { InkPlugin, PluginContext } from "../plugins/types";
 

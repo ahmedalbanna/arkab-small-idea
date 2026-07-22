@@ -2,10 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { createRef } from "react";
-import {
-  PluginRegistryProvider,
-  usePluginRegistry,
-} from "../plugins/registryContext";
+import { PluginRegistryProvider, usePluginRegistry } from "../plugins/registryContext";
 import { EditorCommandBusProvider } from "../plugins/editorCommandContext";
 import ProseMirrorEditor from "../components/ProseMirrorEditor";
 import type { EditorRef } from "../components/ProseMirrorEditor";
@@ -78,21 +75,14 @@ describe("Full editor mount + plugin load (integration)", () => {
     render(
       <PluginRegistryProvider>
         <EditorCommandBusProvider>
-          <ProseMirrorEditor
-            ref={ref}
-            value=""
-            onChange={() => {}}
-            onLoaded={onLoaded}
-          />
+          <ProseMirrorEditor ref={ref} value="" onChange={() => {}} onLoaded={onLoaded} />
           <Capture />
         </EditorCommandBusProvider>
       </PluginRegistryProvider>,
     );
 
     await waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
-    );
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
 
     // The loader published a registry both via `onLoaded` and into context.
     const loaded = onLoaded.mock.calls[0][0];
@@ -128,9 +118,7 @@ describe("Full editor mount + plugin load (integration)", () => {
       </PluginRegistryProvider>,
     );
 
-    await waitFor(() =>
-      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
-    );
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
     const firstLoads = onLoaded.mock.calls.length;
     const beforeIds = onLoaded.mock.calls[0][0].registry
       .getEnabled()
@@ -144,9 +132,7 @@ describe("Full editor mount + plugin load (integration)", () => {
     });
 
     // The preference is persisted...
-    await waitFor(() =>
-      expect(useSettingsStore.getState().disabledPlugins).toContain("math"),
-    );
+    await waitFor(() => expect(useSettingsStore.getState().disabledPlugins).toContain("math"));
     // ...and the editor rebuilt (onLoaded fired again) with math removed,
     // without losing the document view.
     await waitFor(() => {
@@ -163,9 +149,7 @@ describe("Full editor mount + plugin load (integration)", () => {
     act(() => {
       useSettingsStore.getState().setPluginEnabled("math", true);
     });
-    await waitFor(() =>
-      expect(useSettingsStore.getState().disabledPlugins).not.toContain("math"),
-    );
+    await waitFor(() => expect(useSettingsStore.getState().disabledPlugins).not.toContain("math"));
     await waitFor(() => {
       const calls = onLoaded.mock.calls;
       const lastIds = calls[calls.length - 1][0].registry

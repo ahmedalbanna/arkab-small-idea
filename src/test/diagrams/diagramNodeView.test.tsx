@@ -89,9 +89,7 @@ describe("DiagramNodeView (click-to-edit)", () => {
     await new Promise((r) => setTimeout(r, 500));
     expect(fake.getCommitted()?.source).toBe("graph TD;\nC-->D");
 
-    editor.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-    );
+    editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(editor.classList.contains("is-active")).toBe(false);
   });
 
@@ -107,9 +105,7 @@ describe("DiagramNodeView (click-to-edit)", () => {
       .querySelector(".diagram-preview")
       .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     nv.dom.querySelector(".diagram-editor").value = "broken";
-    nv.dom
-      .querySelector(".diagram-editor")
-      .dispatchEvent(new Event("input", { bubbles: true }));
+    nv.dom.querySelector(".diagram-editor").dispatchEvent(new Event("input", { bubbles: true }));
     await new Promise((r) => setTimeout(r, 700));
 
     const err = nv.dom.querySelector(".diagram-error");

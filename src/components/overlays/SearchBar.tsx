@@ -68,7 +68,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           <div className="flex items-start gap-2">
             <div className="flex-1 bg-minimal-sidebar rounded-lg flex items-center px-3 border border-minimal-border focus-within:border-minimal-accent transition-colors">
               <Search className="w-3.5 h-3.5 text-minimal-muted me-2" aria-hidden="true" />
-              <label htmlFor={findInputId} className="sr-only">Find</label>
+              <label htmlFor={findInputId} className="sr-only">
+                Find
+              </label>
               <input
                 id={findInputId}
                 type="text"
@@ -83,10 +85,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 autoFocus
               />
               {findText && (
-                <span className="text-[10px] font-bold text-minimal-accent px-1.5 py-0.5 bg-minimal-accent/10 rounded me-1" aria-live="polite">
-                  {hasMatches
-                    ? `${currentMatchIndex || "-"} / ${matchCount}`
-                    : "0 / 0"}
+                <span
+                  className="text-[10px] font-bold text-minimal-accent px-1.5 py-0.5 bg-minimal-accent/10 rounded me-1"
+                  aria-live="polite"
+                >
+                  {hasMatches ? `${currentMatchIndex || "-"} / ${matchCount}` : "0 / 0"}
                 </span>
               )}
               <div className="flex items-center gap-1 ms-2">
@@ -150,9 +153,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               <div className="flex flex-col gap-1 px-1 min-w-[80px] shrink-0">
                 <div className="flex justify-between items-center text-[9px] font-bold text-minimal-muted uppercase tracking-wider">
                   <span>Relevance</span>
-                  <span>
-                    {semanticResults.filter((r) => r.source === "external").length} Ref
-                  </span>
+                  <span>{semanticResults.filter((r) => r.source === "external").length} Ref</span>
                 </div>
                 <div className="h-1 bg-minimal-sidebar rounded-full overflow-hidden">
                   <div
@@ -183,30 +184,38 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
           {/* ── Semantic results ── */}
           {isSemantic && semanticResults.length > 0 && (
-            <div className="flex flex-col gap-1 border-t border-minimal-border pt-2 max-h-[200px] overflow-y-auto custom-scrollbar" role="listbox" aria-label="Semantic search results">
+            <div
+              className="flex flex-col gap-1 border-t border-minimal-border pt-2 max-h-[200px] overflow-y-auto custom-scrollbar"
+              role="listbox"
+              aria-label="Semantic search results"
+            >
               <div className="flex items-center gap-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-wider mb-1">
                 <Zap className="w-2.5 h-2.5 fill-minimal-muted animate-pulse" aria-hidden="true" />
                 Semantic Matches (Score Gradients)
               </div>
               {semanticResults.map((result, idx) => {
                 const score = result.score;
-                let gradientClass = "bg-gradient-to-r from-minimal-muted/10 via-minimal-muted/5 to-transparent border-minimal-border/40";
+                let gradientClass =
+                  "bg-gradient-to-r from-minimal-muted/10 via-minimal-muted/5 to-transparent border-minimal-border/40";
                 let textClass = "text-minimal-text";
                 let badgeClass = "text-minimal-muted";
                 let leftBorderBg = "bg-minimal-muted";
 
                 if (score >= 0.85) {
-                  gradientClass = "bg-gradient-to-r from-emerald-500/20 via-emerald-500/5 to-transparent border-emerald-500/30";
+                  gradientClass =
+                    "bg-gradient-to-r from-emerald-500/20 via-emerald-500/5 to-transparent border-emerald-500/30";
                   textClass = "text-emerald-950 dark:text-emerald-100 font-medium";
                   badgeClass = "text-emerald-600 dark:text-emerald-400";
                   leftBorderBg = "bg-gradient-to-b from-emerald-400 to-emerald-600";
                 } else if (score >= 0.7) {
-                  gradientClass = "bg-gradient-to-r from-indigo-500/15 via-indigo-500/5 to-transparent border-indigo-500/30";
+                  gradientClass =
+                    "bg-gradient-to-r from-indigo-500/15 via-indigo-500/5 to-transparent border-indigo-500/30";
                   textClass = "text-indigo-950 dark:text-indigo-100";
                   badgeClass = "text-indigo-600 dark:text-indigo-400";
                   leftBorderBg = "bg-gradient-to-b from-indigo-400 to-indigo-600";
                 } else if (score >= 0.5) {
-                  gradientClass = "bg-gradient-to-r from-blue-500/10 via-blue-500/3 to-transparent border-blue-500/20";
+                  gradientClass =
+                    "bg-gradient-to-r from-blue-500/10 via-blue-500/3 to-transparent border-blue-500/20";
                   textClass = "text-blue-900 dark:text-blue-200";
                   badgeClass = "text-blue-500 dark:text-blue-400";
                   leftBorderBg = "bg-blue-400";
@@ -231,8 +240,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                       {result.text}
                     </p>
                     <div className="flex justify-between items-center mt-1.5 ps-2">
-                      <span className={cn("text-[9px] font-mono font-bold flex items-center gap-1", badgeClass)}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" aria-hidden="true" />
+                      <span
+                        className={cn(
+                          "text-[9px] font-mono font-bold flex items-center gap-1",
+                          badgeClass,
+                        )}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-current animate-ping"
+                          aria-hidden="true"
+                        />
                         {(score * 100).toFixed(0)}% Match
                       </span>
                       <span className="text-[9px] text-minimal-muted font-medium">
@@ -249,7 +266,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-minimal-sidebar rounded-lg flex items-center px-3 border border-minimal-border focus-within:border-minimal-accent transition-colors">
               <ArrowRightLeft className="w-3.5 h-3.5 text-minimal-muted me-2" aria-hidden="true" />
-              <label htmlFor={replaceInputId} className="sr-only">Replace</label>
+              <label htmlFor={replaceInputId} className="sr-only">
+                Replace
+              </label>
               <input
                 id={replaceInputId}
                 type="text"

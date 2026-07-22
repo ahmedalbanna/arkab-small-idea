@@ -19,9 +19,7 @@ export function getHtml(state: EditorState, schema: Schema): string {
   if (typeof document === "undefined") {
     throw new Error("getHtml requires a DOM environment (document is undefined).");
   }
-  const fragment = DOMSerializer.fromSchema(schema).serializeFragment(
-    state.doc.content,
-  );
+  const fragment = DOMSerializer.fromSchema(schema).serializeFragment(state.doc.content);
   const container = document.createElement("div");
   container.appendChild(fragment);
   return container.innerHTML;

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback } from "react";
 
 import { AIAssistant } from "../../components/ai/AIAssistant";
+import type { OllamaStatus } from "../../components/ai/AssistantHeader";
 import { AIProviderSettings } from "../../components/ai/AIProviderSettings";
 import { SearchBar } from "../../components/overlays/SearchBar";
 import { ShortcutsHelp } from "../../components/overlays/ShortcutsHelp";
@@ -46,7 +47,6 @@ export function AIHost() {
   } = useAIStore();
 
   const { showAIAssistant, setAIAssistant } = useUIStore();
-
 
   const {
     findText,
@@ -97,18 +97,10 @@ export function AIHost() {
         try {
           const embeddingOptions = {
             provider: serviceConfigs.embeddings.provider,
-            apiKey:
-              apiKeys?.[
-                serviceConfigs.embeddings.provider as keyof typeof apiKeys
-              ],
+            apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
             model: serviceConfigs.embeddings.model,
           };
-          const results = await ragService.searchDetailed(
-            findText,
-            10,
-            0.2,
-            embeddingOptions,
-          );
+          const results = await ragService.searchDetailed(findText, 10, 0.2, embeddingOptions);
           const docMatches = results.filter((r) => r.source === "document");
           setMatchCount(docMatches.length);
           setSemanticResults(results);
@@ -164,15 +156,12 @@ export function AIHost() {
 
   // Ollama connection check.
   useEffect(() => {
-    const anyOllama = Object.values(serviceConfigs).some(
-      (c) => c.provider === "ollama",
-    );
+    const anyOllama = Object.values(serviceConfigs).some((c) => c.provider === "ollama");
 
     if (anyOllama) {
       setOllamaStatus({ ...ollamaStatus, loading: true });
       const activeOllamaModel =
-        Object.values(serviceConfigs).find((c) => c.provider === "ollama")
-          ?.model || "mistral";
+        Object.values(serviceConfigs).find((c) => c.provider === "ollama")?.model || "mistral";
       checkOllamaConnection(activeOllamaModel).then((res) => {
         setOllamaStatus({
           loading: false,
@@ -212,8 +201,7 @@ export function AIHost() {
 
       const embeddingOptions = {
         provider: serviceConfigs.embeddings.provider,
-        apiKey:
-          apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
+        apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
         model: serviceConfigs.embeddings.model,
       };
 
@@ -222,9 +210,7 @@ export function AIHost() {
       ai.setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "" }] }]);
 
       const state = useEditorStore.getState();
-      const page =
-        state.pages.find((p) => p.id === state.activeFocusedPageId) ||
-        state.pages[0];
+      const page = state.pages.find((p) => p.id === state.activeFocusedPageId) || state.pages[0];
       if (!page) {
         ai.setGenerating(false);
         chatAbortControllerRef.current = null;
@@ -260,15 +246,13 @@ export function AIHost() {
         });
       } catch (error: any) {
         if (error.name === "AbortError") {
-          console.log("Chat aborted by user");
+          console.info("Chat aborted by user");
           chatAbortControllerRef.current = null;
           useAIStore.getState().setGenerating(false);
           return;
         }
         console.error("AI Generation failed:", error);
-        const errorMessage = `Error: ${
-          error instanceof Error ? error.message : String(error)
-        }`;
+        const errorMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
         ai.setChatHistory((prev) => {
           const next = [...prev];
           next[next.length - 1] = {
@@ -319,17 +303,14 @@ export function AIHost() {
     streamReply(truncated);
   }, [streamReply]);
 
-  const runAiAction = useCallback(
-    (actionId: string) => {
-      if (actionId === "brainstorm") {
-        setAiPrompt("Brainstorm 5 creative angles for this document:");
-        setTimeout(() => chatInputRef.current?.focus(), 0);
-        return;
-      }
-      handleAiAction(actionId);
-    },
-    [],
-  );
+  const runAiAction = useCallback((actionId: string) => {
+    if (actionId === "brainstorm") {
+      setAiPrompt("Brainstorm 5 creative angles for this document:");
+      setTimeout(() => chatInputRef.current?.focus(), 0);
+      return;
+    }
+    handleAiAction(actionId);
+  }, []);
 
   const handleDismissMessage = useCallback((index: number) => {
     const ai = useAIStore.getState();
@@ -340,13 +321,10 @@ export function AIHost() {
     });
   }, []);
 
-  const handleReviseMessage = useCallback(
-    (text: string) => {
-      const instruction = `Revise the following text based on this instruction: "${text}". Keep the same language and meaning, improve clarity and flow.`;
-      handleAiAction("rewrite", instruction);
-    },
-    [],
-  );
+  const handleReviseMessage = useCallback((text: string) => {
+    const instruction = `Revise the following text based on this instruction: "${text}". Keep the same language and meaning, improve clarity and flow.`;
+    handleAiAction("rewrite", instruction);
+  }, []);
 
   const stopAiGenerate = useCallback(() => {
     if (chatAbortControllerRef.current) {
@@ -354,27 +332,24 @@ export function AIHost() {
     }
   }, []);
 
-  const handleChatImageUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files) return;
+  const handleChatImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
 
-      Array.from(files).forEach((file: File) => {
-        if (!file.type.startsWith("image/")) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const dataUrl = event.target?.result as string;
-          if (dataUrl) {
-            const current = useAIUIStore.getState().chatAttachedImages;
-            setChatAttachedImages([...current, dataUrl]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-      if (chatImageInputRef.current) chatImageInputRef.current.value = "";
-    },
-    [],
-  );
+    Array.from(files).forEach((file: File) => {
+      if (!file.type.startsWith("image/")) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (dataUrl) {
+          const current = useAIUIStore.getState().chatAttachedImages;
+          setChatAttachedImages([...current, dataUrl]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    if (chatImageInputRef.current) chatImageInputRef.current.value = "";
+  }, []);
 
   const formatChatInput = useCallback(
     (type: "bold" | "italic" | "list") => {
@@ -400,17 +375,13 @@ export function AIHost() {
           break;
       }
 
-      const newText =
-        text.substring(0, selectionStart) +
-        formatted +
-        text.substring(selectionEnd);
+      const newText = text.substring(0, selectionStart) + formatted + text.substring(selectionEnd);
       setAiPrompt(newText);
 
       setTimeout(() => {
         if (chatInputRef.current) {
           chatInputRef.current.focus();
-          const newPos =
-            selectionStart + cursorOffset + (selected ? selected.length : 0);
+          const newPos = selectionStart + cursorOffset + (selected ? selected.length : 0);
           chatInputRef.current.setSelectionRange(newPos, newPos);
         }
       }, 0);
@@ -418,14 +389,13 @@ export function AIHost() {
     [aiPrompt],
   );
 
-  const ollamaStatusKey: import("../../components/ai/AssistantHeader").OllamaStatus =
-    ollamaStatus.loading
-      ? "loading"
-      : ollamaStatus.connected
-        ? "ready"
-        : ollamaStatus.error
-          ? "error"
-          : "no-ollama";
+  const ollamaStatusKey: OllamaStatus = ollamaStatus.loading
+    ? "loading"
+    : ollamaStatus.connected
+      ? "ready"
+      : ollamaStatus.error
+        ? "error"
+        : "no-ollama";
 
   return (
     <>
@@ -462,10 +432,7 @@ export function AIHost() {
         />
       </PanelSlot>
 
-      <AIProviderSettings
-        aiSettingsTab={aiSettingsTab}
-        setAiSettingsTab={setAiSettingsTab}
-      />
+      <AIProviderSettings aiSettingsTab={aiSettingsTab} setAiSettingsTab={setAiSettingsTab} />
 
       <SearchBar
         findText={findText}
@@ -488,15 +455,14 @@ export function AIHost() {
       />
 
       <TTSSpeaker
-        editorRef={{
-          current: activePage ? getEditorRef(activePage.id) || null : null,
-        } as any}
+        editorRef={
+          {
+            current: activePage ? getEditorRef(activePage.id) || null : null,
+          } as any
+        }
       />
 
-      <ShortcutsHelp
-        showShortcuts={showShortcuts}
-        setShowShortcuts={setShowShortcuts}
-      />
+      <ShortcutsHelp showShortcuts={showShortcuts} setShowShortcuts={setShowShortcuts} />
     </>
   );
 }

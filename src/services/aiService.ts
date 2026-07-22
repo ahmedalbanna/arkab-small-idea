@@ -40,8 +40,11 @@ export class GoogleProvider implements AIProvider {
   private ai: GoogleGenAI;
 
   constructor(apiKey: string) {
+    if (!apiKey) {
+      throw new Error("Google API key is required. Configure it in the AI settings panel.");
+    }
     this.ai = new GoogleGenAI({
-      apiKey: apiKey || process.env.GEMINI_API_KEY || "",
+      apiKey,
     });
   }
 
@@ -68,8 +71,8 @@ export class GoogleProvider implements AIProvider {
             parts.push({
               inlineData: {
                 mimeType: mimeType,
-                data: base64Data
-              }
+                data: base64Data,
+              },
             });
           }
         });
@@ -77,7 +80,7 @@ export class GoogleProvider implements AIProvider {
 
       return {
         role: m.role === "system" ? "user" : m.role, // Google uses user/model
-        parts
+        parts,
       };
     });
 
@@ -114,9 +117,7 @@ export class GoogleProvider implements AIProvider {
     onChunk?: (chunk: string) => void,
     signal?: AbortSignal,
   ): Promise<string> {
-    const contents = [
-      { role: "user", parts: [{ text: `${system}\n\n${prompt}` }] },
-    ];
+    const contents = [{ role: "user", parts: [{ text: `${system}\n\n${prompt}` }] }];
 
     if (onChunk) {
       const response = await this.ai.models.generateContentStream({
@@ -157,7 +158,7 @@ export class PipelineProvider implements AIProvider {
 }
 
 export class OllamaProvider implements AIProvider {
-  constructor(private host: string = "") {}
+  constructor(_host?: string) {}
 
   async chat(
     messages: any[],
@@ -203,7 +204,7 @@ export class OllamaProvider implements AIProvider {
               fullContent += data.message.content;
               onChunk(data.message.content);
             }
-          } catch (e: any) {
+          } catch {
             // Silently ignore invalid JSON chunks as they might be partial
           }
         }
@@ -303,7 +304,7 @@ export class OpenAIProvider implements AIProvider {
             m.images.forEach((img: string) => {
               contentParts.push({
                 type: "image_url",
-                image_url: { url: img }
+                image_url: { url: img },
               });
             });
             return {
@@ -346,7 +347,9 @@ export class OpenAIProvider implements AIProvider {
               fullContent += content;
               onChunk(content);
             }
-          } catch (e) {}
+          } catch {
+            // Silently ignore malformed chunks
+          }
         }
       }
       return fullContent;
@@ -370,7 +373,7 @@ export class OpenAIProvider implements AIProvider {
       ],
       model,
       onChunk,
-      signal
+      signal,
     );
   }
 }
@@ -400,8 +403,8 @@ export class AnthropicProvider implements AIProvider {
                 source: {
                   type: "base64",
                   media_type: mimeType,
-                  data: base64Data
-                }
+                  data: base64Data,
+                },
               });
             }
           });
@@ -462,7 +465,7 @@ export class AnthropicProvider implements AIProvider {
                 onChunk(content);
               }
             }
-          } catch (e) {
+          } catch {
             // Silently ignore invalid JSON chunks as they might be partial
           }
         }
@@ -488,7 +491,7 @@ export class AnthropicProvider implements AIProvider {
       ],
       model,
       onChunk,
-      signal
+      signal,
     );
   }
 }
@@ -563,7 +566,7 @@ export const processAIAction = async (
     systemInstruction += `\n\n### BROADER DOCUMENT CONTEXT ###\nUse the following relevant document sections to ensure your changes are cohesive with the rest of the work:\n${ragContext}`;
   }
 
-  let prompt = "";
+  let prompt: string;
 
   switch (action) {
     case "improve":
@@ -582,8 +585,7 @@ export const processAIAction = async (
       prompt = `Fix grammar in this text:\n\n${text}`;
       break;
     case "shorten":
-      systemInstruction +=
-        "Make the following text more concise without losing key information.";
+      systemInstruction += "Make the following text more concise without losing key information.";
       prompt = `Shorten this text:\n\n${text}`;
       break;
     case "summarize":
@@ -689,7 +691,7 @@ export const chatWithAI = async (
     apiKeys,
     providerConfigs,
     onChunk,
-    cursorContext = "",
+    cursorContext: _cursorContext = "",
     embeddingOptions,
     signal,
   } = options;
@@ -703,11 +705,6 @@ export const chatWithAI = async (
   // Get relevant context from RAG
   const lastUserMessage =
     [...messages].reverse().find((m) => m.role === "user")?.parts[0].text || "";
-  const recentChatContext = messages
-    .filter((m) => m.role === "user")
-    .slice(-3)
-    .map((m) => m.parts[0].text)
-    .join(" ");
 
   // 1. Fetch contexts with refined weighting
   // Use passed embeddingOptions if available, otherwise fallback to chat provider (though better to pass)
@@ -719,26 +716,13 @@ export const chatWithAI = async (
 
   // Weights: Current Query (1.0) - Removed cursor area and recent conversation per user request
   const weightedContext = await ragService.getWeightedContext(
-    [
-      { text: lastUserMessage, weight: 1.0 },
-    ],
+    [{ text: lastUserMessage, weight: 1.0 }],
     5,
     activeEmbeddingOptions,
   );
 
   const globalSummary = await ragService.getGlobalSummary(documentContext);
-  const cursorSection = await ragService.getCursorSectionInfo(
-    documentContext,
-    cursorContext,
-  );
-  const relevantEpisodes = await ragService.getRelevantEpisodes(
-    lastUserMessage,
-    3,
-    activeEmbeddingOptions,
-  );
 
-  // Token budget estimation (rough: 4 chars per token)
-  const MAX_TOKENS = 4000;
   let currentTokens = ragService.estimateTokens(systemInstruction);
 
   // Add structural map (High Priority for orientation)
@@ -748,28 +732,17 @@ export const chatWithAI = async (
     currentTokens += ragService.estimateTokens(summaryText);
   }
 
-  // Removed explicit focus markers per user request for no cursor position
-  if (false && cursorContext) {
-    const focusHeader = cursorSection
-      ? `[Currently in Section: "${cursorSection}"]`
-      : "";
-    const focusSection = `\n\n### CURRENT WRITING FOCUS ${focusHeader} ###\n${cursorContext}\n\n[INSTRUCTION: The user is currently editing or writing near the text above. Prioritize this area for immediate contextual relevance.]`;
-    systemInstruction += focusSection;
-    currentTokens += ragService.estimateTokens(focusSection);
-  }
+  // Cursor focus section intentionally removed per user request
+
+  const MAX_TOKENS = 4000;
 
   // 2. Budget aware inclusion of semantic chunks vs full doc
   const docTokens = ragService.estimateTokens(documentContext);
-  const semanticTokens = weightedContext
-    ? ragService.estimateTokens(weightedContext)
-    : 0;
+  const semanticTokens = weightedContext ? ragService.estimateTokens(weightedContext) : 0;
 
   // Decide whether to include full document or just semantic clips
   // If doc is small enough to fit alongside semantic clips, include both for maximum coherence
-  if (
-    docTokens < 1800 &&
-    currentTokens + docTokens + semanticTokens < MAX_TOKENS
-  ) {
+  if (docTokens < 1800 && currentTokens + docTokens + semanticTokens < MAX_TOKENS) {
     systemInstruction += `\n\n### FULL DOCUMENT REFERENCE ###\n${documentContext}`;
     currentTokens += docTokens;
   }
@@ -779,17 +752,9 @@ export const chatWithAI = async (
     const available = MAX_TOKENS - currentTokens;
     const clipsText = `\n\n### RELEVANT KNOWLEDGE CLIPS (Weighted Retrieval) ###\n${ragService.trimToTokens(weightedContext, available)}`;
     systemInstruction += clipsText;
-    currentTokens += ragService.estimateTokens(clipsText);
   }
 
-  // 3. Episodic Memory (lowest priority) - Removed per user request to not include recent chat history
-  if (false && relevantEpisodes && currentTokens < MAX_TOKENS) {
-    const available = MAX_TOKENS - currentTokens;
-    if (available > 100) {
-      const epSection = `\n\n### CORRELATED PAST DISCUSSIONS ###\n${ragService.trimToTokens(relevantEpisodes, available)}`;
-      systemInstruction += epSection;
-    }
-  }
+  // Episodic memory intentionally removed per user request
 
   systemInstruction += `\n\n### FINAL DIRECTIVE ###\nYou are an embedded writing partner. Act as if you are looking at the document alongside the user. Refer to specific sections by name when possible. If the context is insufficient, ask clarifying questions rather than hallucinating facts.`;
 
@@ -822,9 +787,7 @@ export const checkOllamaConnection = async (
     const data = await response.json();
     const models = data.models?.map((m: any) => m.name) || [];
     const modelToUse =
-      selectedModel && models.includes(selectedModel)
-        ? selectedModel
-        : models[0] || "None";
+      selectedModel && models.includes(selectedModel) ? selectedModel : models[0] || "None";
 
     return {
       success: true,

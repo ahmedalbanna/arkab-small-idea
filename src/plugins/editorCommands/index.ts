@@ -9,12 +9,7 @@ import { useAIUIStore } from "../../stores/aiUIStore";
  * (the bus executor / `useFormatting`), avoiding a second implementation that
  * could drift from the toolbar and context menu.
  */
-function formatCommand(
-  id: string,
-  label: string,
-  format: string,
-  key?: string,
-): EditorCommand {
+function formatCommand(id: string, label: string, format: string, key?: string): EditorCommand {
   return {
     id,
     label,
@@ -35,9 +30,7 @@ export const editorCommandsPlugin: InkPlugin = {
     // Marks & inline formatting.
     ctx.registerCommand(formatCommand("bold", "Bold", "bold", "Mod-b"));
     ctx.registerCommand(formatCommand("italic", "Italic", "italic", "Mod-i"));
-    ctx.registerCommand(
-      formatCommand("underline", "Underline", "underline", "Mod-u"),
-    );
+    ctx.registerCommand(formatCommand("underline", "Underline", "underline", "Mod-u"));
     ctx.registerCommand(formatCommand("strike", "Strikethrough", "strike"));
     ctx.registerCommand(formatCommand("code", "Inline Code", "code", "Mod-e"));
 
@@ -52,13 +45,9 @@ export const editorCommandsPlugin: InkPlugin = {
 
     // Alignment.
     ctx.registerCommand(formatCommand("alignLeft", "Align Left", "alignLeft"));
-    ctx.registerCommand(
-      formatCommand("alignCenter", "Align Center", "alignCenter"),
-    );
+    ctx.registerCommand(formatCommand("alignCenter", "Align Center", "alignCenter"));
     ctx.registerCommand(formatCommand("alignRight", "Align Right", "alignRight"));
-    ctx.registerCommand(
-      formatCommand("alignJustify", "Justify", "alignJustify"),
-    );
+    ctx.registerCommand(formatCommand("alignJustify", "Justify", "alignJustify"));
 
     // History — routed through the bus so undo/redo respects the recorded
     // command history (including plugin-driven mutations).

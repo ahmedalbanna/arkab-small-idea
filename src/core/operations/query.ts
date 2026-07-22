@@ -19,9 +19,7 @@ export function getDoc(state: EditorState): Node {
   return state.doc;
 }
 
-export function getTextWithPositions(
-  state: EditorState,
-): { text: string; pos: number }[] {
+export function getTextWithPositions(state: EditorState): { text: string; pos: number }[] {
   const result: { text: string; pos: number }[] = [];
   state.doc.descendants((node, pos) => {
     if (node.isText) {
@@ -82,7 +80,6 @@ export function getCursorContext(state: EditorState): string {
     if (pos === 0) break;
   }
 
-  const pathStr =
-    headingPath.length > 0 ? `Path: ${headingPath.join(" > ")}` : "";
+  const pathStr = headingPath.length > 0 ? `Path: ${headingPath.join(" > ")}` : "";
   return `${pathStr}\n\n${currentPara}`.trim();
 }

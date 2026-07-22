@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import { ySyncPlugin, yCursorPlugin, yUndoPlugin, undo, redo } from "y-prosemirror";
 import { keymap } from "prosemirror-keymap";
-import { Plugin } from "prosemirror-state";
+import type { Plugin } from "prosemirror-state";
 import { Awareness } from "y-protocols/awareness";
 import type { InkPlugin, PluginContext } from "../types";
 
@@ -48,9 +48,7 @@ export function createCollabPlugin(config: CollabConfig): InkPlugin {
       awareness = new Awareness(ydoc);
       awareness.setLocalStateField("user", {
         name: config.username || "Anonymous Writer",
-        color:
-          config.color ||
-          "#" + Math.floor(Math.random() * 16777215).toString(16),
+        color: config.color || "#" + Math.floor(Math.random() * 16777215).toString(16),
       });
 
       // Sync across tabs using BroadcastChannel (simple local collab).

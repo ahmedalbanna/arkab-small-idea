@@ -1,10 +1,6 @@
 import { useEffect, useState, type RefObject } from "react";
 import type { EditorView } from "prosemirror-view";
-import {
-  loadPlugins,
-  onPluginsChanged,
-  type LoadedPlugins,
-} from "../../../plugins";
+import { loadPlugins, onPluginsChanged, type LoadedPlugins } from "../../../plugins";
 import { useEditorCommandBus } from "../../../plugins/editorCommandContext";
 import type { CollabPluginOptions } from "../../../plugins/collab";
 import { useSetPluginRegistry } from "../../../plugins/registryContext";
@@ -47,9 +43,7 @@ export function usePluginLoader(
 
   // Re-run plugin loading whenever the enabled/disabled plugin set changes,
   // so the editor state is rebuilt without the toggled plugin's contributions.
-  const pluginSignature = useSettingsStore((s) =>
-    [...s.disabledPlugins].sort().join(","),
-  );
+  const pluginSignature = useSettingsStore((s) => [...s.disabledPlugins].sort().join(","));
 
   useEffect(() => {
     let cancelled = false;

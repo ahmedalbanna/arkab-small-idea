@@ -58,16 +58,12 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
     const onLoaded = vi.fn();
     const ref = createRef<EditorRef>();
 
-    render(
-      <ProseMirrorEditor ref={ref} value="" onChange={onChange} onLoaded={onLoaded} />,
-    );
+    render(<ProseMirrorEditor ref={ref} value="" onChange={onChange} onLoaded={onLoaded} />);
 
     // `loadPlugins` resolves asynchronously; the EditorView is only constructed
     // once the plugin context (schema + ProseMirror plugins) is ready.
     await waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
-    );
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
 
     // Imperative handle is wired to the live view.
     expect(ref.current).toBeTruthy();
@@ -123,23 +119,13 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
     const onChange = vi.fn();
     const ref = createRef<EditorRef>();
 
-    const { rerender } = render(
-      <ProseMirrorEditor ref={ref} value="" onChange={onChange} />,
-    );
+    const { rerender } = render(<ProseMirrorEditor ref={ref} value="" onChange={onChange} />);
 
-    await waitFor(() =>
-      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
-    );
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
 
     // Changing the external `value` prop should flow into the editor document.
     await act(async () => {
-      rerender(
-        <ProseMirrorEditor
-          ref={ref}
-          value="Some **bold** text"
-          onChange={onChange}
-        />,
-      );
+      rerender(<ProseMirrorEditor ref={ref} value="Some **bold** text" onChange={onChange} />);
     });
 
     await waitFor(() => {
@@ -154,9 +140,7 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
 
     render(<ProseMirrorEditor ref={ref} value="Hello" onChange={onChange} editorId="ed-1" />);
 
-    await waitFor(() =>
-      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
-    );
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
 
     // Simulate the menu having been opened by typing "/" at the start.
     act(() => {
@@ -193,9 +177,7 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
       <ProseMirrorEditor value="" onChange={onChange} editorId="ed-B" />,
     );
 
-    await waitFor(() =>
-      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
-    );
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
 
     // Open the slash menu owned by editor A (it owns the shared slot).
     act(() => {
@@ -226,9 +208,7 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
       <ProseMirrorEditor value="" onChange={onChange} editorId="ed-1" />,
     );
 
-    await waitFor(() =>
-      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
-    );
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
 
     // Simulate a non-empty selection having opened the bubble menu.
     act(() => {

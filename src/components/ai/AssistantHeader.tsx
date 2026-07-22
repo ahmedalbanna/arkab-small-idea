@@ -1,9 +1,9 @@
-import React from 'react';
-import { X } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { ModelSwitcher } from './ModelSwitcher';
+import React from "react";
+import { X } from "lucide-react";
+import { cn } from "../../lib/utils";
+import { ModelSwitcher } from "./ModelSwitcher";
 
-export type OllamaStatus = 'idle' | 'loading' | 'ready' | 'error' | 'no-ollama';
+export type OllamaStatus = "idle" | "loading" | "ready" | "error" | "no-ollama";
 
 interface AssistantHeaderProps {
   ollamaStatus: OllamaStatus;
@@ -11,23 +11,20 @@ interface AssistantHeaderProps {
 }
 
 const STATUS_LABEL: Record<OllamaStatus, string> = {
-  idle: 'Standby',
-  loading: 'Connecting…',
-  ready: 'Online',
-  error: 'Error',
-  'no-ollama': 'Offline',
+  idle: "Standby",
+  loading: "Connecting…",
+  ready: "Online",
+  error: "Error",
+  "no-ollama": "Offline",
 };
 
 /**
  * Header bar for the AI assistant: title, live provider status, and close
  * control.
  */
-export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
-  ollamaStatus,
-  onClose,
-}) => {
-  const statusReady = ollamaStatus === 'ready';
-  const statusError = ollamaStatus === 'error' || ollamaStatus === 'no-ollama';
+export const AssistantHeader: React.FC<AssistantHeaderProps> = ({ ollamaStatus, onClose }) => {
+  const statusReady = ollamaStatus === "ready";
+  const statusError = ollamaStatus === "error" || ollamaStatus === "no-ollama";
 
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-minimal-border px-4 select-none">
@@ -35,21 +32,21 @@ export const AssistantHeader: React.FC<AssistantHeaderProps> = ({
         <span className="text-sm font-bold tracking-tight">Intelligence</span>
         <span
           className={cn(
-            'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
-            statusReady && 'bg-emerald-500/15 text-emerald-500',
-            ollamaStatus === 'loading' && 'bg-amber-500/15 text-amber-500',
-            statusError && 'bg-rose-500/15 text-rose-500',
-            ollamaStatus === 'idle' && 'bg-minimal-sidebar text-minimal-muted'
+            "flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+            statusReady && "bg-emerald-500/15 text-emerald-500",
+            ollamaStatus === "loading" && "bg-amber-500/15 text-amber-500",
+            statusError && "bg-rose-500/15 text-rose-500",
+            ollamaStatus === "idle" && "bg-minimal-sidebar text-minimal-muted",
           )}
           title={`Provider status: ${STATUS_LABEL[ollamaStatus]}`}
         >
           <span
             className={cn(
-              'h-1.5 w-1.5 rounded-full',
-              statusReady && 'bg-emerald-500',
-              ollamaStatus === 'loading' && 'animate-pulse bg-amber-500',
-              statusError && 'bg-rose-500',
-              ollamaStatus === 'idle' && 'bg-minimal-muted'
+              "h-1.5 w-1.5 rounded-full",
+              statusReady && "bg-emerald-500",
+              ollamaStatus === "loading" && "animate-pulse bg-amber-500",
+              statusError && "bg-rose-500",
+              ollamaStatus === "idle" && "bg-minimal-muted",
             )}
             aria-hidden
           />

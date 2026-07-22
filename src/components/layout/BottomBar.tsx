@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import {
   Bold,
   Italic,
@@ -20,8 +20,8 @@ import { Z_CLASS } from "../../lib/zIndex";
 import { useAIStore } from "../../stores/aiStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useEditorStore } from "../../stores/editorStore";
-import { useSettingsStore } from "../../stores/settingsStore";
-import { embeddingService, EmbeddingStatus } from "../../services/embeddingService";
+import type { EmbeddingStatus } from "../../services/embeddingService";
+import { embeddingService } from "../../services/embeddingService";
 import { getEditorRef } from "../../plugins/editorAccess";
 import { insertText } from "../../plugins/ai/handlers";
 import { AISettingsPopover } from "../ai/AISettingsPopover";
@@ -94,26 +94,15 @@ export const BottomBar: React.FC<BottomBarProps> = ({
 
   // ── Desktop: Stats ──
   const { ollamaStatus, provider } = useAIStore();
-  const {
-    isIndexing,
-    indexedChunks,
-    indexedEpisodes,
-    isAutoSaving,
-  } = useUIStore();
+  const { isIndexing, indexedChunks, indexedEpisodes, isAutoSaving } = useUIStore();
   const { pages, activeFocusedPageId } = useEditorStore();
-  const {
-    fontSize: globalFontSize,
-    lineHeight: globalLineHeight,
-    theme: globalTheme,
-  } = useSettingsStore();
 
   const activePage = pages.find((p) => p.id === activeFocusedPageId) || pages[0];
   const markdown = activePage?.content || "";
   const wordCount = markdown.split(/\s+/).filter(Boolean).length;
   const charCount = markdown.length;
   const wordGoal = activePage?.wordGoal ?? 0;
-  const goalProgress =
-    wordGoal > 0 ? Math.min((wordCount / wordGoal) * 100, 100) : 0;
+  const goalProgress = wordGoal > 0 ? Math.min((wordCount / wordGoal) * 100, 100) : 0;
 
   const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus>("idle");
   const [embeddingProgress, setEmbeddingProgress] = useState(0);
@@ -126,29 +115,25 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   }, []);
 
   // ── Announced text for aria-live ──
-  const statusAnnouncement = [
-    isAutoSaving ? "Auto-saving" : null,
-    isIndexing ? "Indexing" : null,
-    embeddingStatus === "ready" ? "Semantic AI ready" : null,
-  ]
-    .filter(Boolean)
-    .join(". ") || `${wordCount} words`;
+  const statusAnnouncement =
+    [
+      isAutoSaving ? "Auto-saving" : null,
+      isIndexing ? "Indexing" : null,
+      embeddingStatus === "ready" ? "Semantic AI ready" : null,
+    ]
+      .filter(Boolean)
+      .join(". ") || `${wordCount} words`;
 
   // ── Mobile: Formatting ──
   const { setAIAssistant } = useUIStore();
-  const activePageId =
-    pages.find((p) => p.id === activeFocusedPageId)?.id ?? null;
+  const activePageId = pages.find((p) => p.id === activeFocusedPageId)?.id ?? null;
   const editorRef = activePageId ? getEditorRef(activePageId) : null;
   const pluginButtons = toolbarItems.filter((t) => (t.show ? t.show() : true));
 
   return (
     <>
       {/* Screen-reader live region for dynamic status updates */}
-      <div
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-      >
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
         {statusAnnouncement}
       </div>
 
@@ -266,12 +251,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
                 </motion.div>
               )}
 
-              <div
-                className={cn(
-                  "flex gap-4 md:gap-6",
-                  isAutoSaving && "hidden sm:flex",
-                )}
-              >
+              <div className={cn("flex gap-4 md:gap-6", isAutoSaving && "hidden sm:flex")}>
                 <StatBlock label="WORDS" value={wordCount} />
                 <StatBlock label="CHARS" value={charCount} />
               </div>
@@ -302,9 +282,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
                 <>
                   <div className="h-6 w-px bg-minimal-border hidden md:block" />
                   <div className="flex flex-col justify-center">
-                    <span className="text-[8px] font-bold opacity-40 leading-none">
-                      PROGRESS
-                    </span>
+                    <span className="text-[8px] font-bold opacity-40 leading-none">PROGRESS</span>
                     <div className="flex items-center gap-3">
                       <div className="w-16 md:w-32 h-1 bg-minimal-border rounded-full overflow-hidden hidden sm:block">
                         <motion.div
@@ -312,9 +290,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
                           animate={{ width: `${goalProgress}%` }}
                           className={cn(
                             "h-full",
-                            goalProgress >= 100
-                              ? "bg-emerald-500"
-                              : "bg-minimal-accent",
+                            goalProgress >= 100 ? "bg-emerald-500" : "bg-minimal-accent",
                           )}
                         />
                       </div>

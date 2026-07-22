@@ -1,11 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import {
-  LayoutProvider,
-  useLayout,
-  type PanelId,
-} from "../components/layout/LayoutContext";
+import { LayoutProvider, useLayout, type PanelId } from "../components/layout/LayoutContext";
 import { useUIStore } from "../stores/uiStore";
 
 afterEach(cleanup);

@@ -1,7 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Courier+Prime&family=EB+Garamond:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Merriweather:wght@400;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@400;600;700;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Courier+Prime&family=EB+Garamond:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Merriweather:wght@400;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@400;600;700;900&display=swap");
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
-
 
 :root {
   --minimal-bg: #ffffff;
@@ -554,7 +553,6 @@
 }
 
 @keyframes ai-pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -562,7 +560,7 @@
   }
 
   50% {
-    opacity: .5;
+    opacity: 0.5;
     border-color: transparent;
   }
 }
@@ -685,7 +683,7 @@
   @apply absolute -left-10 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-red-50 text-red-500 opacity-0 transition-all hover:bg-red-500 hover:text-white cursor-pointer z-10 border border-red-100 shadow-sm scale-90 hover:scale-100;
 }
 
-.ProseMirror tr:hover>.table-row-delete-handle {
+.ProseMirror tr:hover > .table-row-delete-handle {
   @apply opacity-100;
 }
 
@@ -764,7 +762,7 @@
   @apply opacity-100;
 }
 
-.prose-first-child-no-margin .ProseMirror>*:first-child {
+.prose-first-child-no-margin .ProseMirror > *:first-child {
   margin-top: 0 !important;
 }
 
@@ -800,7 +798,9 @@ body {
 .page-transition-enter-active {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 400ms, transform 400ms;
+  transition:
+    opacity 400ms,
+    transform 400ms;
 }
 
 /* ── Scrollbar: Webkit (Chrome, Safari, Edge) ── */
@@ -824,7 +824,9 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--minimal-border);
   border-radius: 2px;
-  transition: background 0.2s ease, width 0.2s ease;
+  transition:
+    background 0.2s ease,
+    width 0.2s ease;
   min-height: 24px;
 }
 

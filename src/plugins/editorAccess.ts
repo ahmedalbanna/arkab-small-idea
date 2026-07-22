@@ -12,9 +12,7 @@ import { useEditorStore } from "../stores/editorStore";
  */
 let editorRefs: MutableRefObject<Record<string, EditorRef | null>> | null = null;
 
-export function setEditorRefs(
-  ref: MutableRefObject<Record<string, EditorRef | null>>,
-) {
+export function setEditorRefs(ref: MutableRefObject<Record<string, EditorRef | null>>) {
   editorRefs = ref;
 }
 

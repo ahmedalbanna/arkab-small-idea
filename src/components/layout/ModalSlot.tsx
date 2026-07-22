@@ -50,10 +50,7 @@ export function ModalSlot({
       onClose={onClose}
       zLevel={zLevel}
       ariaLabelledby={title ? titleId : undefined}
-      className={cn(
-        "w-full flex flex-col max-h-[90vh] rounded-2xl p-6",
-        className,
-      )}
+      className={cn("w-full flex flex-col max-h-[90vh] rounded-2xl p-6", className)}
       style={{ maxWidth }}
     >
       {/* Header */}
@@ -80,9 +77,7 @@ export function ModalSlot({
       )}
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar pe-2 -me-2">
-        {children}
-      </div>
+      <div className="flex-1 overflow-y-auto custom-scrollbar pe-2 -me-2">{children}</div>
     </OverlayPortal>
   );
 }

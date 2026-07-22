@@ -1,15 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import {
-  Play,
-  Pause,
-  Square,
-  Volume2,
-  VolumeX, X
-} from 'lucide-react';
-import { useUIStore } from '../stores/uiStore';
-import { useEditorStore } from '../stores/editorStore';
-import { type EditorRef } from './ProseMirrorEditor';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Play, Pause, Square, Volume2, VolumeX, X } from "lucide-react";
+import { useUIStore } from "../stores/uiStore";
+import { useEditorStore } from "../stores/editorStore";
+import { type EditorRef } from "./ProseMirrorEditor";
 
 interface TTSSpeakerProps {
   editorRef: React.RefObject<EditorRef>;
@@ -23,9 +17,11 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
-  const synth = useRef<SpeechSynthesis | null>(typeof window !== 'undefined' ? window.speechSynthesis : null);
+  const synth = useRef<SpeechSynthesis | null>(
+    typeof window !== "undefined" ? window.speechSynthesis : null,
+  );
   const utterance = useRef<SpeechSynthesisUtterance | null>(null);
-  const segmentsRef = useRef<{ text: string, pos: number, cumulativeIndex: number }[]>([]);
+  const segmentsRef = useRef<{ text: string; pos: number; cumulativeIndex: number }[]>([]);
 
   const stopSpeech = useCallback(() => {
     if (synth.current) {
@@ -52,27 +48,27 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
       const rawSegments = editorRef.current?.getTextWithPositions() || [];
       if (rawSegments.length === 0) {
         // Fallback to activePage content if editor ref is not available or empty
-        const activePage = pages.find(p => p.id === activeFocusedPageId);
+        const activePage = pages.find((p) => p.id === activeFocusedPageId);
         if (activePage) {
           rawSegments.push({ text: activePage.content, pos: 1 });
         }
       }
 
       let cumulative = 0;
-      segmentsRef.current = rawSegments.map(s => {
+      segmentsRef.current = rawSegments.map((s) => {
         const seg = { ...s, cumulativeIndex: cumulative };
         cumulative += s.text.length + 1; // +1 for the space we join with
         return seg;
       });
 
-      const fullText = rawSegments.map(s => s.text).join(' ');
+      const fullText = rawSegments.map((s) => s.text).join(" ");
 
       utterance.current = new SpeechSynthesisUtterance(fullText);
       utterance.current.rate = ttsRate;
       utterance.current.volume = isMuted ? 0 : 1;
 
       utterance.current.onboundary = (event) => {
-        if (event.name === 'word') {
+        if (event.name === "word") {
           const charIndex = event.charIndex;
 
           // Find which segment contains this charIndex
@@ -115,7 +111,17 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
       setIsPlaying(true);
       setIsPaused(false);
     }
-  }, [isPlaying, isPaused, editorRef, pages, activeFocusedPageId, stopSpeech, ttsRate, isMuted, setTTSHighlightRange]);
+  }, [
+    isPlaying,
+    isPaused,
+    editorRef,
+    pages,
+    activeFocusedPageId,
+    stopSpeech,
+    ttsRate,
+    isMuted,
+    setTTSHighlightRange,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -136,7 +142,10 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
         <div className="bg-minimal-sidebar/90 backdrop-blur-xl border border-minimal-border px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-6 min-w-[320px]">
           {/* Close Button */}
           <button
-            onClick={() => { stopSpeech(); setTTS(false); }}
+            onClick={() => {
+              stopSpeech();
+              setTTS(false);
+            }}
             className="absolute -top-2 -end-2 p-1 bg-minimal-sidebar border border-minimal-border rounded-full text-minimal-muted hover:text-minimal-accent transition-colors"
             aria-label="Close text to speech"
           >
@@ -147,12 +156,17 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
           <div className="flex items-center gap-3">
             <button
               onClick={togglePlay}
-              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${isPlaying && !isPaused
-                  ? 'bg-minimal-accent text-white shadow-lg shadow-minimal-accent/20'
-                  : 'bg-minimal-bg text-minimal-text hover:bg-minimal-accent/10 border border-minimal-border'
-                }`}
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${
+                isPlaying && !isPaused
+                  ? "bg-minimal-accent text-white shadow-lg shadow-minimal-accent/20"
+                  : "bg-minimal-bg text-minimal-text hover:bg-minimal-accent/10 border border-minimal-border"
+              }`}
             >
-              {isPlaying && !isPaused ? <Pause size={18} fill="currentColor" /> : <Play size={18} className="translate-x-0.5" fill="currentColor" />}
+              {isPlaying && !isPaused ? (
+                <Pause size={18} fill="currentColor" />
+              ) : (
+                <Play size={18} className="translate-x-0.5" fill="currentColor" />
+              )}
             </button>
             <button
               onClick={stopSpeech}
@@ -183,7 +197,7 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
           {/* Mute Toggle */}
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className={`p-2 rounded-lg transition-colors ${isMuted ? 'text-red-500 bg-red-50' : 'text-minimal-muted hover:text-minimal-accent'}`}
+            className={`p-2 rounded-lg transition-colors ${isMuted ? "text-red-500 bg-red-50" : "text-minimal-muted hover:text-minimal-accent"}`}
           >
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>

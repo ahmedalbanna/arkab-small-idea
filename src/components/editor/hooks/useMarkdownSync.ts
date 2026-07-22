@@ -19,14 +19,10 @@ interface MarkdownSyncParams {
  * prevents the change listener in `useEditorView` from echoing the
  * programmatic update back out as an `onChange`.
  */
-export function useMarkdownSync({
-  value,
-  isUpdatingFromProps,
-  core,
-}: MarkdownSyncParams): void {
+export function useMarkdownSync({ value, isUpdatingFromProps, core }: MarkdownSyncParams): void {
   useEffect(() => {
     if (isUpdatingFromProps.current) {
-      isUpdatingFromProps.current = false;
+      isUpdatingFromProps.current = false; // eslint-disable-line react-hooks/immutability
       return;
     }
     if (!core) return;
@@ -34,6 +30,7 @@ export function useMarkdownSync({
     if (value !== currentMarkdown) {
       isUpdatingFromProps.current = true;
       core.replaceDoc(value, { recordHistory: false });
+      // eslint-disable-next-line react-hooks/immutability
       isUpdatingFromProps.current = false;
     }
   }, [value, isUpdatingFromProps, core]);

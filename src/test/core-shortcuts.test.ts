@@ -24,8 +24,7 @@ describe("getRegisteredShortcuts", () => {
       shortcuts.some(
         (s) =>
           s.command.type === type &&
-          (format === undefined ||
-            (s.command.type === "format" && s.command.format === format)),
+          (format === undefined || (s.command.type === "format" && s.command.format === format)),
       );
     expect(has("format", "bold")).toBe(true);
     expect(has("format", "italic")).toBe(true);
@@ -36,9 +35,7 @@ describe("getRegisteredShortcuts", () => {
 
   it("produces stable ids and carries label/category", () => {
     const shortcuts = getRegisteredShortcuts(catalog);
-    const bold = shortcuts.find(
-      (s) => s.command.type === "format" && s.command.format === "bold",
-    )!;
+    const bold = shortcuts.find((s) => s.command.type === "format" && s.command.format === "bold")!;
     expect(bold.id).toBe("shortcut:format:bold");
     expect(bold.label).toBe("Bold");
     expect(bold.category).toBe("format");
@@ -59,8 +56,18 @@ function event(partial: Partial<KeyEventLike> & { key: string }): KeyEventLike {
 describe("resolveShortcut", () => {
   const shortcuts: Shortcut[] = [
     { id: "b", label: "Bold", combo: "Mod-B", command: { type: "format", format: "bold" } },
-    { id: "u", label: "Underline", combo: "Mod-U", command: { type: "format", format: "underline" } },
-    { id: "bl", label: "Bullet list", combo: "Mod-Shift-8", command: { type: "format", format: "bullet" } },
+    {
+      id: "u",
+      label: "Underline",
+      combo: "Mod-U",
+      command: { type: "format", format: "underline" },
+    },
+    {
+      id: "bl",
+      label: "Bullet list",
+      combo: "Mod-Shift-8",
+      command: { type: "format", format: "bullet" },
+    },
   ];
 
   it("matches Ctrl on non-mac platforms", () => {
@@ -79,10 +86,7 @@ describe("resolveShortcut", () => {
   it("distinguishes shift variants", () => {
     const plainB = resolveShortcut(event({ key: "b", ctrlKey: true }), shortcuts);
     expect((plainB as { format: string }).format).toBe("bold");
-    const shift8 = resolveShortcut(
-      event({ key: "8", ctrlKey: true, shiftKey: true }),
-      shortcuts,
-    );
+    const shift8 = resolveShortcut(event({ key: "8", ctrlKey: true, shiftKey: true }), shortcuts);
     expect((shift8 as { format: string }).format).toBe("bullet");
   });
 
@@ -90,10 +94,7 @@ describe("resolveShortcut", () => {
     const action = resolveShortcut(event({ key: "x", ctrlKey: true }), shortcuts);
     expect(action).toBeNull();
     // wrong modifier set
-    const action2 = resolveShortcut(
-      event({ key: "b", ctrlKey: true, shiftKey: true }),
-      shortcuts,
-    );
+    const action2 = resolveShortcut(event({ key: "b", ctrlKey: true, shiftKey: true }), shortcuts);
     expect(action2).toBeNull();
   });
 

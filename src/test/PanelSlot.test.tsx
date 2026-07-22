@@ -9,14 +9,13 @@ function Fixture({
   isOpen = true,
   onClose,
   side,
-}: { isOpen?: boolean; onClose?: () => void; side?: "start" | "end" }) {
+}: {
+  isOpen?: boolean;
+  onClose?: () => void;
+  side?: "start" | "end";
+}) {
   return (
-    <PanelSlot
-      isOpen={isOpen}
-      onClose={onClose ?? vi.fn()}
-      side={side}
-      title="Test Panel"
-    >
+    <PanelSlot isOpen={isOpen} onClose={onClose ?? vi.fn()} side={side} title="Test Panel">
       <button>Action 1</button>
       <button>Action 2</button>
       <p>Panel content</p>

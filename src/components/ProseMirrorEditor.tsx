@@ -1,31 +1,27 @@
 import { forwardRef, useCallback, useEffect, useId, useRef, useState } from "react";
 import { Selection, TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
-import { DOMSerializer } from "prosemirror-model";
 import { type AIAssistantAction } from "../services/aiService";
 import {
   Bold,
   Italic,
   Link,
   Code,
-  Quote, Underline,
+  Underline,
   Strikethrough,
   Sparkles,
   CheckCheck,
   ArrowRight,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
   Zap,
   FileText,
   Copy,
-  Scissors, Plus,
+  Scissors,
+  Plus,
   GripVertical,
   RefreshCcw,
   Check,
   Square,
-  X as XIcon
+  X as XIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, slugify } from "../lib/utils";
@@ -207,29 +203,20 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     const contextMenu = useAIUIStore((s) => s.contextMenu);
     const setContextMenu = useAIUIStore((s) => s.setContextMenu);
     const sideMenu = useAIUIStore((s) => s.sideMenu);
-    const setSideMenu = useAIUIStore((s) => s.setSideMenu);
     const commandPaletteOpen = useAIUIStore((s) => s.commandPaletteOpen);
     const setCommandPaletteOpen = useAIUIStore((s) => s.setCommandPaletteOpen);
 
     // Open the command palette with the editor-standard shortcut.
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
-        if (
-          (e.metaKey || e.ctrlKey) &&
-          e.shiftKey &&
-          e.key.toLowerCase() === "p"
-        ) {
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
           e.preventDefault();
           setCommandPaletteOpen(true);
           return;
         }
 
         // Mod-Shift-K: focus the AI toolbar's custom instruction input.
-        if (
-          (e.metaKey || e.ctrlKey) &&
-          e.shiftKey &&
-          e.key.toLowerCase() === "k"
-        ) {
+        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "k") {
           e.preventDefault();
           const bm = useAIUIStore.getState().bubbleMenu;
           if (bm.editorId === myEditorId && bm.show) {
@@ -339,9 +326,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
             const from = Math.min(initialCursor.from, max);
             const to = Math.min(initialCursor.to, max);
             dispatch(
-              state.tr
-                .setSelection(TextSelection.create(state.doc, from, to))
-                .scrollIntoView(),
+              state.tr.setSelection(TextSelection.create(state.doc, from, to)).scrollIntoView(),
             );
           } catch (e) {
             console.warn("Failed to restore cursor position:", e);
@@ -415,10 +400,15 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
             >
               {aiDraft.isStreaming ? (
                 <div className="flex items-center gap-2 bg-minimal-bg border border-minimal-accent/50 rounded-xl p-1.5 shadow-xl backdrop-blur-xl ring-1 ring-minimal-accent/20">
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  >
                     <Sparkles className="w-4 h-4 text-minimal-accent" />
                   </motion.div>
-                  <span className="text-xs font-semibold text-minimal-accent pe-2">AI is Writing...</span>
+                  <span className="text-xs font-semibold text-minimal-accent pe-2">
+                    AI is Writing...
+                  </span>
                   {aiDraft.customInstruction && (
                     <>
                       <div className="w-px h-3 bg-minimal-border" />
@@ -493,80 +483,83 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               pluginCommands={loaded?.context.commands ?? []}
               onSelect={handleSlashSelect}
               onPluginCommand={handlePluginSlashSelect}
-              onClose={() =>
-                setSlashMenu((prev) => ({ ...prev, show: false, query: "" }))
-              }
+              onClose={() => setSlashMenu((prev) => ({ ...prev, show: false, query: "" }))}
             />
           )}
         </AnimatePresence>
 
         <AnimatePresence>
-          {sideMenu.show && sideMenu.editorId === myEditorId && (bubbleMenu.editorId !== myEditorId || !bubbleMenu.show) && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              style={{
-                position: "absolute",
-                left: "-2rem",
-                top: sideMenu.y,
-              }}
-              className="z-[50] flex items-center gap-0.5 group"
-            >
-              <button
-                onClick={() => {
-                  const coords = viewRef.current?.coordsAtPos(sideMenu.pos);
-                  const editorRect =
-                    containerRef.current?.getBoundingClientRect();
-                  if (coords && editorRect) {
-                    setSlashMenu({
-                      x: coords.left - editorRect.left,
-                      y: coords.bottom - editorRect.top + 5,
-                      show: true,
-                      pos: sideMenu.pos + 1,
-                      query: "",
-                      editorId: myEditorId,
-                    });
-                  }
+          {sideMenu.show &&
+            sideMenu.editorId === myEditorId &&
+            (bubbleMenu.editorId !== myEditorId || !bubbleMenu.show) && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                style={{
+                  position: "absolute",
+                  left: "-2rem",
+                  top: sideMenu.y,
                 }}
-                className="p-1.5 hover:bg-minimal-accent/10 text-minimal-muted/40 hover:text-minimal-accent rounded-lg transition-all cursor-pointer bg-minimal-bg/50 backdrop-blur"
-                title="Add Block"
+                className="z-[50] flex items-center gap-0.5 group"
               >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-              <div className="p-1.5 text-minimal-muted/20 cursor-grab hover:text-minimal-muted transition-colors">
-                <GripVertical className="w-3.5 h-3.5" />
-              </div>
-              {sideMenu.nodeName === "heading" && (
-                <>
-                  <div className="w-px h-4 bg-minimal-border mx-0.5" />
-                  <button
-                    onClick={() => {
-                      if (!viewRef.current) return;
-                      const node = viewRef.current.state.doc.nodeAt(sideMenu.pos);
-                      if (node && node.type.name === "heading") {
-                        const slug = slugify(node.textContent);
-                        const url = new URL(window.location.href);
-                        url.hash = slug;
-                        navigator.clipboard.writeText(url.toString());
-                        setIsCopied(true);
-                        setTimeout(() => setIsCopied(false), 2000);
-                      }
-                    }}
-                    className={cn(
-                      "p-1.5 rounded-lg transition-all cursor-pointer bg-minimal-bg/50 backdrop-blur border border-transparent",
-                      isCopied
-                        ? "text-emerald-500 bg-emerald-500/5 border-emerald-500/20"
-                        : "text-minimal-muted/40 hover:text-minimal-accent hover:bg-minimal-accent/10"
-                    )}
-                    title={isCopied ? "Copied!" : "Copy Anchor Link"}
-                  >
-                    {isCopied ? <Check className="w-3.5 h-3.5" /> : <Link className="w-3.5 h-3.5" />}
-                  </button>
-                </>
-              )}
-            </motion.div>
-          )}
+                <button
+                  onClick={() => {
+                    const coords = viewRef.current?.coordsAtPos(sideMenu.pos);
+                    const editorRect = containerRef.current?.getBoundingClientRect();
+                    if (coords && editorRect) {
+                      setSlashMenu({
+                        x: coords.left - editorRect.left,
+                        y: coords.bottom - editorRect.top + 5,
+                        show: true,
+                        pos: sideMenu.pos + 1,
+                        query: "",
+                        editorId: myEditorId,
+                      });
+                    }
+                  }}
+                  className="p-1.5 hover:bg-minimal-accent/10 text-minimal-muted/40 hover:text-minimal-accent rounded-lg transition-all cursor-pointer bg-minimal-bg/50 backdrop-blur"
+                  title="Add Block"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <div className="p-1.5 text-minimal-muted/20 cursor-grab hover:text-minimal-muted transition-colors">
+                  <GripVertical className="w-3.5 h-3.5" />
+                </div>
+                {sideMenu.nodeName === "heading" && (
+                  <>
+                    <div className="w-px h-4 bg-minimal-border mx-0.5" />
+                    <button
+                      onClick={() => {
+                        if (!viewRef.current) return;
+                        const node = viewRef.current.state.doc.nodeAt(sideMenu.pos);
+                        if (node && node.type.name === "heading") {
+                          const slug = slugify(node.textContent);
+                          const url = new URL(window.location.href);
+                          url.hash = slug;
+                          navigator.clipboard.writeText(url.toString());
+                          setIsCopied(true);
+                          setTimeout(() => setIsCopied(false), 2000);
+                        }
+                      }}
+                      className={cn(
+                        "p-1.5 rounded-lg transition-all cursor-pointer bg-minimal-bg/50 backdrop-blur border border-transparent",
+                        isCopied
+                          ? "text-emerald-500 bg-emerald-500/5 border-emerald-500/20"
+                          : "text-minimal-muted/40 hover:text-minimal-accent hover:bg-minimal-accent/10",
+                      )}
+                      title={isCopied ? "Copied!" : "Copy Anchor Link"}
+                    >
+                      {isCopied ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <Link className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            )}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -703,15 +696,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                           const markdownBlob = new Blob([markdown], {
                             type: "text/markdown",
                           });
-                          const htmlBlob = new Blob(
-                            [
-                              DOMSerializer.fromSchema(
-                                editorSchema,
-                              ).serializeFragment(slice.content).textContent ||
-                              "",
-                            ],
-                            { type: "text/html" },
-                          );
 
                           try {
                             navigator.clipboard.write([
@@ -720,11 +704,9 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                                 "text/markdown": markdownBlob,
                               }),
                             ]);
-                          } catch (e) {
+                          } catch {
                             // Fallback to just text if writing multi-format fails
-                            navigator.clipboard.writeText(
-                              markdown || plainText,
-                            );
+                            navigator.clipboard.writeText(markdown || plainText);
                           }
                         } else {
                           navigator.clipboard.writeText(markdown || plainText);

@@ -1,7 +1,6 @@
 import type { Plugin, PluginKey } from "prosemirror-state";
 import type { Schema } from "prosemirror-model";
 import type { ComponentType } from "react";
-import type { NodeViewConstructor } from "prosemirror-view";
 import { useEditorStore } from "../stores/editorStore";
 import { useUIStore } from "../stores/uiStore";
 import { useAIStore } from "../stores/aiStore";
@@ -101,9 +100,7 @@ export function buildPluginContext(
   // Declared with `let` so the registration hooks (defined inside the object
   // literal) can close over it. The registry stamps `pluginId` onto the object
   // during `initAll` so validation errors are attributed to the right plugin.
-  let context: PluginContext;
-
-  context = {
+  const context: PluginContext = {
     editor,
     commandBus,
     stores,
@@ -121,40 +118,16 @@ export function buildPluginContext(
       );
     },
     registerToolbarItem(item) {
-      validateAndCollect(
-        toolbarItemSchema,
-        "toolbarItem",
-        item,
-        collectors.toolbarItems,
-        context,
-      );
+      validateAndCollect(toolbarItemSchema, "toolbarItem", item, collectors.toolbarItems, context);
     },
     registerCommand(cmd) {
-      validateAndCollect(
-        editorCommandSchema,
-        "command",
-        cmd,
-        collectors.commands,
-        context,
-      );
+      validateAndCollect(editorCommandSchema, "command", cmd, collectors.commands, context);
     },
     registerOverlay(overlay) {
-      validateAndCollect(
-        pluginOverlaySchema,
-        "overlay",
-        overlay,
-        collectors.overlays,
-        context,
-      );
+      validateAndCollect(pluginOverlaySchema, "overlay", overlay, collectors.overlays, context);
     },
     registerSetting(setting) {
-      validateAndCollect(
-        pluginSettingSchema,
-        "setting",
-        setting,
-        collectors.settings,
-        context,
-      );
+      validateAndCollect(pluginSettingSchema, "setting", setting, collectors.settings, context);
     },
     registerHost(host) {
       collectors.hosts.push(host);
@@ -171,9 +144,7 @@ export function buildPluginContext(
 }
 
 /** Helper to merge several schema contributions into one. */
-export function mergeSchemaContributions(
-  contributions: SchemaContribution[],
-): SchemaContribution {
+export function mergeSchemaContributions(contributions: SchemaContribution[]): SchemaContribution {
   return contributions.reduce<SchemaContribution>(
     (acc, c) => ({
       nodes: { ...acc.nodes, ...c.nodes },
