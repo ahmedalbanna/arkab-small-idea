@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { editorUIPlugin } from "../plugins/editorUI";
 import {
   aiPlugin,
-  selectBlockAndOpenPopover,
+  selectBlock,
   setAiActionHandler,
   runAiAction,
 } from "../plugins/ai";
@@ -10,6 +10,19 @@ import { useAIUIStore } from "../stores/aiUIStore";
 import type { PluginContext } from "../plugins/types";
 import type { Plugin } from "prosemirror-state";
 import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
+
+// Mock TextSelection.create so selectBlock can be tested without
+// a full ProseMirror document mock.
+vi.mock("prosemirror-state", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("prosemirror-state")>();
+  return {
+    ...actual,
+    TextSelection: {
+      ...actual.TextSelection,
+      create: vi.fn(() => ({ from: 0, to: 0 })),
+    },
+  };
+});
 
 function fakeContext(): PluginContext {
   return {
@@ -42,7 +55,6 @@ afterEach(() => {
     sideMenu: { y: 0, show: false, pos: 0, editorId: "" },
     bubbleMenu: { x: 0, y: 0, show: false, editorId: "" },
     contextMenu: { x: 0, y: 0, show: false, pos: 0, editorId: "" },
-    showAiPopover: false,
   });
 });
 
@@ -151,21 +163,46 @@ describe("ai plugin keymap", () => {
     expect(typeof plugins[0].props?.handleKeyDown).toBe("function");
   });
 
-  it("selectBlockAndOpenPopover opens the popover for a collapsed cursor", () => {
-    useAIUIStore.setState({ showAiPopover: false });
-    const open = vi.spyOn(useAIUIStore.getState(), "setShowAiPopover");
+  it("selectBlock selects the block for a collapsed cursor", () => {
+    const dispatch = vi.fn();
+    const setSelection = vi.fn().mockReturnThis();
     const state: any = {
       selection: {
         from: 8,
         to: 8,
         $from: { start: () => 5, end: () => 20 },
       },
+      tr: {
+        setSelection,
+      },
+      doc: {},
+    };
+    // With dispatch provided, the block selection should be dispatched.
+    const handled = selectBlock(state, dispatch);
+    expect(handled).toBe(true);
+    expect(setSelection).toHaveBeenCalled();
+    expect(dispatch).toHaveBeenCalled();
+  });
+
+  it("selectBlock returns true without dispatch for collapsed cursor", () => {
+    const state: any = {
+      selection: {
+        from: 8,
+        to: 8,
+        $from: { start: () => 5, end: () => 20 },
+      },
+      tr: {
+        setSelection: vi.fn().mockReturnThis(),
+      },
+      doc: {
+        textBetween: () => "block text",
+      },
     };
     // dispatch left undefined — the block-selection branch is skipped, but the
-    // popover must still open and the handler must report it handled the key.
-    const handled = selectBlockAndOpenPopover(state, undefined);
+    // handler must still report it handled the key.
+    const handled = selectBlock(state, undefined);
     expect(handled).toBe(true);
-    expect(open).toHaveBeenCalledWith(true);
+    expect(state.tr.setSelection).not.toHaveBeenCalled();
   });
 });
 
@@ -174,7 +211,7 @@ describe("inline draft bridge", () => {
     const handler = vi.fn();
     setAiActionHandler(handler);
     runAiAction("improve");
-    expect(handler).toHaveBeenCalledWith("improve");
+    expect(handler).toHaveBeenCalledWith("improve", undefined);
 
     setAiActionHandler(null);
     runAiAction("summarize");

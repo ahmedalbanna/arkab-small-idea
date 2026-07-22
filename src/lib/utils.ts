@@ -19,6 +19,24 @@ export function slugify(text: string) {
     .replace(/--+/g, '-');    // Replace multiple - with single -
 }
 
+/**
+ * Validates a URL string for use in href/src attributes.
+ * Rejects dangerous schemes (javascript:, data:, vbscript:) that could
+ * enable XSS. Allows http, https, mailto, and relative URLs.
+ */
+export function validateUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+
+  try {
+    const parsed = new URL(trimmed);
+    return ["http:", "https:", "mailto:"].includes(parsed.protocol);
+  } catch {
+    // Relative URLs (no protocol) are allowed — they're safe in this context.
+    return true;
+  }
+}
+
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
 

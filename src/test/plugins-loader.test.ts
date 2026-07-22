@@ -54,7 +54,7 @@ describe("loadPlugins (phase 1 wiring)", () => {
     const slashIds = loaded.collectors.commands
       .filter((c) => c.slash)
       .map((c) => c.id);
-    expect(slashIds).toContain("ai-ask");
+    expect(slashIds).not.toContain("ai-ask");
 
     const settingKeys = loaded.collectors.settings.map(
       (s) => `${s.pluginId}.${s.key}`,
@@ -63,7 +63,7 @@ describe("loadPlugins (phase 1 wiring)", () => {
 
     // The same contributions are exposed on the resolved PluginContext.
     expect(loaded.context.toolbarItems).toHaveLength(1);
-    expect(loaded.context.commands.some((c) => c.id === "ai-ask")).toBe(true);
+    expect(loaded.context.commands.some((c) => c.id === "ai-improve")).toBe(true);
     expect(loaded.context.commands.some((c) => c.id === "bold")).toBe(true);
     expect(
       loaded.context.settings.some((s) => s.pluginId === "status-bar"),

@@ -3,22 +3,39 @@ import { Reorder, useDragControls } from "motion/react";
 import {
   GripVertical,
   Target,
-  Sparkles,
   FileDown,
   X,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Heading1,
+  Heading2,
+  Heading3,
+  Quote,
+  List,
+  Code,
+  Table,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Layout,
+  Link,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import ProseMirrorEditor, { EditorRef } from "../ProseMirrorEditor";
+import { FormatButton } from "./menus/FormatButton";
 import { SnapshotsMenu } from "../overlays/SnapshotsMenu";
 import { FileActionsMenu } from "../overlays/FileActionsMenu";
-import { AI_ACTIONS } from "../../constants";
 import { Page, useEditorStore } from "../../stores/editorStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useAIStore } from "../../stores/aiStore";
 import { useAIUIStore } from "../../stores/aiUIStore";
-import { handleKeyDown, handleAiAction } from "../../plugins/ai/handlers";
+import { handleKeyDown } from "../../plugins/ai/handlers";
 import type { LoadedPlugins } from "../../plugins";
+import { validateUrl } from "../../lib/utils";
 
 interface ActivePageEditorProps {
   page: Page;
@@ -52,7 +69,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
     enableHeadingNumbering,
   } = useSettingsStore();
 
-  const { direction, showSearch, setAutoSaving, setAIAssistant } = useUIStore();
+  const { direction, showSearch, setAutoSaving } = useUIStore();
 
   const {
     personalInstructions: aiPersonalInstructions,
@@ -71,10 +88,11 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
     currentMatchIndex,
   } = useAIUIStore();
 
+  const activeFormats = useAIUIStore((s) => s.activeFormats[id]);
+
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [showFileActions, setShowFileActions] = useState(false);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
-  const [customInstruction, setCustomInstruction] = useState("");
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleScrollLocal = () => {
@@ -181,130 +199,6 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
               )}
             </div>
 
-            <div className="w-px h-3.5 bg-minimal-border mx-1" />
-
-            {/* Quick AI Actions */}
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth max-w-[120px] md:max-w-[200px]">
-              {AI_ACTIONS.slice(0, 4).map((action) => (
-                <button
-                  key={action.id}
-                  onClick={() => handleAiAction(action.id)}
-                  className={cn(
-                    "flex-shrink-0 p-1.5 rounded-lg border border-transparent hover:border-minimal-accent/20 hover:bg-minimal-accent/5 transition-all group/ai",
-                    action.color,
-                  )}
-                  title={action.label}
-                >
-                  <action.icon className="w-3.5 h-3.5 group-hover/ai:scale-110 transition-transform" />
-                </button>
-              ))}
-              <div className="relative group/menu">
-                <button
-                  className="p-1.5 rounded-lg text-minimal-muted hover:text-minimal-accent hover:bg-minimal-sidebar transition-all"
-                  aria-label="AI power tools"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                </button>
-                <div className="absolute end-0 top-full mt-2 w-48 bg-minimal-bg border border-minimal-border shadow-2xl rounded-2xl p-2 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-[100] scale-95 group-hover/menu:scale-100 origin-top-end">
-                  <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest p-2 mb-1 border-b border-minimal-border/30">
-                    AI Power Tools
-                  </p>
-                  <div className="grid grid-cols-1 gap-1">
-                    {AI_ACTIONS.map((action) => (
-                      <button
-                        key={action.id}
-                        onClick={() => {
-                          handleAiAction(action.id, customInstruction);
-                          setCustomInstruction("");
-                        }}
-                        className="flex items-center gap-3 p-2 hover:bg-minimal-sidebar rounded-xl transition-all text-left group/item"
-                      >
-                        <div
-                          className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center group-hover/item:scale-110 transition-transform",
-                            action.bg,
-                            action.color,
-                          )}
-                        >
-                          <action.icon className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-minimal-text leading-none mb-0.5">
-                            {action.label}
-                          </p>
-                          <p className="text-[8px] text-minimal-muted truncate max-w-[100px]">
-                            {action.description}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 px-2">
-                    <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest mb-2 border-b border-minimal-border/30 pb-1">
-                      Custom Instruction
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      <input
-                        type="text"
-                        value={customInstruction}
-                        onChange={(e) => setCustomInstruction(e.target.value)}
-                        placeholder="e.g. In 3 bullets, poetic tone..."
-                        className="w-full bg-minimal-sidebar border border-minimal-border rounded-lg px-2 py-1.5 text-[10px] text-minimal-text placeholder:text-minimal-muted outline-none focus:border-minimal-accent/50 transition-all"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && customInstruction.trim()) {
-                            handleAiAction("complete-text", customInstruction);
-                            setCustomInstruction("");
-                          }
-                        }}
-                      />
-                      {customInstruction && (
-                        <button
-                          onClick={() => {
-                            handleAiAction("complete-text", customInstruction);
-                            setCustomInstruction("");
-                          }}
-                          className="w-full py-1.5 bg-minimal-accent text-white rounded-lg text-[9px] font-bold uppercase tracking-wider hover:bg-minimal-accent/90 transition-all shadow-lg shadow-minimal-accent/20"
-                        >
-                          Run Custom Task
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest p-2 mt-2 mb-1 border-b border-minimal-border/30">
-                    Brainstorming
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 p-1">
-                    <button
-                      onClick={() => {
-                        handleAiAction(
-                          "custom:Brainstorm 5 topics for ",
-                        );
-                        setAIAssistant(true);
-                      }}
-                      className="p-2 border border-minimal-border rounded-xl text-[9px] font-bold uppercase tracking-wider text-minimal-muted hover:bg-minimal-sidebar hover:text-minimal-accent transition-all text-center"
-                    >
-                      Brainstorm
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleAiAction(
-                          "custom:Draft a professional ",
-                        );
-                        setAIAssistant(true);
-                      }}
-                      className="p-2 border border-minimal-border rounded-xl text-[9px] font-bold uppercase tracking-wider text-minimal-muted hover:bg-minimal-sidebar hover:text-minimal-accent transition-all text-center"
-                    >
-                      Draft
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-px h-3.5 bg-minimal-border mx-1" />
-
             <div className="relative">
               <FileActionsMenu
                 pageId={id}
@@ -338,6 +232,39 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
           </button>
         </div>
       </div>
+      {/* Formatting toolbar — visible when page is active */}
+      {activeFocusedPageId === id && (
+        <div className="px-4 md:px-6 py-1.5 border-b border-minimal-border/50 bg-minimal-sidebar/20 flex items-center gap-0.5 overflow-x-auto no-scrollbar">
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("h1")} title="Heading 1" icon={<Heading1 className="w-3.5 h-3.5" />} active={activeFormats?.h1} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("h2")} title="Heading 2" icon={<Heading2 className="w-3.5 h-3.5" />} active={activeFormats?.h2} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("h3")} title="Heading 3" icon={<Heading3 className="w-3.5 h-3.5" />} active={activeFormats?.h3} />
+          <div className="w-px h-3 bg-minimal-border mx-0.5" />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("bold")} title="Bold (Ctrl+B)" icon={<Bold className="w-3.5 h-3.5" />} active={activeFormats?.bold} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("italic")} title="Italic (Ctrl+I)" icon={<Italic className="w-3.5 h-3.5" />} active={activeFormats?.italic} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("underline")} title="Underline (Ctrl+U)" icon={<Underline className="w-3.5 h-3.5" />} active={activeFormats?.underline} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("strike")} title="Strikethrough" icon={<Strikethrough className="w-3.5 h-3.5" />} active={activeFormats?.strike} />
+          <div className="w-px h-3 bg-minimal-border mx-0.5" />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("quote")} title="Quote" icon={<Quote className="w-3.5 h-3.5" />} active={activeFormats?.blockquote} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("bullet")} title="Bullet List" icon={<List className="w-3.5 h-3.5" />} active={activeFormats?.bullet} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("code")} title="Code" icon={<Code className="w-3.5 h-3.5" />} active={activeFormats?.code} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("tableify")} title="Convert to Table" icon={<Table className="w-3.5 h-3.5" />} />
+          <div className="w-px h-3 bg-minimal-border mx-0.5" />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("alignLeft")} title="Align Left" icon={<AlignLeft className="w-3.5 h-3.5" />} active={activeFormats?.alignLeft} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("alignCenter")} title="Align Center" icon={<AlignCenter className="w-3.5 h-3.5" />} active={activeFormats?.alignCenter} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("alignRight")} title="Align Right" icon={<AlignRight className="w-3.5 h-3.5" />} active={activeFormats?.alignRight} />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("alignJustify")} title="Justify" icon={<Layout className="w-3.5 h-3.5" />} active={activeFormats?.alignJustify} />
+          <div className="w-px h-3 bg-minimal-border mx-0.5" />
+          <FormatButton onClick={() => editorRefs.current[id]?.handleFormat("link")} title="Link" icon={<Link className="w-3.5 h-3.5" />} />
+          <FormatButton onClick={() => {
+            const url = window.prompt("Enter Image URL:");
+            if (url && validateUrl(url)) {
+              editorRefs.current[id]?.insertImage(url, "Image");
+            } else if (url) {
+              window.alert("Invalid URL. Only http and https URLs are allowed.");
+            }
+          }} title="Insert Image" icon={<ImageIcon className="w-3.5 h-3.5" />} />
+        </div>
+      )}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <ProseMirrorEditor
           ref={(el) => {
@@ -376,11 +303,13 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
               fileInputRef.current?.click();
             } else {
               const url = window.prompt("Enter Image URL:");
-              if (url) {
+              if (url && validateUrl(url)) {
                 editorRefs.current[id]?.insertImage(
                   url,
                   "Image Alternative Text",
                 );
+              } else if (url) {
+                window.alert("Invalid URL. Only http and https URLs are allowed.");
               }
             }
           }}

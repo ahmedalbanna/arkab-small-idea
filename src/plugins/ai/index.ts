@@ -8,9 +8,9 @@ import { useAIUIStore } from "../../stores/aiUIStore";
 
 /**
  * Selects the block containing the cursor (when the selection is collapsed) so
- * the AI popover acts on the whole block, then opens the popover.
+ * AI actions act on the whole block.
  */
-export function selectBlockAndOpenPopover(
+export function selectBlock(
   state: EditorState,
   dispatch?: (tr: Transaction) => void,
 ): boolean {
@@ -27,7 +27,6 @@ export function selectBlockAndOpenPopover(
       );
     }
   }
-  useAIUIStore.getState().setShowAiPopover(true);
   return true;
 }
 
@@ -41,13 +40,18 @@ export function selectBlockAndOpenPopover(
  * handler, matching the registry/context pattern used elsewhere.
  */
 export function setAiActionHandler(
-  handler: ((action: AIAssistantAction) => void) | null,
+  handler:
+    | ((action: AIAssistantAction, customInstruction?: string) => void)
+    | null,
 ): void {
   useAIUIStore.getState().setAiActionHandler(handler);
 }
 
-export function runAiAction(action: AIAssistantAction): void {
-  useAIUIStore.getState().aiActionHandler?.(action);
+export function runAiAction(
+  action: AIAssistantAction,
+  customInstruction?: string,
+): void {
+  useAIUIStore.getState().aiActionHandler?.(action, customInstruction);
 }
 
 /**
@@ -65,17 +69,6 @@ export const aiPlugin: InkPlugin = {
   version: "1.0.0",
   init(ctx: PluginContext) {
     ctx.registerHost(AIHost);
-
-    // Slash-menu command — opens the AI drafting popover from "/".
-    ctx.registerCommand({
-      id: "ai-ask",
-      label: "Ask AI",
-      slash: true,
-      run: () => {
-        useAIUIStore.getState().setShowAiPopover(true);
-        return true;
-      },
-    });
 
     // AI editing actions surfaced in the command palette. Each acts on the
     // current selection via the same handler the toolbar/keymap use.
@@ -99,9 +92,9 @@ export const aiPlugin: InkPlugin = {
     ctx.registerProsePlugin(() =>
       keymap({
         "Mod-j": (state, dispatch) =>
-          selectBlockAndOpenPopover(state, dispatch),
+          selectBlock(state, dispatch),
         "Mod-Shift-j": (state, dispatch) =>
-          selectBlockAndOpenPopover(state, dispatch),
+          selectBlock(state, dispatch),
         "Mod-Shift-i": (state) => {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");

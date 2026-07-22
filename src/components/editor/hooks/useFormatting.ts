@@ -5,6 +5,7 @@ import { toggleMark, setBlockType, wrapIn } from "prosemirror-commands";
 import { wrapInList } from "prosemirror-schema-list";
 import type { Schema, Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
+import { validateUrl } from "../../../lib/utils";
 
 interface FormattingParams {
   viewRef: RefObject<EditorView | null>;
@@ -75,6 +76,14 @@ export function useFormatting({
       if (type === "alignJustify") setAlign("justify");
       if (type === "bullet")
         wrapInList(editorSchema.nodes.bullet_list)(state, dispatch);
+      if (type === "link") {
+        const url = window.prompt("Enter URL:");
+        if (url && validateUrl(url)) {
+          toggleMark(editorSchema.marks.link, { href: url })(state, dispatch);
+        } else if (url) {
+          window.alert("Invalid URL. Only http, https, and mailto links are allowed.");
+        }
+      }
       if (type === "tableify") {
         const { from, to } = state.selection;
         const selectedText = state.doc.textBetween(from, to, "\n");

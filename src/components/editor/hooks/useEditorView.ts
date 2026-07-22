@@ -123,10 +123,9 @@ export function useEditorView({
 
     // Plugins and node views contributed by the plugin system: core base
     // plugins, feature plugins (math, search, heading, ...), the editor UI
-    // plugins (side menu, context menu, bubble menu, TTS highlight,
-    // typewriter) and the AI keymap — all surfaced through
-    // PluginContext. The editor no longer defines any ProseMirror plugins
-    // inline.
+    // plugins (side menu, context menu, bubble menu, TTS highlight) and the AI
+    // keymap — all surfaced through PluginContext. The editor no longer defines
+    // any ProseMirror plugins inline.
     const { editorPlugins, nodeViews } = loaded.context;
     const core = loaded.core;
 
@@ -148,8 +147,8 @@ export function useEditorView({
           plugins: [
             // All ProseMirror plugins — collaboration (when enabled), core base
             // plugins, feature plugins, the editor UI plugins (side menu, context
-            // menu, bubble menu, TTS highlight, typewriter) and the AI
-            // keymap — are contributed by the plugin system and surfaced through
+            // menu, bubble menu, TTS highlight) and the AI keymap — are
+            // contributed by the plugin system and surfaced through
             // PluginContext.editorPlugins. The editor defines none inline.
             ...editorPlugins,
           ],

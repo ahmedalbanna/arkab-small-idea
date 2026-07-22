@@ -101,24 +101,24 @@ interface AIUIState {
   setContextMenu: (v: Updatable<ContextMenuState>) => void;
   bubbleMenu: BubbleMenuState;
   setBubbleMenu: (v: Updatable<BubbleMenuState>) => void;
-  showAiPopover: boolean;
-  setShowAiPopover: (v: boolean) => void;
-  activeFormats: Record<string, boolean>;
-  setActiveFormats: (v: Record<string, boolean>) => void;
+  activeFormats: Record<string, Record<string, boolean>>;
+  setActiveFormats: (editorId: string, v: Record<string, boolean>) => void;
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (v: boolean) => void;
   slashMenu: SlashMenuState;
   setSlashMenu: (v: Updatable<SlashMenuState>) => void;
 
-  // Live editor-shell flag mirrored from ProseMirrorEditor props.
-
   // Inline AI draft executor. The streaming implementation lives in the
   // `useAIStreaming` hook (coupled to the editor's draft state) and is
   // published here so the `ai` plugin's keymap can invoke it without a module
   // global. `null` when no editor is mounted.
-  aiActionHandler: ((action: AIAssistantAction) => void) | null;
+  aiActionHandler:
+    | ((action: AIAssistantAction, customInstruction?: string) => void)
+    | null;
   setAiActionHandler: (
-    handler: ((action: AIAssistantAction) => void) | null,
+    handler:
+      | ((action: AIAssistantAction, customInstruction?: string) => void)
+      | null,
   ) => void;
 }
 
@@ -167,10 +167,11 @@ export const useAIUIStore = create<AIUIState>((set) => ({
     set((s) => ({
       bubbleMenu: typeof v === "function" ? v(s.bubbleMenu) : v,
     })),
-  showAiPopover: false,
-  setShowAiPopover: (v) => set({ showAiPopover: v }),
   activeFormats: {},
-  setActiveFormats: (v) => set({ activeFormats: v }),
+  setActiveFormats: (editorId, v) =>
+    set((s) => ({
+      activeFormats: { ...s.activeFormats, [editorId]: v },
+    })),
   commandPaletteOpen: false,
   setCommandPaletteOpen: (v) => set({ commandPaletteOpen: v }),
   slashMenu: { x: 0, y: 0, show: false, pos: 0, query: "", editorId: "" },

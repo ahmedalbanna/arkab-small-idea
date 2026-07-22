@@ -521,6 +521,8 @@ export const processAIAction = async (
     documentContext?: string;
     cursorContext?: string;
     signal?: AbortSignal;
+    /** Free-form instruction appended to the system prompt. */
+    customInstruction?: string;
   },
 ): Promise<string> => {
   const {
@@ -533,12 +535,16 @@ export const processAIAction = async (
     documentContext = "",
     cursorContext = "",
     signal,
+    customInstruction,
   } = options;
 
   let systemInstruction =
     "You are a precise writing assistant integrated into Ink & Quill. Your goal is to help the user refine their document. ";
   if (personalInstructions) {
     systemInstruction += `The user has specified these stylistic preferences: "${personalInstructions}". Please adhere to them while performing the action. `;
+  }
+  if (customInstruction) {
+    systemInstruction += `Additional user instruction for this action: "${customInstruction}". `;
   }
 
   // Use RAG to get broad document context for the specific selection

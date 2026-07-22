@@ -33,6 +33,7 @@ export interface AIDraftState {
   abortController: AbortController | null;
   originalSelection: { from: number; to: number };
   streamEnd: number;
+  customInstruction?: string;
 }
 
 type AIDecision = "replace" | "append" | "retry" | "cancel";
@@ -84,7 +85,6 @@ interface AIStreamingParams {
   slashMenu: SlashMenuState;
   setSlashMenu: (v: (prev: SlashMenuState) => SlashMenuState) => void;
   setBubbleMenu: (v: (prev: any) => any) => void;
-  setShowAiPopover: (v: boolean) => void;
   handleFormat: (type: string) => void;
   onImageUploadRequest?: () => void;
   /** Shared with the imperative API (`streamMarkdown`). */
@@ -108,7 +108,6 @@ export function useAIStreaming({
   slashMenu,
   setSlashMenu,
   setBubbleMenu,
-  setShowAiPopover,
   handleFormat,
   onImageUploadRequest,
   streamStartRef,
@@ -129,6 +128,7 @@ export function useAIStreaming({
     retryAction?: AIAssistantAction,
     retryFrom?: number,
     retryTo?: number,
+    customInstruction?: string,
   ) => {
     if (!viewRef.current) return;
 
@@ -157,12 +157,12 @@ export function useAIStreaming({
       abortController,
       originalSelection: { from, to },
       streamEnd: to,
+      customInstruction,
     };
 
     setAiDraft(initialDraftState);
     setIsProcessingAI(true);
     setBubbleMenu((prev) => ({ ...prev, show: false }));
-    setShowAiPopover(false);
 
     try {
       const fullDoc = editorSerializer.serialize(state.doc);
@@ -220,6 +220,7 @@ export function useAIStreaming({
           },
           documentContext: fullDoc,
           cursorContext: cursorContext,
+          customInstruction,
         },
       );
 
@@ -309,6 +310,7 @@ export function useAIStreaming({
         draft.action!,
         draft.from,
         draft.from + parsedOrg.content.size,
+        draft.customInstruction,
       );
       return;
     } else if (decision === "replace") {
@@ -435,7 +437,9 @@ export function useAIStreaming({
   const handleAIActionRef = useRef(handleAIAction);
   handleAIActionRef.current = handleAIAction;
   useEffect(() => {
-    setAiActionHandler((a) => handleAIActionRef.current(a as AIAssistantAction));
+    setAiActionHandler((a, ci) =>
+      handleAIActionRef.current(a as AIAssistantAction, undefined, undefined, undefined, undefined, ci),
+    );
     return () => setAiActionHandler(null);
   }, []);
 

@@ -1,8 +1,7 @@
-import { forwardRef, useEffect, useId, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useId, useRef, useState } from "react";
 import { Selection, TextSelection } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { DOMSerializer } from "prosemirror-model";
-import { toggleMark } from "prosemirror-commands";
 import { type AIAssistantAction } from "../services/aiService";
 import {
   Bold,
@@ -12,36 +11,25 @@ import {
   Quote, Underline,
   Strikethrough,
   Sparkles,
-  Wand2,
   CheckCheck,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   ArrowRight,
-  Image as ImageIcon,
-  Heading,
   Heading1,
   Heading2,
   Heading3,
   List,
-  Minimize2,
-  Maximize2,
   Zap,
-  Layout,
   FileText,
-  RotateCcw,
   Copy,
   Scissors, Plus,
   GripVertical,
   RefreshCcw,
   Check,
   Square,
-  X as XIcon, Table
+  X as XIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn, slugify } from "../lib/utils";
 import { SlashMenu } from "./SlashMenu";
-import { FormatButton } from "./editor/menus/FormatButton";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useAIUIStore } from "../stores/aiUIStore";
 import { editorSerializer } from "./editor/hooks/useMarkdownSerializer";
@@ -53,6 +41,7 @@ import { useMarkdownSync } from "./editor/hooks/useMarkdownSync";
 import { useFormatting } from "./editor/hooks/useFormatting";
 import { useImperativeEditorApi } from "./editor/hooks/useImperativeEditorApi";
 import { useAIStreaming } from "./editor/hooks/useAIStreaming";
+import { AIFloatingToolbar } from "./editor/AIFloatingToolbar";
 import { CommandPalette } from "./editor/CommandPalette";
 import type { LoadedPlugins } from "../plugins";
 import type { EditorCommand } from "../plugins/types";
@@ -213,10 +202,6 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     // values; the store setters keep the same functional-update API.
     const bubbleMenu = useAIUIStore((s) => s.bubbleMenu);
     const setBubbleMenu = useAIUIStore((s) => s.setBubbleMenu);
-    const activeFormats = useAIUIStore((s) => s.activeFormats);
-    const setActiveFormats = useAIUIStore((s) => s.setActiveFormats);
-    const showAiPopover = useAIUIStore((s) => s.showAiPopover);
-    const setShowAiPopover = useAIUIStore((s) => s.setShowAiPopover);
     const slashMenu = useAIUIStore((s) => s.slashMenu);
     const setSlashMenu = useAIUIStore((s) => s.setSlashMenu);
     const contextMenu = useAIUIStore((s) => s.contextMenu);
@@ -236,11 +221,31 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
         ) {
           e.preventDefault();
           setCommandPaletteOpen(true);
+          return;
+        }
+
+        // Mod-Shift-K: focus the AI toolbar's custom instruction input.
+        if (
+          (e.metaKey || e.ctrlKey) &&
+          e.shiftKey &&
+          e.key.toLowerCase() === "k"
+        ) {
+          e.preventDefault();
+          const bm = useAIUIStore.getState().bubbleMenu;
+          if (bm.editorId === myEditorId && bm.show) {
+            // Bubble menu (with embedded AI toolbar) is visible — focus the
+            // custom instruction input directly.
+            const input = containerRef.current?.querySelector<HTMLInputElement>(
+              '[data-testid="ai-custom-instruction"]',
+            );
+            input?.focus();
+          }
+          return;
         }
       };
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
-    }, [setCommandPaletteOpen]);
+    }, [setCommandPaletteOpen, myEditorId]);
 
     // Run a palette command through the live plugin context and close the palette.
     const handleRunCommand = (cmd: EditorCommand) => {
@@ -308,12 +313,19 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       slashMenu,
       setSlashMenu,
       setBubbleMenu,
-      setShowAiPopover,
       handleFormat,
       onImageUploadRequest,
       streamStartRef,
       streamEndRef,
     });
+
+    // Stable callback for the embedded AI toolbar — prevents React.memo from
+    // re-rendering on every parent render due to a new inline function.
+    const handleAIActionWithCustom = useCallback(
+      (action: AIAssistantAction, customInstruction?: string) =>
+        handleAIAction(action, undefined, undefined, undefined, undefined, customInstruction),
+      [handleAIAction],
+    );
 
     // Restore the initial cursor position once the editor has mounted.
     useEffect(() => {
@@ -372,239 +384,22 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
               }}
               className="z-[100] flex items-center gap-0.5 bg-minimal-bg border border-minimal-border rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-minimal-border"
             >
-              <FormatButton onClick={() => handleFormat("h1")} title="Heading 1 (#)" icon={<Heading1 className="w-3.5 h-3.5" />} active={activeFormats.h1} />
-              <FormatButton onClick={() => handleFormat("h2")} title="Heading 2 (##)" icon={<Heading2 className="w-3.5 h-3.5" />} active={activeFormats.h2} />
-              <FormatButton onClick={() => handleFormat("h3")} title="Heading 3 (###)" icon={<Heading3 className="w-3.5 h-3.5" />} active={activeFormats.h3} />
-              <div className="w-px h-3 bg-minimal-border mx-0.5" />
-              <FormatButton onClick={() => handleFormat("bold")} title="Bold (Mod+B)" icon={<Bold className="w-3.5 h-3.5" />} active={activeFormats.bold} />
-              <FormatButton onClick={() => handleFormat("italic")} title="Italic (Mod+I)" icon={<Italic className="w-3.5 h-3.5" />} active={activeFormats.italic} />
-              <FormatButton onClick={() => handleFormat("underline")} title="Underline (Mod+U)" icon={<Underline className="w-3.5 h-3.5" />} active={activeFormats.underline} />
-              <FormatButton onClick={() => handleFormat("strike")} title="Strikethrough (Mod+Shift+X)" icon={<Strikethrough className="w-3.5 h-3.5" />} active={activeFormats.strike} />
-              <FormatButton onClick={() => handleFormat("quote")} title="Quote" icon={<Quote className="w-3.5 h-3.5" />} active={activeFormats.blockquote} />
-              <FormatButton onClick={() => handleFormat("bullet")} title="Bullet List" icon={<List className="w-3.5 h-3.5" />} active={activeFormats.bullet} />
-              <FormatButton onClick={() => handleFormat("code")} title="Code (Mod+E)" icon={<Code className="w-3.5 h-3.5" />} active={activeFormats.code} />
-              <FormatButton onClick={() => handleFormat("tableify")} title="Convert to Table" icon={<Table className="w-3.5 h-3.5" />} />
-              <div className="w-px h-3 bg-minimal-border mx-0.5" />
-              <FormatButton onClick={() => handleFormat("alignLeft")} title="Align Left" icon={<AlignLeft className="w-3.5 h-3.5" />} active={activeFormats.alignLeft} />
-              <FormatButton onClick={() => handleFormat("alignCenter")} title="Align Center" icon={<AlignCenter className="w-3.5 h-3.5" />} active={activeFormats.alignCenter} />
-              <FormatButton onClick={() => handleFormat("alignRight")} title="Align Right" icon={<AlignRight className="w-3.5 h-3.5" />} active={activeFormats.alignRight} />
-              <FormatButton onClick={() => handleFormat("alignJustify")} title="Justify" icon={<Layout className="w-3.5 h-3.5" />} active={activeFormats.alignJustify} />
-              <div className="w-px h-3 bg-minimal-border mx-0.5" />
-              <button
-                    onClick={() => {
-                      const url = window.prompt("Enter URL:");
-                      if (url && viewRef.current) {
-                        const { state, dispatch } = viewRef.current;
-                        toggleMark(editorSchema.marks.link, { href: url })(
-                          state,
-                          dispatch,
-                        );
-                      }
-                    }}
-                    className="p-1.5 hover:bg-minimal-sidebar rounded text-minimal-text transition-colors"
-                    title="Link"
-                  >
-                    <Link className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (onImageUploadRequest) {
-                        onImageUploadRequest();
-                      } else {
-                        const url = window.prompt("Enter Image URL:");
-                        if (url && viewRef.current) {
-                          const { state, dispatch } = viewRef.current;
-                          const { from } = state.selection;
-                          const node = editorSchema.nodes.image.create({
-                            src: url,
-                            alt: "Image",
-                          });
-                          dispatch(state.tr.insert(from, node));
-                        }
-                      }
-                    }}
-                    className="p-1.5 hover:bg-minimal-sidebar rounded text-minimal-text transition-colors"
-                    title="Insert Image"
-                  >
-                    <ImageIcon className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="w-px h-3 bg-minimal-border mx-0.5" />
-
-              <button
-                onClick={() => handleAIAction("improve")}
-                disabled={isProcessingAI}
-                className="p-1.5 hover:bg-minimal-accent/20 text-minimal-accent rounded transition-colors"
-                title="Improve Writing"
-              >
-                <Zap className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleAIAction("summarize")}
-                disabled={isProcessingAI}
-                className="p-1.5 hover:bg-minimal-accent/20 text-minimal-accent rounded transition-colors"
-                title="Summarize Selection"
-              >
-                <FileText className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleAIAction("fix-grammar")}
-                disabled={isProcessingAI}
-                className="p-1.5 hover:bg-minimal-accent/20 text-minimal-accent rounded transition-colors"
-                title="Fix Grammar"
-              >
-                <CheckCheck className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleAIAction("expand")}
-                disabled={isProcessingAI}
-                className="p-1.5 hover:bg-minimal-accent/20 text-minimal-accent rounded transition-colors"
-                title="Expand Selection"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-              <div className="w-px h-3 bg-minimal-border mx-0.5" />
-
-              <div className="relative">
-                <button
-                  onClick={() => setShowAiPopover(!showAiPopover)}
-                  disabled={isProcessingAI}
-                  className={cn(
-                    "p-1.5 rounded transition-all flex items-center gap-1",
-                    isProcessingAI
-                      ? "text-minimal-muted cursor-not-allowed"
-                      : "hover:bg-minimal-accent/20 text-minimal-accent",
-                    showAiPopover && "bg-minimal-accent/20",
-                  )}
-                  title="AI Writing Assistant"
-                >
-                  {isProcessingAI ? (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </motion.div>
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span className="text-[10px] font-bold uppercase tracking-wider">
-                    AI
-                  </span>
-                </button>
-
-                <AnimatePresence>
-                  {showAiPopover && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className={cn(
-                        "absolute mb-3 left-1/2 -translate-x-1/2 bg-minimal-bg border border-minimal-border rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-2 flex flex-col gap-1 w-64 ring-1 ring-minimal-border",
-                        bubbleMenu.y < 400
-                          ? "top-full mt-3"
-                          : "bottom-full mb-3",
-                      )}
-                    >
-                      <div className="flex flex-col gap-1 max-h-[350px] overflow-y-auto pe-1 custom-scrollbar">
-                        <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar rounded-t-lg mb-1">
-                          Editing
-                        </div>
-                        {[
-                          {
-                            id: "improve",
-                            label: "Improve Writing",
-                            icon: Wand2,
-                          },
-                          {
-                            id: "fix-grammar",
-                            label: "Fix Grammar",
-                            icon: CheckCheck,
-                          },
-                          {
-                            id: "shorten",
-                            label: "Make Shorter",
-                            icon: Minimize2,
-                          },
-                          {
-                            id: "expand",
-                            label: "Expand Selection",
-                            icon: Maximize2,
-                          },
-                          {
-                            id: "rewrite",
-                            label: "Rewrite Section",
-                            icon: RotateCcw,
-                          },
-                        ].map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() =>
-                              handleAIAction(item.id as AIAssistantAction)
-                            }
-                            className="flex items-center gap-2 p-2 hover:bg-minimal-sidebar rounded-lg text-left transition-colors"
-                          >
-                            <item.icon className="w-3.5 h-3.5 text-minimal-accent" />
-                            <span className="text-xs text-minimal-text font-medium">
-                              {item.label}
-                            </span>
-                          </button>
-                        ))}
-
-                        <div className="px-2 py-1.5 text-[9px] font-bold text-minimal-muted uppercase tracking-widest bg-minimal-sidebar mt-1 mb-1">
-                          Structure
-                        </div>
-                        {[
-                          {
-                            id: "generate-outline",
-                            label: "Create Outline",
-                            icon: Layout,
-                          },
-                          {
-                            id: "expand-outline",
-                            label: "Draft from Outline",
-                            icon: Zap,
-                          },
-                          {
-                            id: "draft-topic",
-                            label: "Draft Topic",
-                            icon: ArrowRight,
-                          },
-                          {
-                            id: "summarize",
-                            label: "Summarize",
-                            icon: FileText,
-                          },
-                          {
-                            id: "suggest-title",
-                            label: "Suggest Titles",
-                            icon: Heading,
-                          },
-                        ].map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() =>
-                              handleAIAction(item.id as AIAssistantAction)
-                            }
-                            className="flex items-center gap-2 p-2 hover:bg-minimal-sidebar rounded-lg text-left transition-colors"
-                          >
-                            <item.icon className="w-3.5 h-3.5 text-minimal-accent" />
-                            <span className="text-xs text-minimal-text font-medium">
-                              {item.label}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <AIFloatingToolbar
+                state={{ x: 0, y: 0, show: true, editorId: myEditorId }}
+                isProcessingAI={isProcessingAI}
+                aiStreaming={aiDraft?.isStreaming ?? false}
+                onAction={handleAIActionWithCustom}
+                onStop={() => aiDraft?.abortController?.abort()}
+                onClose={() => {
+                  setBubbleMenu((prev) => ({ ...prev, show: false }));
+                  viewRef.current?.focus();
+                }}
+                embedded
+              />
             </motion.div>
           )}
         </AnimatePresence>
+
         <AnimatePresence>
           {aiDraft && (
             <motion.div
@@ -624,6 +419,14 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                     <Sparkles className="w-4 h-4 text-minimal-accent" />
                   </motion.div>
                   <span className="text-xs font-semibold text-minimal-accent pe-2">AI is Writing...</span>
+                  {aiDraft.customInstruction && (
+                    <>
+                      <div className="w-px h-3 bg-minimal-border" />
+                      <span className="text-[9px] font-medium text-minimal-muted whitespace-nowrap truncate max-w-[150px]">
+                        Custom: {aiDraft.customInstruction}
+                      </span>
+                    </>
+                  )}
                   <div className="w-px h-3 bg-minimal-border" />
                   <button
                     onClick={() => {
@@ -639,6 +442,14 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
                 </div>
               ) : aiDraft.showActions ? (
                 <div className="flex items-center gap-1 bg-minimal-bg border border-minimal-border rounded-xl p-1 shadow-2xl backdrop-blur-xl ring-1 ring-minimal-border">
+                  {aiDraft.customInstruction && (
+                    <>
+                      <span className="text-[9px] font-medium text-minimal-muted px-1.5 whitespace-nowrap truncate max-w-[150px]">
+                        Custom: {aiDraft.customInstruction}
+                      </span>
+                      <div className="w-px h-3 bg-minimal-border" />
+                    </>
+                  )}
                   <button
                     onClick={() => handleAIActionDecision("replace")}
                     className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-emerald-400 hover:bg-minimal-sidebar hover:text-emerald-300 rounded"

@@ -119,7 +119,6 @@ export const editorUIPlugin: InkPlugin = {
                 useAIUIStore
                   .getState()
                   .setBubbleMenu((prev) => ({ ...prev, show: false }));
-                useAIUIStore.getState().setShowAiPopover(false);
                 return;
               }
 
@@ -190,7 +189,7 @@ export const editorUIPlugin: InkPlugin = {
                     return false;
                   })(),
                 };
-                useAIUIStore.getState().setActiveFormats(formats);
+                useAIUIStore.getState().setActiveFormats(editorId, formats);
 
                 useAIUIStore.getState().setBubbleMenu({
                   x: left - editorRect.left,
