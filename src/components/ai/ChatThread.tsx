@@ -17,6 +17,10 @@ interface ChatThreadProps {
   onRevise: (text: string) => void;
   onRetry: () => void;
   onSuggest: (prompt: string) => void;
+  /** Streaming progress estimate (token count so far). */
+  streamProgress?: number;
+  /** Whether to show token counts in the UI. */
+  showTokenCounts?: boolean;
 }
 
 /**
@@ -35,6 +39,8 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
   onRevise,
   onRetry,
   onSuggest,
+  streamProgress = 0,
+  showTokenCounts = false,
 }) => {
   if (chatHistory.length === 0) {
     return (
@@ -69,6 +75,14 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
       ))}
       {!isGenerating && lastIsModel && (
         <SuggestedPrompts suggestions={suggestions} onSuggest={onSuggest} />
+      )}
+
+      {/* Streaming progress indicator */}
+      {isGenerating && showTokenCounts && streamProgress > 0 && (
+        <div className="px-3 py-1 text-[9px] text-minimal-muted/60">
+          <span className="inline-block w-2 h-2 rounded-full bg-minimal-accent animate-pulse mr-1" />
+          Generating... ~{streamProgress} tokens
+        </div>
       )}
     </div>
   );

@@ -17,6 +17,10 @@ interface ComposerProps {
   isGenerating: boolean;
   isEmpty: boolean;
   onAction: (actionId: string) => void;
+  /** Streaming progress estimate (token count so far). */
+  streamProgress?: number;
+  /** Whether to show token counts in the UI. */
+  showTokenCounts?: boolean;
 }
 
 /**
@@ -36,6 +40,8 @@ export const Composer: React.FC<ComposerProps> = ({
   isGenerating,
   isEmpty,
   onAction,
+  streamProgress = 0,
+  showTokenCounts = false,
 }) => {
   const canSend = (aiPrompt.trim().length > 0 || chatAttachedImages.length > 0) && !isGenerating;
 
@@ -60,6 +66,22 @@ export const Composer: React.FC<ComposerProps> = ({
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Streaming progress bar */}
+      {isGenerating && showTokenCounts && streamProgress > 0 && (
+        <div className="px-3 py-1">
+          <div className="flex items-center justify-between text-[9px] text-minimal-muted/60 mb-0.5">
+            <span>Streaming response</span>
+            <span>~{streamProgress} tokens</span>
+          </div>
+          <div className="h-1 rounded-full bg-minimal-border overflow-hidden">
+            <div
+              className="h-full bg-minimal-accent transition-all duration-300 ease-out"
+              style={{ width: `${Math.min((streamProgress / 4096) * 100, 100)}%` }}
+            />
+          </div>
         </div>
       )}
 

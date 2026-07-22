@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Cpu, X, ChevronDown } from "lucide-react";
+import { Cpu, X, ChevronDown, Edit3, RefreshCw } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAIStore } from "../../stores/aiStore";
 import { useUIStore } from "../../stores/uiStore";
 
 import { STATIC_MODELS } from "../../constants";
+import { getDefaultTemplates } from "../../services/promptTemplates";
+import type { PromptTemplate } from "../../services/promptTemplates";
 
 interface AIProviderSettingsProps {
   aiSettingsTab: "chat" | "actions" | "semantic" | "embeddings";
@@ -30,7 +32,46 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
     setOllamaHost,
     personalInstructions: aiPersonalInstructions,
     setPersonalInstructions: setAiPersonalInstructions,
+    promptTemplates,
+    setPromptTemplate,
+    resetPromptTemplate,
+    resetAllPromptTemplates,
+    showTokenCounts,
+    setShowTokenCounts,
   } = useAIStore();
+
+  const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null);
+
+  // Build the effective template list (defaults merged with user overrides)
+  const defaultTemplates = getDefaultTemplates();
+  const effectiveTemplates = defaultTemplates.map((tpl) => {
+    const override = promptTemplates[tpl.id];
+    if (!override) return tpl;
+    return { ...tpl, ...override };
+  });
+
+  const handleEditTemplate = (tpl: PromptTemplate) => {
+    setEditingTemplate({ ...tpl });
+  };
+
+  const handleSaveTemplate = () => {
+    if (!editingTemplate) return;
+    setPromptTemplate(editingTemplate.id, {
+      systemPrompt: editingTemplate.systemPrompt,
+      userPrompt: editingTemplate.userPrompt,
+    });
+    setEditingTemplate(null);
+  };
+
+  const handleResetTemplate = (id: string) => {
+    resetPromptTemplate(id);
+  };
+
+  const handleResetAll = () => {
+    if (window.confirm("Reset all prompt templates to defaults? This cannot be undone.")) {
+      resetAllPromptTemplates();
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -226,6 +267,92 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                   </p>
                 </div>
               </div>
+
+              {/* Token Counts Toggle */}
+              <div className="space-y-2">
+                <h3 className="text-[10px] font-bold text-minimal-muted uppercase tracking-wider">
+                  Token Count Display
+                </h3>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showTokenCounts}
+                    onChange={(e) => setShowTokenCounts(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-minimal-border text-minimal-accent focus:ring-minimal-accent"
+                  />
+                  <span className="text-xs text-minimal-text">
+                    Show token counts while generating
+                  </span>
+                </label>
+              </div>
+
+              {/* Prompt Templates Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-bold text-minimal-muted uppercase tracking-wider">
+                    Prompt Templates
+                  </h3>
+                  <button
+                    onClick={handleResetAll}
+                    className="text-[9px] font-bold text-minimal-muted hover:text-red-500 transition-colors uppercase"
+                  >
+                    Reset All
+                  </button>
+                </div>
+
+                <p className="text-[9px] text-minimal-muted">
+                  Customize system and user prompts per action. Placeholders:
+                  {"{text}"}, {"{personalInstructions}"}, {"{customInstruction}"}
+                </p>
+
+                <div className="space-y-2">
+                  {effectiveTemplates.map((tpl) => {
+                    const isCustomized = !!promptTemplates[tpl.id];
+                    return (
+                      <div
+                        key={tpl.id}
+                        className="rounded-xl border border-minimal-border bg-minimal-sidebar p-2.5"
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div>
+                            <span className="text-xs font-bold text-minimal-text">{tpl.label}</span>
+                            <span className="text-[9px] text-minimal-muted/60 ml-1">
+                              ({tpl.id})
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {isCustomized && (
+                              <span className="text-[8px] text-minimal-accent font-bold">
+                                CUSTOM
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleEditTemplate(tpl)}
+                              aria-label={`Edit ${tpl.label} template`}
+                              className="rounded-lg p-1 text-minimal-muted transition-colors hover:bg-minimal-border hover:text-minimal-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent"
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </button>
+                            {isCustomized && (
+                              <button
+                                onClick={() => handleResetTemplate(tpl.id)}
+                                aria-label={`Reset ${tpl.label} template`}
+                                className="rounded-lg p-1 text-minimal-muted transition-colors hover:bg-minimal-border hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-minimal-accent"
+                                title="Reset to default"
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-[9px] text-minimal-muted/60 truncate">
+                          {tpl.systemPrompt.slice(0, 80)}...
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-6 border-t border-minimal-border">
@@ -259,6 +386,93 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
           </motion.div>
         </>
       )}
+
+      {/* Template Editor Modal */}
+      <AnimatePresence>
+        {editingTemplate && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingTemplate(null)}
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+            >
+              <div className="w-full max-w-2xl bg-minimal-bg border border-minimal-border rounded-2xl shadow-2xl">
+                <div className="p-4 border-b border-minimal-border flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-minimal-text uppercase tracking-wider">
+                    Edit: {editingTemplate.label}
+                  </h3>
+                  <button
+                    onClick={() => setEditingTemplate(null)}
+                    className="rounded-full p-1 text-minimal-muted hover:bg-minimal-border focus-visible:ring-2 focus-visible:ring-minimal-accent"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="p-4 space-y-4 custom-scrollbar overflow-y-auto max-h-[60vh]">
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-minimal-muted uppercase tracking-wider">
+                      System Prompt
+                    </label>
+                    <textarea
+                      value={editingTemplate.systemPrompt}
+                      onChange={(e) =>
+                        setEditingTemplate({ ...editingTemplate, systemPrompt: e.target.value })
+                      }
+                      className="w-full h-32 bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none transition-all focus:border-minimal-accent focus-visible:ring-2 focus-visible:ring-minimal-accent resize-none"
+                      placeholder="Enter system prompt..."
+                    />
+                    <p className="text-[8px] text-minimal-muted/60">
+                      Available placeholders: {"{personalInstructionsSegment}"}, {"{text}"},{" "}
+                      {"{customInstruction}"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-minimal-muted uppercase tracking-wider">
+                      User Prompt
+                    </label>
+                    <textarea
+                      value={editingTemplate.userPrompt}
+                      onChange={(e) =>
+                        setEditingTemplate({ ...editingTemplate, userPrompt: e.target.value })
+                      }
+                      className="w-full h-24 bg-minimal-sidebar border border-minimal-border rounded-xl p-3 text-xs font-medium text-minimal-text outline-none transition-all focus:border-minimal-accent focus-visible:ring-2 focus-visible:ring-minimal-accent resize-none"
+                      placeholder="Enter user prompt template..."
+                    />
+                    <p className="text-[8px] text-minimal-muted/60">
+                      Available placeholders: {"{text}"}, {"{customInstruction}"}, {"{context}"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-minimal-border flex justify-end gap-2">
+                  <button
+                    onClick={() => setEditingTemplate(null)}
+                    className="px-3 py-1.5 text-xs font-bold text-minimal-muted hover:text-minimal-text transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveTemplate}
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-minimal-accent rounded-xl hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-minimal-accent"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 };

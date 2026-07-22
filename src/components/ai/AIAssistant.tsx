@@ -66,6 +66,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   onApply,
   onRetry,
   onClose,
+  streamProgress = 0,
+  showTokenCounts = false,
 }) => {
   const suggestions = useMemo(() => {
     if (isGenerating || chatHistory.length === 0) return [];
@@ -94,6 +96,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         onRevise={handleReviseMessage}
         onRetry={onRetry}
         onSuggest={handleSuggest}
+        streamProgress={streamProgress}
+        showTokenCounts={showTokenCounts}
       />
       <Composer
         aiPrompt={aiPrompt}
@@ -109,6 +113,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         isGenerating={isGenerating}
         isEmpty={chatHistory.length === 0}
         onAction={handleAiAction}
+        streamProgress={streamProgress}
+        showTokenCounts={showTokenCounts}
       />
     </div>
   );

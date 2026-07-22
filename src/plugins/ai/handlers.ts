@@ -5,6 +5,7 @@ import { useEditorStore } from "../../stores/editorStore";
 import { useAIStore, getEmbeddingOptions } from "../../stores/aiStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useAIUIStore } from "../../stores/aiUIStore";
+import { StreamBuffer } from "../../services/streamBuffer";
 
 /**
  * Stable, module-level handlers shared by both the `ai` plugin host (chat
@@ -141,29 +142,38 @@ export async function handleAiAction(actionId: string, customInstruction?: strin
     let fullResponse = "";
     const embeddingOptions = getEmbeddingOptions();
 
-    await chatWithAI(historyWithUser, markdown, {
-      personalInstructions: ai.personalInstructions,
-      model: ai.serviceConfigs.chat.model,
-      provider: ai.serviceConfigs.chat.provider,
-      apiKeys: ai.apiKeys,
-      providerConfigs: ai.providerConfigs,
-      onChunk: (chunk) => {
-        fullResponse += chunk;
+    // Build stream buffer for smoother UI updates
+    const streamBuffer = new StreamBuffer({
+      onFlush: (text) => {
         ai.setChatHistory((prev) => {
           const next = [...prev];
           const last = next[next.length - 1];
           if (last && last.role === "model") {
             next[next.length - 1] = {
               ...last,
-              parts: [{ text: fullResponse }],
+              parts: [{ text }],
             };
           }
           return next;
         });
       },
+    });
+
+    await chatWithAI(historyWithUser, markdown, {
+      personalInstructions: ai.personalInstructions,
+      model: ai.serviceConfigs.chat.model,
+      provider: ai.serviceConfigs.chat.provider,
+      apiKeys: ai.apiKeys,
+      providerConfigs: ai.providerConfigs,
+      templateOverrides: ai.promptTemplates,
+      onChunk: (chunk) => {
+        fullResponse += chunk;
+        streamBuffer.push(chunk);
+      },
       cursorContext: editor.getCursorContext() || "",
       embeddingOptions,
     });
+    streamBuffer.close();
   } catch (error) {
     console.error("AI Action failed:", error);
     const errorMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
