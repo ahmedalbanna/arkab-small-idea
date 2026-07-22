@@ -4,8 +4,12 @@ import { keymap } from "prosemirror-keymap";
 import type { Plugin } from "prosemirror-state";
 import { Awareness } from "y-protocols/awareness";
 import type { InkPlugin, PluginContext } from "../types";
-import { createConnectionManager, type ConnectionManagerHandle } from "./connection";
-import { CollabStatusIndicator } from "./CollabStatus";
+import {
+  createConnectionManager,
+  type ConnectionManagerHandle,
+  type TransportMode,
+} from "./connection";
+import { CollabUsersList } from "./UserList";
 
 export interface CollabConfig {
   docId: string;
@@ -13,6 +17,18 @@ export interface CollabConfig {
   color?: string;
   /** WebSocket server URL for remote collaboration.  Omit for local-only. */
   serverUrl?: string;
+  /** Preferred transport mode. Defaults to 'websocket' when serverUrl is set. */
+  transport?: TransportMode;
+  /** Enable y-indexeddb persistence for offline support (default: true). */
+  persist?: boolean;
+  /** Optional avatar URL / data URI. */
+  avatar?: string;
+  /** Lifecycle callback: fired when connection is established. */
+  onConnect?: () => void;
+  /** Lifecycle callback: fired when connection is lost. */
+  onDisconnect?: () => void;
+  /** Lifecycle callback: fired when sync state changes. */
+  onSync?: (synced: boolean) => void;
 }
 
 /** Editor-supplied collaboration options: the document config plus a toggle. */
@@ -22,9 +38,16 @@ export type CollabPluginOptions = CollabConfig & { enabled: boolean };
  * Build a Collaboration plugin instance bound to a single document.
  *
  * When a `serverUrl` is provided the plugin will connect to the remote
- * collaboration server and also set up a local BroadcastChannel for
- * same-browser tab-to-tab sync.  Without a server URL it falls back to
+ * collaboration server via WebSocket.  Without a server URL it falls back to
  * BroadcastChannel only (local multi-tab editing).
+ *
+ * Persistence (y-indexeddb) is enabled by default, providing offline resilience
+ * and automatic state restoration on page reload.
+ *
+ * ## Lifecycle
+ * - `onConnect`: called after WebSocket connection established
+ * - `onDisconnect`: called when WebSocket connection lost
+ * - `onSync`: called when Yjs sync state changes (true = fully synced)
  */
 export function createCollabPlugin(config: CollabConfig): InkPlugin {
   let ydoc: Y.Doc | null = null;
@@ -36,7 +59,7 @@ export function createCollabPlugin(config: CollabConfig): InkPlugin {
   return {
     id: "collab",
     name: "Collaboration",
-    version: "2.0.0",
+    version: "3.0.0",
     essential: true,
 
     init(ctx: PluginContext) {
@@ -45,21 +68,26 @@ export function createCollabPlugin(config: CollabConfig): InkPlugin {
 
       // Local awareness for remote cursors/presence.
       awareness = new Awareness(ydoc);
+      const userColor = config.color || "#" + Math.floor(Math.random() * 16777215).toString(16);
       awareness.setLocalStateField("user", {
         name: config.username || "Anonymous Writer",
-        color: config.color || "#" + Math.floor(Math.random() * 16777215).toString(16),
+        color: userColor,
+        avatar: config.avatar || null,
       });
 
-      // ---- Transport ----
+      // ---- Transport with persistence ----
       if (config.serverUrl) {
-        // Remote collaboration via WebSocket + local BroadcastChannel
+        // Remote collaboration via WebSocket + local BroadcastChannel + persistence
         connManager = createConnectionManager({
           doc: ydoc,
           awareness,
           serverUrl: config.serverUrl,
           roomName: config.docId,
           username: config.username,
-          color: config.color,
+          color: userColor,
+          avatar: config.avatar,
+          transport: config.transport,
+          persist: config.persist !== false,
         });
         connManager.connect();
       } else {
@@ -75,8 +103,17 @@ export function createCollabPlugin(config: CollabConfig): InkPlugin {
         };
       }
 
-      // Register the CollabStatus UI component
-      ctx.registerHost(CollabStatusIndicator);
+      // Wire lifecycle callbacks from config into the collab store
+      if (config.onConnect || config.onDisconnect || config.onSync) {
+        const { useCollabStore } = require("./collabStore");
+        const store = useCollabStore.getState();
+        if (config.onConnect) store.setOnConnect(config.onConnect);
+        if (config.onDisconnect) store.setOnDisconnect(config.onDisconnect);
+        if (config.onSync) store.setOnSync(config.onSync);
+      }
+
+      // Register the CollabStatus UI component (includes status dot + user avatars)
+      ctx.registerHost(CollabUsersList);
 
       // ProseMirror collaboration plugins (works with both transports)
       const plugins: Plugin[] = [

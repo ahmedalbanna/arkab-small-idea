@@ -10,6 +10,8 @@ describe("collabStore", () => {
     expect(state.connectedUsers).toEqual([]);
     expect(state.serverUrl).toBeNull();
     expect(state.roomName).toBeNull();
+    expect(state.pendingOfflineChanges).toBe(0);
+    expect(state.synced).toBe(false);
   });
 
   it("updates status", () => {
@@ -36,10 +38,34 @@ describe("collabStore", () => {
     expect(useCollabStore.getState().roomName).toBe("my-doc");
   });
 
+  it("tracks pending offline changes", () => {
+    useCollabStore.getState().setPendingOfflineChanges(5);
+    expect(useCollabStore.getState().pendingOfflineChanges).toBe(5);
+  });
+
+  it("tracks sync state", () => {
+    useCollabStore.getState().setSynced(true);
+    expect(useCollabStore.getState().synced).toBe(true);
+  });
+
+  it("manages lifecycle callbacks", () => {
+    const onConnect = () => {};
+    const onDisconnect = () => {};
+    const onSync = (_s: boolean) => {};
+    useCollabStore.getState().setOnConnect(onConnect);
+    useCollabStore.getState().setOnDisconnect(onDisconnect);
+    useCollabStore.getState().setOnSync(onSync);
+    expect(useCollabStore.getState().onConnect).toBe(onConnect);
+    expect(useCollabStore.getState().onDisconnect).toBe(onDisconnect);
+    expect(useCollabStore.getState().onSync).toBe(onSync);
+  });
+
   it("reset restores initial state", () => {
     useCollabStore.getState().setStatus("connected");
     useCollabStore.getState().setTransport("websocket");
     useCollabStore.getState().setConnectedUsers([{ name: "Bob", color: "#00ff00", clientId: 2 }]);
+    useCollabStore.getState().setPendingOfflineChanges(3);
+    useCollabStore.getState().setSynced(true);
     useCollabStore.getState().reset();
 
     const state = useCollabStore.getState();
@@ -48,5 +74,10 @@ describe("collabStore", () => {
     expect(state.connectedUsers).toEqual([]);
     expect(state.serverUrl).toBeNull();
     expect(state.roomName).toBeNull();
+    expect(state.pendingOfflineChanges).toBe(0);
+    expect(state.synced).toBe(false);
+    expect(state.onConnect).toBeNull();
+    expect(state.onDisconnect).toBeNull();
+    expect(state.onSync).toBeNull();
   });
 });

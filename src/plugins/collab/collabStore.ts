@@ -16,6 +16,15 @@ export interface ConnectedUser {
   name: string;
   color: string;
   clientId: number;
+  /** Optional avatar URL (data URI or URL). */
+  avatar?: string;
+}
+
+/** Metadata about the local user published through awareness. */
+export interface LocalUserMeta {
+  name: string;
+  color: string;
+  avatar?: string;
 }
 
 export interface CollabState {
@@ -23,12 +32,21 @@ export interface CollabState {
   status: CollabStatus;
   /** Active transport layer. */
   transport: CollabTransport;
-  /** Connected remote users (removes self). */
+  /** Connected remote users (excludes self). */
   connectedUsers: ConnectedUser[];
   /** WebSocket server URL, or null for BroadcastChannel only. */
   serverUrl: string | null;
   /** The current room / document name. */
   roomName: string | null;
+  /** Number of offline changes buffered since last sync. */
+  pendingOfflineChanges: number;
+  /** Whether the initial sync has completed. */
+  synced: boolean;
+
+  // Lifecycle callbacks (set by the connection manager / plugin)
+  onConnect: (() => void) | null;
+  onDisconnect: (() => void) | null;
+  onSync: ((synced: boolean) => void) | null;
 
   // Actions
   setStatus: (status: CollabStatus) => void;
@@ -36,6 +54,11 @@ export interface CollabState {
   setTransport: (transport: CollabTransport) => void;
   setServerUrl: (url: string | null) => void;
   setRoomName: (name: string | null) => void;
+  setPendingOfflineChanges: (count: number) => void;
+  setSynced: (synced: boolean) => void;
+  setOnConnect: (cb: (() => void) | null) => void;
+  setOnDisconnect: (cb: (() => void) | null) => void;
+  setOnSync: (cb: ((synced: boolean) => void) | null) => void;
   reset: () => void;
 }
 
@@ -45,6 +68,11 @@ const initialState = {
   connectedUsers: [] as ConnectedUser[],
   serverUrl: null as string | null,
   roomName: null as string | null,
+  pendingOfflineChanges: 0,
+  synced: false,
+  onConnect: null as (() => void) | null,
+  onDisconnect: null as (() => void) | null,
+  onSync: null as ((synced: boolean) => void) | null,
 };
 
 export const useCollabStore = create<CollabState>()((set) => ({
@@ -55,5 +83,10 @@ export const useCollabStore = create<CollabState>()((set) => ({
   setTransport: (transport) => set({ transport }),
   setServerUrl: (serverUrl) => set({ serverUrl }),
   setRoomName: (roomName) => set({ roomName }),
+  setPendingOfflineChanges: (pendingOfflineChanges) => set({ pendingOfflineChanges }),
+  setSynced: (synced) => set({ synced }),
+  setOnConnect: (onConnect) => set({ onConnect }),
+  setOnDisconnect: (onDisconnect) => set({ onDisconnect }),
+  setOnSync: (onSync) => set({ onSync }),
   reset: () => set(initialState),
 }));

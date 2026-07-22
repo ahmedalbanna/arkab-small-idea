@@ -4,6 +4,10 @@
  * Creates a WebsocketProvider connected to the collaboration server and
  * wires its events into the local collab store so React components can
  * react to connection state and remote user presence.
+ *
+ * The awareness state is extended with optional avatar, cursor position
+ * metadata, and selection range information so remote peers can render
+ * richer presence indicators.
  */
 
 import * as Y from "yjs";
@@ -24,16 +28,17 @@ export interface WebSocketTransportOptions {
   username?: string;
   /** Local user cursor colour. */
   color?: string;
+  /** Optional avatar URL / data URI. */
+  avatar?: string;
   /** Whether to connect immediately (default true). */
   connect?: boolean;
   /** Maximum backoff time in ms (default 5000). */
   maxBackoffTime?: number;
-  /** BroadcastChannel room name for local tab sync.  Set to empty to disable. */
-  bcChannel?: string;
 }
 
 export interface WebSocketTransportHandle {
   provider: WebsocketProvider;
+  awareness: Awareness;
   destroy: () => void;
 }
 
@@ -41,8 +46,11 @@ export interface WebSocketTransportHandle {
  * Create a y-websocket WebsocketProvider and bind it to the local collab
  * store for status / awareness tracking.
  *
- * Caller is responsible for calling `destroy()` during cleanup to disconnect
- * the provider and remove event listeners.
+ * The awareness state is enriched with:
+ *   user: { name, color, avatar? }
+ *   cursor: { pos?, selection? }  (set externally by the editor)
+ *
+ * Caller is responsible for calling `destroy()` during cleanup.
  */
 export function createWebSocketTransport(
   options: WebSocketTransportOptions,
@@ -56,6 +64,7 @@ export function createWebSocketTransport(
       Math.floor(Math.random() * 0xffffff)
         .toString(16)
         .padStart(6, "0"),
+    avatar,
     connect = true,
     maxBackoffTime = 5000,
   } = options;
@@ -64,7 +73,9 @@ export function createWebSocketTransport(
   const baseUrl = serverUrl.replace(/\/+$/, "");
 
   const awareness = options.awareness ?? new Awareness(doc);
-  awareness.setLocalStateField("user", { name: username, color });
+
+  // Enrich local awareness state with user metadata + cursor placeholder
+  awareness.setLocalStateField("user", { name: username, color, avatar: avatar || null });
 
   const store = useCollabStore.getState();
   store.setServerUrl(serverUrl);
@@ -85,13 +96,14 @@ export function createWebSocketTransport(
     switch (event.status) {
       case "connected":
         mapped = "connected";
+        collabStore.onConnect?.();
         break;
       case "connecting":
         mapped = "connecting";
         break;
       case "disconnected":
-        // If it was previously connected, treat as reconnecting
         mapped = collabStore.status === "connected" ? "reconnecting" : "disconnected";
+        if (mapped === "disconnected") collabStore.onDisconnect?.();
         break;
       default:
         mapped = "disconnected";
@@ -99,20 +111,29 @@ export function createWebSocketTransport(
     collabStore.setStatus(mapped);
   };
 
+  // Track sync state
+  provider.on("sync", (synced: boolean) => {
+    const collabStore = useCollabStore.getState();
+    collabStore.setSynced(synced);
+    collabStore.onSync?.(synced);
+  });
+
+  // Track awareness changes → update connectedUsers
   const onAwarenessChange = (_change: unknown, _conn: unknown) => {
     const states = awareness.getStates();
     const localId = doc.clientID;
     const users: ConnectedUser[] = [];
 
     for (const [clientId, state] of states) {
-      if (clientId === localId) continue; // exclude self
-      const user = (state as Record<string, unknown>)?.user as
-        { name?: string; color?: string } | undefined;
+      if (clientId === localId) continue;
+      const entry = state as Record<string, unknown> | undefined;
+      const user = entry?.user as { name?: string; color?: string; avatar?: string } | undefined;
       if (user) {
         users.push({
           name: user.name || "Unknown",
           color: user.color || "#666",
           clientId,
+          avatar: user.avatar,
         });
       }
     }
@@ -125,8 +146,10 @@ export function createWebSocketTransport(
 
   return {
     provider,
+    awareness,
     destroy: () => {
       provider.off("status", onStatus);
+      provider.off("sync", () => {});
       awareness.off("update", onAwarenessChange);
       provider.disconnect();
       useCollabStore.getState().reset();
