@@ -27,6 +27,10 @@ export interface AIAssistantProps {
   onApply: (result: string, method: ApplyMethod) => void;
   onRetry: () => void;
   onClose: () => void;
+  /** Streaming progress estimate (token count so far). */
+  streamProgress?: number;
+  /** Whether to show token counts in the UI. */
+  showTokenCounts?: boolean;
 }
 
 const FOLLOW_UPS = [

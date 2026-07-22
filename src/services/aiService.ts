@@ -6,6 +6,10 @@ import {
   getProvider,
 } from "./providers";
 import { actionBucket, chatBucket } from "./rateLimiter";
+import { buildSystemPrompt, buildUserPrompt } from "./promptTemplates";
+import type { TemplateOverrides } from "./promptTemplates";
+import { estimateTokens } from "./tokenMonitor";
+import { useAIStore } from "../stores/aiStore";
 
 // Re-export everything from providers for backward compatibility
 export type { AIAssistantAction, ChatMessage, AIProvider };
@@ -17,6 +21,41 @@ export {
   AnthropicProvider,
   getProvider,
 } from "./providers";
+
+/**
+ * Get the model's max token limit from the store, falling back to a sensible
+ * default if the model is unknown.
+ */
+function getModelMaxTokens(model: string): number {
+  const limits = useAIStore.getState().modelTokenLimits;
+  return limits[model] ?? 8192;
+}
+
+/**
+ * Truncate text to fit within a token budget, preserving the beginning and end.
+ * Uses rough estimation (chars/4) to avoid expensive encoding.
+ */
+function truncateToTokenBudget(
+  text: string,
+  maxTokens: number,
+  reserveTokens: number = 512,
+): string {
+  const budget = maxTokens - reserveTokens;
+  if (budget <= 0) return "";
+  const estimated = estimateTokens(text);
+  if (estimated <= budget) return text;
+
+  // Cut proportionally: remove from the middle if too long
+  const ratio = budget / estimated;
+  const targetChars = Math.floor(text.length * ratio * 0.9); // 10% safety margin
+
+  if (targetChars <= 100) return text.slice(0, 100);
+
+  // Keep first and last portions, remove from middle
+  const keepHead = Math.floor(targetChars * 0.6);
+  const keepTail = Math.floor(targetChars * 0.3);
+  return text.slice(0, keepHead) + "\n\n[... truncated ...]\n\n" + text.slice(-keepTail);
+}
 
 export const processAIAction = async (
   text: string,
@@ -33,6 +72,8 @@ export const processAIAction = async (
     signal?: AbortSignal;
     /** Free-form instruction appended to the system prompt. */
     customInstruction?: string;
+    /** Prompt template overrides. */
+    templateOverrides?: TemplateOverrides;
   },
 ): Promise<string> => {
   const {
@@ -46,16 +87,19 @@ export const processAIAction = async (
     cursorContext = "",
     signal,
     customInstruction,
+    templateOverrides,
   } = options;
 
-  let systemInstruction =
-    "You are a precise writing assistant integrated into Ink & Quill. Your goal is to help the user refine their document. ";
-  if (personalInstructions) {
-    systemInstruction += `The user has specified these stylistic preferences: "${personalInstructions}". Please adhere to them while performing the action. `;
-  }
-  if (customInstruction) {
-    systemInstruction += `Additional user instruction for this action: "${customInstruction}". `;
-  }
+  // Build system prompt from templates
+  const systemInstruction = buildSystemPrompt(
+    action,
+    { text, personalInstructions, customInstruction, cursorSection: cursorContext },
+    templateOverrides,
+    documentContext,
+  );
+
+  // Build user prompt from templates
+  const prompt = buildUserPrompt(action, { text, customInstruction }, templateOverrides);
 
   // Use RAG to get broad document context for the specific selection
   let ragContext = "";
@@ -66,72 +110,26 @@ export const processAIAction = async (
         { text: cursorContext, weight: 0.5 },
       ],
       3,
-    ); // Fetch a few relevant clips
+    );
   }
 
+  // Check token budget and truncate if needed
+  const maxTokens = getModelMaxTokens(model);
+  const estimatedPromptTokens = estimateTokens(systemInstruction + prompt + ragContext);
+
+  let finalPrompt = prompt;
+  if (estimatedPromptTokens > maxTokens * 0.8) {
+    // Truncate the user text to fit
+    finalPrompt = truncateToTokenBudget(prompt, maxTokens, 1024);
+  }
+
+  let finalSystem = systemInstruction;
   if (ragContext) {
-    systemInstruction += `\n\n### BROADER DOCUMENT CONTEXT ###\nUse the following relevant document sections to ensure your changes are cohesive with the rest of the work:\n${ragContext}`;
+    finalSystem += `\n\n### BROADER DOCUMENT CONTEXT ###\nUse the following relevant document sections to ensure your changes are cohesive with the rest of the work:\n${ragContext}`;
   }
 
-  let prompt: string;
-
-  switch (action) {
-    case "improve":
-      systemInstruction +=
-        "Improve the quality of the following text while keeping its meaning and general structure.";
-      prompt = `Improve this text:\n\n${text}`;
-      break;
-    case "draft-topic":
-      systemInstruction +=
-        "Take the following topic or snippet and draft a detailed, well-structured, and engaging piece of content around it.";
-      prompt = `Draft a detailed piece about this topic:\n\n${text}`;
-      break;
-    case "fix-grammar":
-      systemInstruction +=
-        "Fix any grammar, spelling, or punctuation errors in the following text. Do not change the meaning.";
-      prompt = `Fix grammar in this text:\n\n${text}`;
-      break;
-    case "shorten":
-      systemInstruction += "Make the following text more concise without losing key information.";
-      prompt = `Shorten this text:\n\n${text}`;
-      break;
-    case "summarize":
-      systemInstruction +=
-        "Summarize the following text into a concise one-sentence description or a few key bullet points.";
-      prompt = `Summarize this text:\n\n${text}`;
-      break;
-    case "expand":
-      systemInstruction +=
-        "Expand on the following text with relevant details and richer language.";
-      prompt = `Expand on this text:\n\n${text}`;
-      break;
-    case "generate-outline":
-      systemInstruction +=
-        "Generate a clear, high-level structural outline for the following text. Use Markdown headings and bullet points.";
-      prompt = `Generate an outline for this text:\n\n${text}`;
-      break;
-    case "expand-outline":
-      systemInstruction +=
-        "You are a master writer. Your task is to take a Markdown outline (headings and bullet points) and expand it into a full, detailed, and well-written draft. Use the outline structure as your guide but write in a natural, cohesive prose style. Maintain any existing Markdown formatting like bolding or italics if present in the outline.";
-      prompt = `Convert this outline into a full draft section:\n\n${text}`;
-      break;
-    case "suggest-title":
-      systemInstruction +=
-        "Suggest three punchy and relevant titles for the following text. Return only the three titles as a list.";
-      prompt = `Suggest titles for this text:\n\n${text}`;
-      break;
-    case "rewrite":
-      systemInstruction +=
-        "Rewrite the following text from scratch while preserving all key information and the core message. Focus on better flow, clearer phrasing, and more engaging language.";
-      prompt = `Rewrite this text completely:\n\n${text}`;
-      break;
-    case "complete-text":
-      systemInstruction +=
-        "You are a writing assistant. Based on the provided text context, continue the writing in the same style and tone. Provide a natural continuation of about 1-3 sentences. Do not repeat the input.";
-      prompt = `Continue this text:\n\n${text}`;
-      break;
-    default:
-      prompt = text;
+  if (customInstruction && !systemInstruction.includes("{customInstruction}")) {
+    finalSystem += ` Additional user instruction for this action: "${customInstruction}".`;
   }
 
   // Apply client-side rate limiting before making the API call
@@ -140,12 +138,12 @@ export const processAIAction = async (
   }
 
   const aiProvider = getProvider(provider, { apiKeys, providerConfigs });
-  return await aiProvider.generate(prompt, systemInstruction, model, onChunk, signal);
+  return await aiProvider.generate(finalPrompt, finalSystem, model, onChunk, signal);
 };
 
 export const generateContentFromPrompt = async (
   userInput: string,
-  context: string = "",
+  _context: string = "",
   options: {
     personalInstructions?: string;
     model?: string;
@@ -153,6 +151,8 @@ export const generateContentFromPrompt = async (
     apiKeys?: any;
     providerConfigs?: any;
     onChunk?: (chunk: string) => void;
+    signal?: AbortSignal;
+    templateOverrides?: TemplateOverrides;
   },
 ): Promise<string> => {
   const {
@@ -162,27 +162,24 @@ export const generateContentFromPrompt = async (
     apiKeys,
     providerConfigs,
     onChunk,
+    signal,
+    templateOverrides,
   } = options;
 
-  let systemInstruction =
-    "You are an expert content creator. Generate high-quality Markdown content based on the user's prompt. If context is provided, ensure your response fits naturally within it.";
-  if (personalInstructions) {
-    systemInstruction += ` Important User Preferences to follow: "${personalInstructions}".`;
-  }
+  const systemInstruction = buildSystemPrompt(
+    "generate",
+    { text: userInput, personalInstructions },
+    templateOverrides,
+  );
 
-  const prompt = `
-User requested: ${userInput}
-Existing context: ${context}
-
-Generate only the markdown content.
-`;
+  const prompt = buildUserPrompt("generate", { text: userInput }, templateOverrides);
 
   if (!chatBucket.tryConsume(1)) {
     throw new Error("Rate limited. Please wait a moment before generating more content.");
   }
 
   const aiProvider = getProvider(provider, { apiKeys, providerConfigs });
-  return await aiProvider.generate(prompt, systemInstruction, model, onChunk);
+  return await aiProvider.generate(prompt, systemInstruction, model, onChunk, signal);
 };
 
 export const chatWithAI = async (
@@ -198,6 +195,7 @@ export const chatWithAI = async (
     cursorContext?: string;
     embeddingOptions?: { provider?: string; apiKey?: string; model?: string };
     signal?: AbortSignal;
+    templateOverrides?: TemplateOverrides;
   },
 ): Promise<string> => {
   const {
@@ -210,27 +208,27 @@ export const chatWithAI = async (
     cursorContext: _cursorContext = "",
     embeddingOptions,
     signal,
+    templateOverrides,
   } = options;
 
-  let systemInstruction =
-    "You are a helpful AI writing partner in Ink & Quill. You help users refine their documents through conversation.";
-  if (personalInstructions) {
-    systemInstruction += ` Always follow these style preferences: "${personalInstructions}".`;
-  }
-
-  // Get relevant context from RAG
+  // Build system prompt from chat template
   const lastUserMessage =
     [...messages].reverse().find((m) => m.role === "user")?.parts[0].text || "";
 
-  // 1. Fetch contexts with refined weighting
-  // Use passed embeddingOptions if available, otherwise fallback to chat provider (though better to pass)
+  let systemInstruction = buildSystemPrompt(
+    "chat",
+    { text: lastUserMessage, personalInstructions },
+    templateOverrides,
+    documentContext,
+  );
+
+  // Get relevant context from RAG
   const activeEmbeddingOptions = embeddingOptions || {
     provider,
     apiKey: apiKeys?.[provider as keyof typeof apiKeys],
     model: provider === "google" ? "text-embedding-004" : undefined,
   };
 
-  // Weights: Current Query (1.0) - Removed cursor area and recent conversation per user request
   const weightedContext = await ragService.getWeightedContext(
     [{ text: lastUserMessage, weight: 1.0 }],
     5,
@@ -239,6 +237,8 @@ export const chatWithAI = async (
 
   const globalSummary = await ragService.getGlobalSummary(documentContext);
 
+  // Token-aware context window management
+  const maxTokens = getModelMaxTokens(model);
   let currentTokens = ragService.estimateTokens(systemInstruction);
 
   // Add structural map (High Priority for orientation)
@@ -248,29 +248,23 @@ export const chatWithAI = async (
     currentTokens += ragService.estimateTokens(summaryText);
   }
 
-  // Cursor focus section intentionally removed per user request
-
-  const MAX_TOKENS = 4000;
-
-  // 2. Budget aware inclusion of semantic chunks vs full doc
+  // Budget aware inclusion of semantic chunks vs full doc
   const docTokens = ragService.estimateTokens(documentContext);
   const semanticTokens = weightedContext ? ragService.estimateTokens(weightedContext) : 0;
+  const contextBudget = Math.floor(maxTokens * 0.6); // Use up to 60% of model limit for context
 
-  // Decide whether to include full document or just semantic clips
-  // If doc is small enough to fit alongside semantic clips, include both for maximum coherence
-  if (docTokens < 1800 && currentTokens + docTokens + semanticTokens < MAX_TOKENS) {
+  // If doc is small enough to fit alongside semantic clips, include both
+  if (docTokens < 1800 && currentTokens + docTokens + semanticTokens < contextBudget) {
     systemInstruction += `\n\n### FULL DOCUMENT REFERENCE ###\n${documentContext}`;
     currentTokens += docTokens;
   }
 
-  // Always include weighted semantic chunks if available, as they represent the multi-dimensional "hit"
-  if (weightedContext && currentTokens < MAX_TOKENS) {
-    const available = MAX_TOKENS - currentTokens;
+  // Always include weighted semantic chunks if available, within budget
+  if (weightedContext && currentTokens < contextBudget) {
+    const available = contextBudget - currentTokens;
     const clipsText = `\n\n### RELEVANT KNOWLEDGE CLIPS (Weighted Retrieval) ###\n${ragService.trimToTokens(weightedContext, available)}`;
     systemInstruction += clipsText;
   }
-
-  // Episodic memory intentionally removed per user request
 
   systemInstruction += `\n\n### FINAL DIRECTIVE ###\nYou are an embedded writing partner. Act as if you are looking at the document alongside the user. Refer to specific sections by name when possible. If the context is insufficient, ask clarifying questions rather than hallucinating facts.`;
 

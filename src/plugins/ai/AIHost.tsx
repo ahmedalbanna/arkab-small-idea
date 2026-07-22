@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect, useCallback, useState } from "react";
 
 import { AIAssistant } from "../../components/ai/AIAssistant";
 import type { OllamaStatus } from "../../components/ai/AssistantHeader";
@@ -15,6 +15,8 @@ import { useEditorStore } from "../../stores/editorStore";
 import { useAIUIStore } from "../../stores/aiUIStore";
 import { getEmbeddingOptions } from "../../stores/aiStore";
 import { getEditorRef } from "../editorAccess";
+import { StreamBuffer } from "../../services/streamBuffer";
+import { estimateTokens } from "../../services/tokenMonitor";
 import {
   applyContent,
   handleAiAction,
@@ -36,6 +38,8 @@ export function AIHost() {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatImageInputRef = useRef<HTMLInputElement>(null);
   const chatAbortControllerRef = useRef<AbortController | null>(null);
+  const retryCountRef = useRef(0);
+  const [streamProgress, setStreamProgress] = useState(0);
 
   const {
     chatHistory,
@@ -45,6 +49,7 @@ export function AIHost() {
     ollamaStatus,
     setOllamaStatus,
     setAvailableModels,
+    showTokenCounts,
   } = useAIStore();
 
   const { showAIAssistant, setAIAssistant } = useUIStore();
@@ -195,11 +200,13 @@ export function AIHost() {
       }
       const abortController = new AbortController();
       chatAbortControllerRef.current = abortController;
+      retryCountRef.current = 0;
 
       const embeddingOptions = getEmbeddingOptions();
 
       const ai = useAIStore.getState();
       ai.setGenerating(true);
+      setStreamProgress(0);
       ai.setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "" }] }]);
 
       const state = useEditorStore.getState();
@@ -207,43 +214,104 @@ export function AIHost() {
       if (!page) {
         ai.setGenerating(false);
         chatAbortControllerRef.current = null;
+        setStreamProgress(0);
         return;
       }
       const cursorContext = getEditorRef(page.id)?.getCursorContext() || "";
 
+      // Build stream buffer for smoother UI updates
+      const streamBuffer = new StreamBuffer({
+        onFlush: (text) => {
+          ai.setChatHistory((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last && last.role === "model") {
+              next[next.length - 1] = {
+                ...last,
+                parts: [{ text }],
+              };
+            }
+            return next;
+          });
+        },
+      });
+
+      const attemptStream = async (): Promise<string> => {
+        try {
+          let fullResponse = "";
+          await chatWithAI(historyWithUser, page.content, {
+            personalInstructions: ai.personalInstructions,
+            model: ai.serviceConfigs.chat.model,
+            provider: ai.serviceConfigs.chat.provider,
+            apiKeys: ai.apiKeys,
+            providerConfigs: ai.providerConfigs,
+            signal: abortController.signal,
+            templateOverrides: ai.promptTemplates,
+            onChunk: (chunk) => {
+              fullResponse += chunk;
+              // Update progress estimate based on accumulated tokens
+              const estimatedTokens = estimateTokens(fullResponse);
+              setStreamProgress(Math.min(estimatedTokens, 4096));
+              streamBuffer.push(chunk);
+            },
+            cursorContext,
+            embeddingOptions,
+          });
+          streamBuffer.close();
+          return fullResponse;
+        } catch (err: any) {
+          streamBuffer.abort();
+          throw err;
+        }
+      };
+
       try {
-        let fullResponse = "";
-        await chatWithAI(historyWithUser, page.content, {
-          personalInstructions: ai.personalInstructions,
-          model: ai.serviceConfigs.chat.model,
-          provider: ai.serviceConfigs.chat.provider,
-          apiKeys: ai.apiKeys,
-          providerConfigs: ai.providerConfigs,
-          signal: abortController.signal,
-          onChunk: (chunk) => {
-            fullResponse += chunk;
-            ai.setChatHistory((prev) => {
-              const next = [...prev];
-              const last = next[next.length - 1];
-              if (last && last.role === "model") {
-                next[next.length - 1] = {
-                  ...last,
-                  parts: [{ text: fullResponse }],
-                };
-              }
-              return next;
-            });
-          },
-          cursorContext,
-          embeddingOptions,
-        });
+        await attemptStream();
       } catch (error: any) {
         if (error.name === "AbortError") {
           console.info("Chat aborted by user");
           chatAbortControllerRef.current = null;
           useAIStore.getState().setGenerating(false);
+          setStreamProgress(0);
           return;
         }
+
+        // Retry once on error (not abort)
+        if (retryCountRef.current < 1) {
+          retryCountRef.current += 1;
+          console.info("Retrying chat after error...");
+          try {
+            // Keep the partial response in the history, retry with the same context
+            const lastMsg = useAIStore.getState().chatHistory.slice(-1)[0];
+            const partialText = lastMsg?.parts?.[0]?.text || "";
+            if (partialText) {
+              // Add a note about retry
+              useAIStore.getState().setChatHistory((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last && last.role === "model") {
+                  next[next.length - 1] = {
+                    ...last,
+                    parts: [{ text: partialText + "\n\n*[Retrying...]*" }],
+                  };
+                }
+                return next;
+              });
+            }
+            await attemptStream();
+            return;
+          } catch (retryError: any) {
+            if (retryError.name === "AbortError") {
+              chatAbortControllerRef.current = null;
+              useAIStore.getState().setGenerating(false);
+              setStreamProgress(0);
+              return;
+            }
+            // Fall through to error handling below
+            console.error("Retry also failed:", retryError);
+          }
+        }
+
         console.error("AI Generation failed:", error);
         const errorMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
         ai.setChatHistory((prev) => {
@@ -257,6 +325,7 @@ export function AIHost() {
       } finally {
         useAIStore.getState().setGenerating(false);
         chatAbortControllerRef.current = null;
+        setStreamProgress(0);
       }
     },
     [serviceConfigs, apiKeys],
@@ -422,6 +491,8 @@ export function AIHost() {
           onApply={applyContent}
           onRetry={handleRetry}
           onClose={() => setAIAssistant(false)}
+          streamProgress={isGenerating ? streamProgress : 0}
+          showTokenCounts={showTokenCounts}
         />
       </PanelSlot>
 

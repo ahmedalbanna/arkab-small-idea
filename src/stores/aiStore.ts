@@ -3,6 +3,27 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { type ChatMessage } from "../services/aiService";
 import { idbStorage } from "../lib/idbStorage";
 import type { TokenUsageState } from "../services/tokenMonitor";
+import type { TemplateOverrides } from "../services/promptTemplates";
+
+/** Per-model token limits: maps model name → max total tokens. */
+export type ModelTokenLimits = Record<string, number>;
+
+/** Default token limits for known models. */
+export const DEFAULT_MODEL_TOKEN_LIMITS: ModelTokenLimits = {
+  "gpt-4o": 128000,
+  "gpt-4o-mini": 128000,
+  "gpt-4-turbo": 128000,
+  "gpt-3.5-turbo": 16385,
+  "claude-3-5-sonnet-20240620": 200000,
+  "claude-3-opus-20240229": 200000,
+  "claude-3-haiku-20240307": 200000,
+  "gemini-3-flash-preview": 1048576,
+  "gemini-1.5-pro": 1048576,
+  "gemini-1.5-flash": 1048576,
+  "qwen2.5:0.5b": 32768,
+  mistral: 8192,
+  "llama3.2": 8192,
+};
 
 interface AIState {
   chatHistory: ChatMessage[];
@@ -40,6 +61,15 @@ interface AIState {
   /** Token usage tracking (not persisted — kept in memory only). */
   tokenUsage: TokenUsageState | null;
 
+  /** User-customized prompt template overrides (persisted). */
+  promptTemplates: TemplateOverrides;
+
+  /** Per-model token limit overrides (persisted). */
+  modelTokenLimits: ModelTokenLimits;
+
+  /** Whether to show token counts in the AI assistant UI. */
+  showTokenCounts: boolean;
+
   setTokenUsage: (usage: TokenUsageState | null) => void;
 
   setServiceProvider: (
@@ -62,6 +92,24 @@ interface AIState {
     status: AIState["ollamaStatus"] | ((prev: AIState["ollamaStatus"]) => AIState["ollamaStatus"]),
   ) => void;
   clearChatHistory: () => void;
+
+  /** Update a prompt template override. */
+  setPromptTemplate: (
+    id: string,
+    overrides: Partial<import("../services/promptTemplates").PromptTemplate>,
+  ) => void;
+
+  /** Reset a template override to default. */
+  resetPromptTemplate: (id: string) => void;
+
+  /** Reset all template overrides. */
+  resetAllPromptTemplates: () => void;
+
+  /** Update a per-model token limit. */
+  setModelTokenLimit: (model: string, limit: number) => void;
+
+  /** Set whether token counts are shown in AI assistant. */
+  setShowTokenCounts: (show: boolean) => void;
 }
 
 /** Embedding options type shared across the app. */
@@ -120,6 +168,9 @@ export const useAIStore = create<AIState>()(
       },
 
       tokenUsage: null as TokenUsageState | null,
+      promptTemplates: {} as TemplateOverrides,
+      modelTokenLimits: { ...DEFAULT_MODEL_TOKEN_LIMITS },
+      showTokenCounts: false,
 
       setTokenUsage: (tokenUsage) => set({ tokenUsage }),
 
@@ -196,6 +247,25 @@ export const useAIStore = create<AIState>()(
           },
         })),
       clearChatHistory: () => set({ chatHistory: [] }),
+
+      setPromptTemplate: (id, overrides) =>
+        set((state) => ({
+          promptTemplates: {
+            ...state.promptTemplates,
+            [id]: { ...state.promptTemplates[id], ...overrides },
+          },
+        })),
+      resetPromptTemplate: (id) =>
+        set((state) => {
+          const { [id]: _removed, ...rest } = state.promptTemplates;
+          return { promptTemplates: rest };
+        }),
+      resetAllPromptTemplates: () => set({ promptTemplates: {} }),
+      setModelTokenLimit: (model, limit) =>
+        set((state) => ({
+          modelTokenLimits: { ...state.modelTokenLimits, [model]: limit },
+        })),
+      setShowTokenCounts: (show) => set({ showTokenCounts: show }),
     }),
     {
       name: "ink-quill-ai-storage",
@@ -207,6 +277,9 @@ export const useAIStore = create<AIState>()(
         provider: state.provider,
         serviceConfigs: state.serviceConfigs,
         providerConfigs: state.providerConfigs,
+        promptTemplates: state.promptTemplates,
+        modelTokenLimits: state.modelTokenLimits,
+        showTokenCounts: state.showTokenCounts,
         // apiKeys are intentionally excluded: they are kept in memory only
         // so they cannot be exfiltrated from persisted storage (IndexedDB).
       }),
