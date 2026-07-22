@@ -58,6 +58,26 @@ interface AIState {
   clearChatHistory: () => void;
 }
 
+/** Embedding options type shared across the app. */
+export interface EmbeddingOptions {
+  provider?: string;
+  apiKey?: string;
+  model?: string;
+}
+
+/**
+ * Read the current embedding configuration from the store.
+ * Replaces the copy-pasted `{provider, apiKey, model}` blocks.
+ */
+export function getEmbeddingOptions(): EmbeddingOptions {
+  const { serviceConfigs, apiKeys } = useAIStore.getState();
+  return {
+    provider: serviceConfigs.embeddings.provider,
+    apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
+    model: serviceConfigs.embeddings.model,
+  };
+}
+
 export const useAIStore = create<AIState>()(
   persist(
     (set) => ({

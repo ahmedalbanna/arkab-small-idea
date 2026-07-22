@@ -13,6 +13,7 @@ import { useAIStore } from "../../stores/aiStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useEditorStore } from "../../stores/editorStore";
 import { useAIUIStore } from "../../stores/aiUIStore";
+import { getEmbeddingOptions } from "../../stores/aiStore";
 import { getEditorRef } from "../editorAccess";
 import {
   applyContent,
@@ -95,11 +96,7 @@ export function AIHost() {
     if (isSemantic) {
       const performSemanticSearch = async () => {
         try {
-          const embeddingOptions = {
-            provider: serviceConfigs.embeddings.provider,
-            apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
-            model: serviceConfigs.embeddings.model,
-          };
+          const embeddingOptions = getEmbeddingOptions();
           const results = await ragService.searchDetailed(findText, 10, 0.2, embeddingOptions);
           const docMatches = results.filter((r) => r.source === "document");
           setMatchCount(docMatches.length);
@@ -199,11 +196,7 @@ export function AIHost() {
       const abortController = new AbortController();
       chatAbortControllerRef.current = abortController;
 
-      const embeddingOptions = {
-        provider: serviceConfigs.embeddings.provider,
-        apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
-        model: serviceConfigs.embeddings.model,
-      };
+      const embeddingOptions = getEmbeddingOptions();
 
       const ai = useAIStore.getState();
       ai.setGenerating(true);

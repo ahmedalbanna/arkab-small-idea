@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useEditorStore } from "../../stores/editorStore";
-import { useAIStore } from "../../stores/aiStore";
+import { getEmbeddingOptions } from "../../stores/aiStore";
 import { useUIStore } from "../../stores/uiStore";
 import { ragService } from "../../services/ragService";
 import { vectorStore } from "../../services/embeddingService";
@@ -17,7 +17,6 @@ import { vectorStore } from "../../services/embeddingService";
  */
 export function DocumentLifecycleHost(): null {
   const { pages, activeFocusedPageId, addSnapshot } = useEditorStore();
-  const { serviceConfigs, apiKeys } = useAIStore();
 
   const activePage = pages.find((p) => p.id === activeFocusedPageId) || pages[0];
   const markdown = activePage?.content || "";
@@ -45,15 +44,11 @@ export function DocumentLifecycleHost(): null {
   // Debounced RAG indexing of the active document.
   useEffect(() => {
     const timeout = setTimeout(() => {
-      const embeddingOptions = {
-        provider: serviceConfigs.embeddings.provider,
-        apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
-        model: serviceConfigs.embeddings.model,
-      };
+      const embeddingOptions = getEmbeddingOptions();
       ragService.indexDocument(markdown, embeddingOptions);
     }, 5000);
     return () => clearTimeout(timeout);
-  }, [markdown, serviceConfigs.embeddings, apiKeys]);
+  }, [markdown]);
 
   // Snapshot when the document is about to unload.
   useEffect(() => {

@@ -2,7 +2,7 @@ import { chatWithAI, type ChatMessage } from "../../services/aiService";
 import { ragService } from "../../services/ragService";
 import { getEditorRef } from "../editorAccess";
 import { useEditorStore } from "../../stores/editorStore";
-import { useAIStore } from "../../stores/aiStore";
+import { useAIStore, getEmbeddingOptions } from "../../stores/aiStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useAIUIStore } from "../../stores/aiUIStore";
 
@@ -139,11 +139,7 @@ export async function handleAiAction(actionId: string, customInstruction?: strin
 
   try {
     let fullResponse = "";
-    const embeddingOptions = {
-      provider: ai.serviceConfigs.embeddings.provider,
-      apiKey: ai.apiKeys?.[ai.serviceConfigs.embeddings.provider as keyof typeof ai.apiKeys],
-      model: ai.serviceConfigs.embeddings.model,
-    };
+    const embeddingOptions = getEmbeddingOptions();
 
     await chatWithAI(historyWithUser, markdown, {
       personalInstructions: ai.personalInstructions,
@@ -271,12 +267,7 @@ export function handleReplaceAll() {
 
 /** Index the active document for semantic search before a chat/generate call. */
 export function indexActiveDocument() {
-  const ai = useAIStore.getState();
   const markdown = getActivePage()?.content || "";
-  const embeddingOptions = {
-    provider: ai.serviceConfigs.embeddings.provider,
-    apiKey: ai.apiKeys?.[ai.serviceConfigs.embeddings.provider as keyof typeof ai.apiKeys],
-    model: ai.serviceConfigs.embeddings.model,
-  };
+  const embeddingOptions = getEmbeddingOptions();
   ragService.indexDocument(markdown, embeddingOptions);
 }

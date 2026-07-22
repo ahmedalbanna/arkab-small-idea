@@ -33,7 +33,7 @@ import type { Page } from "../../stores/editorStore";
 import { useEditorStore } from "../../stores/editorStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useUIStore } from "../../stores/uiStore";
-import { useAIStore } from "../../stores/aiStore";
+import { useAIStore, getEmbeddingOptions } from "../../stores/aiStore";
 import { useAIUIStore } from "../../stores/aiUIStore";
 import { handleKeyDown } from "../../plugins/ai/handlers";
 import type { LoadedPlugins } from "../../plugins";
@@ -394,11 +394,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
             isSemantic,
             searchIndex,
             currentMatchIndex,
-            embeddingOptions: {
-              provider: serviceConfigs.embeddings.provider,
-              apiKey: apiKeys?.[serviceConfigs.embeddings.provider as keyof typeof apiKeys],
-              model: serviceConfigs.embeddings.model,
-            },
+            embeddingOptions: getEmbeddingOptions(),
           }}
           collab={{
             enabled: false,

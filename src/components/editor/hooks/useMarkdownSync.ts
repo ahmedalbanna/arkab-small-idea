@@ -30,7 +30,6 @@ export function useMarkdownSync({ value, isUpdatingFromProps, core }: MarkdownSy
     if (value !== currentMarkdown) {
       isUpdatingFromProps.current = true;
       core.replaceDoc(value, { recordHistory: false });
-      // eslint-disable-next-line react-hooks/immutability
       isUpdatingFromProps.current = false;
     }
   }, [value, isUpdatingFromProps, core]);
