@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { AIProvider } from "./types";
+import { createTimeoutSignal, checkAborted, withTimeout, DEFAULT_TIMEOUTS } from "./abortUtils";
 
 export class GoogleProvider implements AIProvider {
   private ai: GoogleGenAI;
@@ -13,13 +14,14 @@ export class GoogleProvider implements AIProvider {
     });
   }
 
-  async chat(
-    messages: any[],
-    model: string,
-    onChunk?: (chunk: string) => void,
-    signal?: AbortSignal,
-  ): Promise<string> {
-    const formattedMessages = messages.map((m) => {
+  /** Default model for this provider. */
+  private getModel(model: string): string {
+    return model || "gemini-3-flash-preview";
+  }
+
+  /** Format chat messages for the Google GenAI SDK. */
+  private formatMessages(messages: any[]): { role: string; parts: any[] }[] {
+    return messages.map((m) => {
       const parts: any[] = [];
       if (Array.isArray(m.parts)) {
         parts.push(...m.parts);
@@ -31,12 +33,10 @@ export class GoogleProvider implements AIProvider {
         m.images.forEach((img: string) => {
           const match = img.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
           if (match) {
-            const mimeType = match[1];
-            const base64Data = match[2];
             parts.push({
               inlineData: {
-                mimeType: mimeType,
-                data: base64Data,
+                mimeType: match[1],
+                data: match[2],
               },
             });
           }
@@ -44,35 +44,75 @@ export class GoogleProvider implements AIProvider {
       }
 
       return {
-        role: m.role === "system" ? "user" : m.role, // Google uses user/model
+        // Google uses "user" / "model" roles
+        role: m.role === "system" ? "user" : m.role,
         parts,
       };
     });
+  }
 
-    // For genai SDK, we construct config explicitly. However, genai may not easily support standard abort signals.
-    // If it doesn't support them officially via requestOptions.signal yet, it will just ignore it.
-    if (onChunk) {
-      const response = await this.ai.models.generateContentStream({
-        model: model || "gemini-3-flash-preview",
-        contents: formattedMessages,
-      });
+  /**
+   * The @google/genai SDK does not natively support AbortSignal for
+   * streaming requests.  We handle cancellation by checking the signal
+   * after each yielded chunk.  A timeout signal is layered on top so
+   * that long-running requests still abort even if the stream hangs.
+   */
+  private async streamContent(
+    params: { model: string; contents: any[] },
+    onChunk?: (chunk: string) => void,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const { signal: timeoutSignal, clear } = createTimeoutSignal(
+      signal,
+      signal ? undefined : DEFAULT_TIMEOUTS.google,
+    );
+
+    try {
+      checkAborted(timeoutSignal);
+      const response = await this.ai.models.generateContentStream(params);
 
       let fullText = "";
       for await (const chunk of response) {
-        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        checkAborted(timeoutSignal);
         const text = chunk.text || "";
         fullText += text;
-        onChunk(text);
+        onChunk?.(text);
       }
       return fullText;
-    } else {
-      const result = await this.ai.models.generateContent({
-        model: model || "gemini-3-flash-preview",
-        contents: formattedMessages,
-      });
-      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-      return result.text || "";
+    } finally {
+      clear();
     }
+  }
+
+  private async nonStreamContent(
+    params: { model: string; contents: any[] },
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const timeout = DEFAULT_TIMEOUTS.google;
+    return withTimeout(
+      (async () => {
+        checkAborted(signal);
+        const result = await this.ai.models.generateContent(params);
+        checkAborted(signal);
+        return result.text || "";
+      })(),
+      timeout,
+      "Google AI request",
+    );
+  }
+
+  async chat(
+    messages: any[],
+    model: string,
+    onChunk?: (chunk: string) => void,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const formattedMessages = this.formatMessages(messages);
+    const params = { model: this.getModel(model), contents: formattedMessages };
+
+    return onChunk
+      ? this.streamContent(params, onChunk, signal)
+      : this.nonStreamContent(params, signal);
   }
 
   async generate(
@@ -83,28 +123,10 @@ export class GoogleProvider implements AIProvider {
     signal?: AbortSignal,
   ): Promise<string> {
     const contents = [{ role: "user", parts: [{ text: `${system}\n\n${prompt}` }] }];
+    const params = { model: this.getModel(model), contents };
 
-    if (onChunk) {
-      const response = await this.ai.models.generateContentStream({
-        model: model || "gemini-3-flash-preview",
-        contents,
-      });
-
-      let fullText = "";
-      for await (const chunk of response) {
-        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-        const text = chunk.text || "";
-        fullText += text;
-        onChunk(text);
-      }
-      return fullText;
-    } else {
-      const result = await this.ai.models.generateContent({
-        model: model || "gemini-3-flash-preview",
-        contents,
-      });
-      if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-      return result.text || "";
-    }
+    return onChunk
+      ? this.streamContent(params, onChunk, signal)
+      : this.nonStreamContent(params, signal);
   }
 }

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { type ChatMessage } from "../services/aiService";
 import { idbStorage } from "../lib/idbStorage";
+import type { TokenUsageState } from "../services/tokenMonitor";
 
 interface AIState {
   chatHistory: ChatMessage[];
@@ -35,6 +36,11 @@ interface AIState {
       model: string;
     };
   };
+
+  /** Token usage tracking (not persisted — kept in memory only). */
+  tokenUsage: TokenUsageState | null;
+
+  setTokenUsage: (usage: TokenUsageState | null) => void;
 
   setServiceProvider: (
     service: keyof AIState["serviceConfigs"],
@@ -112,6 +118,10 @@ export const useAIStore = create<AIState>()(
           model: "Xenova/all-MiniLM-L6-v2",
         },
       },
+
+      tokenUsage: null as TokenUsageState | null,
+
+      setTokenUsage: (tokenUsage) => set({ tokenUsage }),
 
       addMessage: (msg) =>
         set((state) => ({

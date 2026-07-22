@@ -114,6 +114,81 @@ async function proxyOllamaRequest<T extends z.ZodTypeAny>(
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:0.5b";
 
+// Server-side API keys for remote provider proxies.
+// When set, the client can route requests through the server instead of
+// calling the provider directly (useful for deployments that keep keys
+// server-side).
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "";
+
+// ---- Generic provider proxy ----
+
+interface ProxyApiOptions {
+  /** Upstream API base URL. */
+  baseUrl: string;
+  /** Request path (appended to baseUrl). */
+  path: string;
+  /** HTTP method. */
+  method?: string;
+  /** Custom headers to add (e.g. Authorization). */
+  headers: Record<string, string>;
+  /** Request body to forward. */
+  body: unknown;
+  /** Label for logging. */
+  label: string;
+}
+
+/**
+ * Proxy a request to an upstream REST API, handling streaming and
+ * non-streaming responses uniformly.
+ *
+ * The upstream response is forwarded as-is for streaming (SSE/NDJSON)
+ * or as JSON for non-streaming responses.
+ */
+async function proxyApiRequest(res: express.Response, opts: ProxyApiOptions): Promise<void> {
+  const { baseUrl, path: apiPath, method = "POST", headers, body, label } = opts;
+  const url = `${baseUrl.replace(/\/+$/, "")}/${apiPath.replace(/^\/+/, "")}`;
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(300_000),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[proxy] ${label} error: ${response.status} - ${errorText}`);
+      res.status(response.status).json({
+        error: GENERIC_ERROR,
+        status: response.status,
+      });
+      return;
+    }
+
+    // If the upstream response is streaming (SSE/NDJSON), pipe it through.
+    const contentType = response.headers.get("content-type") || "";
+    if (body && typeof body === "object" && (body as Record<string, unknown>).stream !== false) {
+      await pipeNdjson(response, res);
+    } else if (contentType.includes("text/event-stream") || contentType.includes("x-ndjson")) {
+      await pipeNdjson(response, res);
+    } else {
+      const json = await response.json();
+      res.json(json);
+    }
+  } catch (error) {
+    console.error(`[proxy] ${label} Error:`, error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: GENERIC_ERROR });
+    }
+  }
+}
+
 // ---- Collab server & middleware (lazy imports) ----
 let collabHandle: import("./server/collab-server").CollabServerHandle | null = null;
 
@@ -185,6 +260,96 @@ async function startServer() {
       stream: data.stream ?? true,
     }));
   });
+
+  // ---- Remote provider proxies (optional, require server-side API keys) ----
+
+  const openaiProxyEnabled = !!OPENAI_API_KEY;
+  const anthropicProxyEnabled = !!ANTHROPIC_API_KEY;
+  const googleProxyEnabled = !!GOOGLE_API_KEY;
+
+  // OpenAI Chat Completions proxy
+  if (openaiProxyEnabled) {
+    const openaiBodySchema = z.object({
+      model: z.string(),
+      messages: z.array(z.any()),
+      stream: z.boolean().optional(),
+      max_tokens: z.number().optional(),
+      temperature: z.number().optional(),
+    });
+
+    app.post("/api/proxy/openai/chat", (req, res) => {
+      const parsed = openaiBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid request body." });
+        return;
+      }
+      proxyApiRequest(res, {
+        baseUrl: "https://api.openai.com",
+        path: "v1/chat/completions",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: parsed.data,
+        label: "OpenAI chat",
+      });
+    });
+    console.log("[server] OpenAI proxy enabled");
+  }
+
+  // Anthropic Messages proxy
+  if (anthropicProxyEnabled) {
+    const anthropicBodySchema = z.object({
+      model: z.string(),
+      messages: z.array(z.any()),
+      system: z.string().optional(),
+      max_tokens: z.number().optional(),
+      stream: z.boolean().optional(),
+    });
+
+    app.post("/api/proxy/anthropic/messages", (req, res) => {
+      const parsed = anthropicBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid request body." });
+        return;
+      }
+      proxyApiRequest(res, {
+        baseUrl: "https://api.anthropic.com",
+        path: "v1/messages",
+        headers: {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: parsed.data,
+        label: "Anthropic messages",
+      });
+    });
+    console.log("[server] Anthropic proxy enabled");
+  }
+
+  // Google Gemini proxy
+  if (googleProxyEnabled) {
+    const googleBodySchema = z.object({
+      model: z.string(),
+      contents: z.array(z.any()),
+      stream: z.boolean().optional(),
+    });
+
+    app.post("/api/proxy/google/generateContent", (req, res) => {
+      const parsed = googleBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid request body." });
+        return;
+      }
+      const { model, stream, ...rest } = parsed.data;
+      const geminiPath = `v1beta/models/${model}:${stream !== false ? "streamGenerateContent" : "generateContent"}?key=${GOOGLE_API_KEY}`;
+      proxyApiRequest(res, {
+        baseUrl: "https://generativelanguage.googleapis.com",
+        path: geminiPath,
+        headers: {},
+        body: rest,
+        label: "Google generateContent",
+      });
+    });
+    console.log("[server] Google Gemini proxy enabled");
+  }
 
   // Health check endpoint
   app.get("/api/health", (_req, res) => {
