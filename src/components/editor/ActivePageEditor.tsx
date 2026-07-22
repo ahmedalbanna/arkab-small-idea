@@ -1,29 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Reorder, useDragControls } from "motion/react";
-import {
-  GripVertical,
-  Target,
-  FileDown,
-  X,
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
-  Heading1,
-  Heading2,
-  Heading3,
-  Quote,
-  List,
-  Code,
-  Table,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Layout,
-  Link,
-  Image as ImageIcon,
-} from "lucide-react";
-import { cn } from "../../lib/utils";
+import { GripVertical, Target, FileDown, X } from "lucide-react";
+import { cn, validateUrl } from "../../lib/utils";
 import type { EditorRef } from "../ProseMirrorEditor";
 import ProseMirrorEditor from "../ProseMirrorEditor";
 import { FormatButton } from "./menus/FormatButton";
@@ -37,7 +15,7 @@ import { useAIStore, getEmbeddingOptions } from "../../stores/aiStore";
 import { useAIUIStore } from "../../stores/aiUIStore";
 import { handleKeyDown } from "../../plugins/ai/handlers";
 import type { LoadedPlugins } from "../../plugins";
-import { validateUrl } from "../../lib/utils";
+import { FORMAT_TOOLBAR_ITEMS } from "./editorPresets";
 
 interface ActivePageEditorProps {
   page: Page;
@@ -230,116 +208,40 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
       {/* Formatting toolbar — visible when page is active */}
       {activeFocusedPageId === id && (
         <div className="px-4 md:px-6 py-1.5 border-b border-minimal-border/50 bg-minimal-sidebar/20 flex items-center gap-0.5 overflow-x-auto no-scrollbar">
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("h1")}
-            title="Heading 1"
-            icon={<Heading1 className="w-3.5 h-3.5" />}
-            active={activeFormats?.h1}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("h2")}
-            title="Heading 2"
-            icon={<Heading2 className="w-3.5 h-3.5" />}
-            active={activeFormats?.h2}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("h3")}
-            title="Heading 3"
-            icon={<Heading3 className="w-3.5 h-3.5" />}
-            active={activeFormats?.h3}
-          />
-          <div className="w-px h-3 bg-minimal-border mx-0.5" />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("bold")}
-            title="Bold (Ctrl+B)"
-            icon={<Bold className="w-3.5 h-3.5" />}
-            active={activeFormats?.bold}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("italic")}
-            title="Italic (Ctrl+I)"
-            icon={<Italic className="w-3.5 h-3.5" />}
-            active={activeFormats?.italic}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("underline")}
-            title="Underline (Ctrl+U)"
-            icon={<Underline className="w-3.5 h-3.5" />}
-            active={activeFormats?.underline}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("strike")}
-            title="Strikethrough"
-            icon={<Strikethrough className="w-3.5 h-3.5" />}
-            active={activeFormats?.strike}
-          />
-          <div className="w-px h-3 bg-minimal-border mx-0.5" />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("quote")}
-            title="Quote"
-            icon={<Quote className="w-3.5 h-3.5" />}
-            active={activeFormats?.blockquote}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("bullet")}
-            title="Bullet List"
-            icon={<List className="w-3.5 h-3.5" />}
-            active={activeFormats?.bullet}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("code")}
-            title="Code"
-            icon={<Code className="w-3.5 h-3.5" />}
-            active={activeFormats?.code}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("tableify")}
-            title="Convert to Table"
-            icon={<Table className="w-3.5 h-3.5" />}
-          />
-          <div className="w-px h-3 bg-minimal-border mx-0.5" />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("alignLeft")}
-            title="Align Left"
-            icon={<AlignLeft className="w-3.5 h-3.5" />}
-            active={activeFormats?.alignLeft}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("alignCenter")}
-            title="Align Center"
-            icon={<AlignCenter className="w-3.5 h-3.5" />}
-            active={activeFormats?.alignCenter}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("alignRight")}
-            title="Align Right"
-            icon={<AlignRight className="w-3.5 h-3.5" />}
-            active={activeFormats?.alignRight}
-          />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("alignJustify")}
-            title="Justify"
-            icon={<Layout className="w-3.5 h-3.5" />}
-            active={activeFormats?.alignJustify}
-          />
-          <div className="w-px h-3 bg-minimal-border mx-0.5" />
-          <FormatButton
-            onClick={() => editorRefs.current[id]?.handleFormat("link")}
-            title="Link"
-            icon={<Link className="w-3.5 h-3.5" />}
-          />
-          <FormatButton
-            onClick={() => {
-              const url = window.prompt("Enter Image URL:");
-              if (url && validateUrl(url)) {
-                editorRefs.current[id]?.insertImage(url, "Image");
-              } else if (url) {
-                window.alert("Invalid URL. Only http and https URLs are allowed.");
-              }
-            }}
-            title="Insert Image"
-            icon={<ImageIcon className="w-3.5 h-3.5" />}
-          />
+          {FORMAT_TOOLBAR_ITEMS.map((item, index) => {
+            if (item.type === "sep") {
+              return <div key={`sep-${index}`} className="w-px h-3 bg-minimal-border mx-0.5" />;
+            }
+
+            // Image button opens a URL prompt instead of calling handleFormat
+            if (item.type === "image") {
+              return (
+                <FormatButton
+                  key={item.type}
+                  onClick={() => {
+                    const url = window.prompt("Enter Image URL:");
+                    if (url && validateUrl(url)) {
+                      editorRefs.current[id]?.insertImage(url, "Image");
+                    } else if (url) {
+                      window.alert("Invalid URL. Only http and https URLs are allowed.");
+                    }
+                  }}
+                  title={item.title!}
+                  icon={item.icon ? <item.icon className="w-3.5 h-3.5" /> : undefined}
+                />
+              );
+            }
+
+            return (
+              <FormatButton
+                key={item.type}
+                onClick={() => editorRefs.current[id]?.handleFormat(item.formatKey ?? item.type)}
+                title={item.title!}
+                icon={item.icon ? <item.icon className="w-3.5 h-3.5" /> : undefined}
+                active={activeFormats?.[item.activeKey ?? item.formatKey ?? item.type]}
+              />
+            );
+          })}
         </div>
       )}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">

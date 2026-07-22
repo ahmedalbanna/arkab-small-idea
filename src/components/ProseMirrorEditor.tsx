@@ -87,6 +87,18 @@ export interface EditorRef {
   setMarkdown: (content: string) => void;
 }
 
+/**
+ * Editor-wide keyboard shortcuts.
+ * Centralised here so they are discoverable and maintainable instead of
+ * being inlined in the keydown handler.
+ */
+const EDITOR_SHORTCUTS = {
+  /** Ctrl/⌘ + Shift + P → open command palette */
+  COMMAND_PALETTE: { ctrlShift: true, key: "p" },
+  /** Ctrl/⌘ + Shift + K → focus the AI custom instruction input */
+  FOCUS_AI_INSTRUCTION: { ctrlShift: true, key: "k" },
+} as const;
+
 const ProseMirrorEditor = forwardRef<EditorRef, Props>(
   (
     {
@@ -189,14 +201,18 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     // Open the command palette with the editor-standard shortcut.
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
-        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+        const meta = e.metaKey || e.ctrlKey;
+        const shift = e.shiftKey;
+        const key = e.key.toLowerCase();
+
+        if (meta && shift && key === EDITOR_SHORTCUTS.COMMAND_PALETTE.key) {
           e.preventDefault();
           setCommandPaletteOpen(true);
           return;
         }
 
         // Mod-Shift-K: focus the AI toolbar's custom instruction input.
-        if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "k") {
+        if (meta && shift && key === EDITOR_SHORTCUTS.FOCUS_AI_INSTRUCTION.key) {
           e.preventDefault();
           const bm = useAIUIStore.getState().bubbleMenu;
           if (bm.editorId === myEditorId && bm.show) {
