@@ -189,6 +189,14 @@ export function createConnectionManager(
       }
     };
     transportHandle.provider.on("status", checkFallback);
+
+    // Flush pending changes counter when the document re-syncs after reconnect
+    transportHandle.provider.on("sync", (synced: boolean) => {
+      if (synced) {
+        offlineChangeCount = 0;
+        useCollabStore.getState().setPendingOfflineChanges(0);
+      }
+    });
   }
 
   // ---- Handle API ----
