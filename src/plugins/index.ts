@@ -25,6 +25,7 @@ import { documentPlugin } from "./document";
 import { editorUIPlugin } from "./editorUI";
 import { editorCommandsPlugin } from "./editorCommands";
 import { aiPlugin } from "./ai";
+import { devtoolsPlugin } from "./devtools";
 import { createCollabPlugin, type CollabPluginOptions } from "./collab";
 import { validateDisabledPlugins } from "./pluginToggleMigration";
 
@@ -57,6 +58,8 @@ export function buildPluginModules(): InkPlugin[] {
     editorUIPlugin,
     editorCommandsPlugin,
     aiPlugin,
+    // Dev-only: command inspector, audit logger, and other developer tooling.
+    devtoolsPlugin,
   ];
 }
 
@@ -99,6 +102,7 @@ if (import.meta.hot && import.meta.env.DEV) {
       "./editorUI",
       "./ai",
       "./collab",
+      "./devtools",
     ],
     () => {
       notifyPluginsChanged();

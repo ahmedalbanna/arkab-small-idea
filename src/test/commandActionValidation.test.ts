@@ -10,16 +10,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EditorCommandActionSchema, formatZodIssues } from "../core/commands/actionSchema";
 import { EditorCommandBus } from "../core/commands/commandBus";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** A mock executor that records every `run` call and returns a default result. */
-function mockExecutor() {
-  const run: (a: unknown) => { value?: unknown } = vi.fn(() => ({}));
-  return { run };
-}
+import { createMockExecutor } from "./helpers/commandTestUtils";
+import type { MockExecutor } from "./helpers/commandTestUtils";
 
 // ---------------------------------------------------------------------------
 // 1. Schema-level validation
@@ -264,13 +256,13 @@ describe("formatZodIssues", () => {
 
 describe("EditorCommandBus dispatch validation", () => {
   let bus: EditorCommandBus;
-  let exec: ReturnType<typeof mockExecutor>;
+  let exec: MockExecutor;
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     bus = new EditorCommandBus();
-    exec = mockExecutor();
+    exec = createMockExecutor();
     bus.setExecutor(exec);
   });
 

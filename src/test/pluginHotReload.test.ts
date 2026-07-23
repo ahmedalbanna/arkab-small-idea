@@ -43,8 +43,8 @@ describe("plugin hot-reload (dev)", () => {
     expect(ids).toContain("math");
     expect(ids).toContain("ai");
     expect(ids).toContain("editorUI");
-    // 16 static plugins (collab is registered dynamically, not in this set).
-    expect(ids).toHaveLength(16);
+    // 17 static plugins (collab is registered dynamically, not in this set).
+    expect(ids).toHaveLength(17);
   });
 
   it("notifyPluginsChanged wakes registered listeners and unsubscribe removes them", () => {

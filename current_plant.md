@@ -1,404 +1,340 @@
-الآن أصبح لدي فهم شامل للحالة الحالية. دعني ألخص ملاحظاتي وأضع الخطة المفصلة.
+الآن أصبح لدي فهم كامل للحالة الراهضة. سأقدم خطة شاملة لتحسين تجربة المطور.
 
 ---
 
-# خطة تحسين التحقق والأمان لنظام الأوامر
+# خطة تحسين تجربة المطور — المرحلة الرابعة
 
-## تحليل الوضع الحالي
+## تحليل الفجوات الحالية
 
-بعد التعديلات السابقة، النظام شهد تحسينات كبيرة:
-- **توحيد المسارات**: كل الأوامر تمر عبر `EditorCommandBus → executor → CoreEditor.apply()`
-- **فصل المسؤوليات**: الإضافات لا تلامس الـ stores مباشرة بل تستخدم `CommandAPI` + `emitIntent`
-- **التحقق من الإضافات**: Zod schemas موجودة بالفعل في `contributionSchemas.ts` للتحقق من `EditorCommand`, `ToolbarItem`, `Overlay`, `Setting`, `NodeView`
+بعد التحليل المعمّق، إليك الفجوات الرئيسية في تجربة المطور:
 
-**لكن الثغرات المتبقية:**
-
-| الثغرة | الموقع | الخطورة |
-|--------|--------|---------|
-| لا يوجد تحقق runtime من صحة `EditorCommandAction` عند `dispatch()` | `commandBus.ts` | عالية |
-| لا يوجد تسجيل مسار للتغييرات (audit trail) | `commandBus.ts` | متوسطة |
-| لا يوجد bounds checking مركزي للمواقع | `executor.ts` | منخفضة |
-| لا يوجد تحقق من صحة محتوى markdown/URL في الأوامر | `executor.ts` + `format.ts` | متوسطة |
-| لا يوجد حماية ضد أوامر متكررة بسرعة (debounce/rate-limit) | `commandBus.ts` | منخفضة |
+| الفجوة | الحالة الحالية | الأثر |
+|--------|---------------|-------|
+| لا يوجد DevTools Panel | لا طريقة لفحص CommandBus أو AuditTrail أو State في الوقت الفعلي | صعوبة تتبع المشاكل |
+| لا توجد Command Testing Helpers | كل ملف اختبار ينشئ mocks خاص به | تكرار وتفرّق أنماط |
+| لا يوجد Plugin Dev Helper | لا طريقة لاختبار إضافة معزولة بسرعة | بطء تطوير الإضافات |
+| لا يوجد Schema Explorer | لا يمكن فحص Nodes/Marks/Marks المتاحة وقت التشغيل | صعوبة فهم الـ Schema |
+| لا يوجد Command Inspector | لا يمكن رؤية الأوامر المسجلة ومفاتيحها ومصدرها | صعوبة تتبع مسار الأوامر |
 
 ---
 
-## المرحلة 1: Zod Schema لـ `EditorCommandAction` (أولوية عالية)
+## الخطوة 1: Command Testing Utilities
+
+### 1.1 إنشاء `src/test/helpers/commandTestUtils.ts`
+
+ملف مساعد يوفر:
+
+```typescript
+// ── Mock Executor ──
+export function createMockExecutor(): MockExecutor {
+  return {
+    run: vi.fn(() => ({})),
+    lastAction: () => /* آخر action تم تشغيله */,
+  };
+}
+
+// ── Mock Command Bus ──
+export function createMockCommandBus(config?: {
+  executor?: EditorCommandExecutor;
+  audit?: boolean;
+}): EditorCommandBus
+
+// ── Fake CoreEditor ──
+// نسخة خفيفة من CoreEditor للاختبارات لا تحتاج DOM
+export function createTestCore(config?: {
+  initialMarkdown?: string;
+  prosePlugins?: Plugin[];
+}): CoreEditor
+
+// ── Assertion Helpers ──
+export function expectDispatched(
+  bus: EditorCommandBus,
+  ...expectedActions: EditorCommandAction[]
+): void
+
+export function expectAuditEntry(
+  bus: EditorCommandBus,
+  partial: Partial<CommandAuditEntry>
+): void
+```
+
+### 1.2 تحديث ملفات الاختبار القديمة
+
+تحويل الملفات المكررة:
+- `commandActionValidation.test.ts` → يستخدم `createMockExecutor()`
+- `editorCommandBus.test.ts` → يستخدم `createMockCommandBus()`
+- `editorCommands.test.ts` → يستخدم `createMockCommandBus()`
 
 ### الملفات المتأثرة:
-- **جديد**: `src/core/commands/actionSchema.ts`
-- **مُعدَّل**: `src/core/commands/commandBus.ts`
-- **جديد**: `src/test/commandActionValidation.test.ts`
-
-### التفاصيل:
-
-**1.1 إنشاء `actionSchema.ts`:**
-```typescript
-// Zod schema يتحقق من صحة كل أمر عند dispatch
-const EditorCommandActionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("focus") }),
-  z.object({ type: z.literal("format"), format: z.string().min(1), attrs: z.record(z.any()).optional() }),
-  z.object({ type: z.literal("insertText"), before: z.string(), after: z.string().optional() }),
-  z.object({ type: z.literal("insertImage"), src: z.string().min(1), alt: z.string().optional(), title: z.string().optional() }),
-  z.object({ type: z.literal("insertGallery"), srcs: z.array(z.string().min(1)).min(1) }),
-  z.object({ type: z.literal("appendMarkdown"), markdown: z.string() }),
-  z.object({ type: z.literal("replaceSelectionWithMarkdown"), markdown: z.string() }),
-  z.object({ type: z.literal("setMarkdown"), content: z.string() }),
-  z.object({ type: z.literal("setTTSHighlight"), range: z.object({ from: z.number().nonneg(), to: z.number().nonneg() }).nullable() }),
-  z.object({ type: z.literal("scrollToText"), text: z.string().min(1) }),
-  z.object({ type: z.literal("scrollToPos"), pos: z.number().nonneg() }),
-  z.object({ type: z.literal("streamMarkdown"), content: z.string(), isNew: z.boolean().optional() }),
-  z.object({ type: z.literal("undo") }),
-  z.object({ type: z.literal("redo") }),
-  z.object({ type: z.literal("setSelection"), from: z.number().nonneg(), to: z.number().nonneg() }),
-  z.object({ type: z.literal("deleteRange"), from: z.number().nonneg(), to: z.number().nonneg() }),
-  z.object({ type: z.literal("insertNodeAt"), nodeName: z.string().min(1), attrs: z.record(z.any()).optional(), pos: z.number().nonneg().optional() }),
-  // Queries
-  z.object({ type: z.literal("getSelectedText") }),
-  z.object({ type: z.literal("getHtml") }),
-  z.object({ type: z.literal("getDoc") }),
-  z.object({ type: z.literal("getTextWithPositions") }),
-  z.object({ type: z.literal("getHeadings") }),
-  z.object({ type: z.literal("getCursorContext") }),
-]);
-```
-
-**1.2 تعديل `EditorCommandBus.dispatch()`:**
-```typescript
-dispatch(action: EditorCommandAction, options?: { strict?: boolean }): void {
-  if (!this.executor) return;
-
-  // التحقق في وضع التطوير + الاختبار فقط (أو عند activation)
-  if (import.meta.env.DEV || import.meta.env.MODE === "test") {
-    const result = EditorCommandActionSchema.safeParse(action);
-    if (!result.success) {
-      pluginLogger.error("bus", "action:invalid", "Invalid command action dispatched", {
-        action,
-        issues: formatIssues(result.error.issues),
-      });
-      if (options?.strict) return; // في الوضع الصارم، نتجاهل الأمر
-    }
-  }
-
-  this.executor.run(action);
-}
-```
-
-**1.3 ملاحظات التصميم:**
-- **في `DEV`**: التحقق يعمل ويُسجّل الأخطاء في الـ logger لكن لا يمنع التنفيذ (لا نكسر الأداء في التطوير)
-- **في `test`**: التحقق يعمل بالكامل للكشف عن المشاكل مبكراً
-- **في `production`**: لا يوجد تحقق (أداء أفضل) - لكن يمكن تفعيله مؤقتاً عبر `options.strict`
-- **`import.meta.env.DEV`** متاح في Vite/React автоматически
+| ملف | التغيير |
+|-----|---------|
+| `src/test/helpers/commandTestUtils.ts` | **جديد** - مساعدات الاختبار |
+| `src/test/commandActionValidation.test.ts` | تحديث ليستخدم المساعدات الجديدة |
+| `src/test/editorCommandBus.test.ts` | تحديث ليستخدم المساعدات الجديدة |
+| `src/test/editorCommands.test.ts` | تحديث ليستخدم المساعدات الجديدة |
+| `src/test/commandAuditTrail.test.ts` | تحديث ليستخدم المساعدات الجديدة |
 
 ---
 
-## المرحلة 2: تسجيل مسار التغييرات (Audit Trail) (أولوية متوسطة)
+## الخطوة 2: Command Inspector (Dev-Only)
 
-### الملفات المتأثرة:
-- **مُعدَّل**: `src/core/commands/commandBus.ts`
-- **جديد**: `src/core/commands/auditTrail.ts`
-- **جديد**: `src/test/commandAuditTrail.test.ts`
+### 2.1 إنشاء `src/plugins/devtools/commandInspector.ts`
 
-### التفاصيل:
+ملف يوفر API لفحص أوامر المحرر في الوقت الفعلي:
 
-**2.1 إنشاء `auditTrail.ts`:**
 ```typescript
-export interface CommandAuditEntry {
-  id: string;                // معرّف فريد لكل عملية
-  action: EditorCommandAction;
-  source: CommandSource;
-  timestamp: number;
-  success: boolean;
-  duration?: number;         // مدة التنفيذ بالمللي ثانية
+export interface CommandInfo {
+  /** معرّف الأمر */
+  id: string;
+  /** الوسيلة النصية */
+  key?: string;
+  /** التسمية المعروضة */
+  label?: string;
+  /** المصدر: من سجّل هذا الأمر */
+  source: "core" | "plugin" | "ai" | string;
+  /** هل يظهر في SlashMenu */
+  slash?: boolean;
+  /** هل له اختصار لوحة مفاتيح */
+  hasKeybinding: boolean;
 }
 
-export type CommandSource =
-  | "user:keyboard"    // اختصار لوحة المفاتيح
-  | "user:toolbar"     // شريط الأدوات
-  | "user:slash"       // قائمة slash
-  | "user:context"     // قائمة السياق
-  | "user:palette"     // لوحة الأوامر
-  | "plugin"           // إضافة مسجّلة
-  | "ai"               // المساعد الذكي
-  | "system";          // نظام (TTS, collab, etc.)
-
-export interface AuditTrailConfig {
-  maxEntries?: number;       // افتراضي: 100
-  enabled?: boolean;         // افتراضي: true في DEV/test
+export interface BusSnapshot {
+  /** جميع الأوامر المسجلة */
+  commands: CommandInfo[];
+  /** آخر 10 أوامر تم تنفيذها */
+  recentDispatches: CommandAuditEntry[];
+  /** هل الـ executor مسجل */
+  executorAttached: boolean;
+  /** عدد Entries في AuditTrail */
+  auditSize: number;
 }
 
-export class CommandAuditTrail {
-  private entries: CommandAuditEntry[] = [];
-  private config: AuditTrailConfig;
-  private nextId = 1;
+export class CommandInspector {
+  constructor(
+    private bus: EditorCommandBus,
+    private registeredCommands: EditorCommand[],
+  ) {}
 
-  constructor(config?: AuditTrailConfig) { /* ... */ }
+  /** لقطة حالية لحالة الـ Bus */
+  snapshot(): BusSnapshot { /* ... */ }
 
-  record(entry: Omit<CommandAuditEntry, "id" | "timestamp">): CommandAuditEntry { /* ... */ }
+  /** البحث في الأوامر */
+  search(query: string): CommandInfo[] { /* ... */ }
 
-  getRecent(count?: number): CommandAuditEntry[] { /* ... */ }
+  /** تصفية حسب المصدر */
+  filterBySource(source: CommandSource): CommandInfo[] { /* ... */ }
 
-  getBySource(source: CommandSource): CommandAuditEntry[] { /* ... */ }
-
-  clear(): void { /* ... */ }
+  /** فحص مسار تنفيذ محدد */
+  traceDispatch(action: EditorCommandAction): {
+    valid: boolean;
+    issues?: string[];
+    source?: CommandSource;
+    entry?: CommandAuditEntry;
+  } { /* ... */ }
 }
 ```
 
-**2.2 تعديل `EditorCommandBus`:**
+### 2.2 إنشاء `src/plugins/devtools/index.ts`
+
+Plugin devtools معزول يُحمّل فقط في وضع التطوير:
+
 ```typescript
-export class EditorCommandBus {
-  private executor: EditorCommandExecutor | null = null;
-  private auditTrail: CommandAuditTrail | null = null;
+export const devtoolsPlugin: InkPlugin = {
+  id: "devtools",
+  name: "Developer Tools",
+  version: "1.0.0",
+  enabled: import.meta.env.DEV,
 
-  constructor(config?: { audit?: AuditTrailConfig }) {
-    if (config?.audit?.enabled !== false) {
-      this.auditTrail = new CommandAuditTrail(config?.audit);
-    }
-  }
+  init(ctx: PluginContext) {
+    // يسجل overlay في لوحة side panel
+    ctx.registerOverlay({
+      id: "command-inspector",
+      component: CommandInspectorPanel,  // React component
+      mount: "sidebar",
+      show: () => import.meta.env.DEV,
+    });
 
-  dispatch(action: EditorCommandAction, options?: { source?: CommandSource }): void {
-    if (!this.executor) return;
-    const start = performance.now();
-    try {
-      this.executor.run(action);
-      this.auditTrail?.record({
-        action,
-        source: options?.source ?? "system",
-        success: true,
-        duration: performance.now() - start,
-      });
-    } catch (err) {
-      this.auditTrail?.record({
-        action,
-        source: options?.source ?? "system",
-        success: false,
-        duration: performance.now() - start,
-      });
-      throw err;
-    }
-  }
-
-  /** لل调试: عرض آخر N عملية */
-  getAuditLog(count?: number): CommandAuditEntry[] {
-    return this.auditTrail?.getRecent(count) ?? [];
-  }
-}
-```
-
-**2.3 تعديل `EditorCommandBusProvider`:**
-```typescript
-export function EditorCommandBusProvider({ children }: { children: ReactNode }) {
-  const bus = useMemo(() => new EditorCommandBus({
-    audit: { enabled: import.meta.env.DEV }
-  }), []);
-  return (
-    <EditorCommandBusContext.Provider value={bus}>{children}</EditorCommandBusContext.Provider>
-  );
-}
-```
-
-**2.4 استخدام `source` في المستهلكين الرئيسيين:**
-
-في `editorCommandsPlugin`:
-```typescript
-ctx.registerCommand({
-  id: "bold",
-  label: "Bold",
-  key: "Mod-b",
-  run: (api) => {
-    api.commandBus.dispatch({ type: "format", format: "bold" }, { source: "user:keyboard" });
+    // يسجل أمر مخصص "dev:inspect"
+    ctx.registerCommand({
+      id: "dev:inspect",
+      label: "Open Command Inspector",
+      key: "Mod-Shift-i",
+      run: (api) => {
+        api.emitIntent({ type: "showCommandPalette" });
+      },
+    });
   },
-});
+};
 ```
 
-في `useFormatting.ts`:
-```typescript
-bus.dispatch({ type: "format", format: type }, { source: "user:toolbar" });
+### 2.3 إنشاء `src/components/devtools/CommandInspectorPanel.tsx`
+
+React component يعرض:
+
+```tsx
+// ── القسم 1: قائمة الأوامر المسجلة ──
+// جدول: ID | Label | Keybinding | Source | Slash
+// مع إمكانية البحث والتصفية
+
+// ── القسم 2: آخر الأوامر المنفذة ──
+// جدول: # | Action | Source | Duration | Status
+// مع تحديث مباشر عند كل dispatch
+
+// ── القسم 3: Audit Trail Timeline ──
+// Timeline بصري يُظهر مسار كل أمر
+
+// ── القسم 4: Schema Info ──
+// عدد Nodes و Marks و Plugins المسجلة
 ```
 
-في `useAIStreaming.ts`:
-```typescript
-bus.dispatch({ type: "streamMarkdown", content: fullResponse, isNew }, { source: "ai" });
-```
+### الملفات المتأثرة:
+| ملف | التغيير |
+|-----|---------|
+| `src/plugins/devtools/index.ts` | **جديد** - Plugin devtools |
+| `src/plugins/devtools/commandInspector.ts` | **جديد** - CommandInspector class |
+| `src/components/devtools/CommandInspectorPanel.tsx` | **جديد** - UI component |
+| `src/plugins/index.ts` | إضافة `devtoolsPlugin` إلى `buildPluginModules()` |
+| `src/plugins/registry.ts` | لا يتطلب تغيير — الإضافة تتبع القواعد الحالية |
 
 ---
 
-## المرحلة 3: Bounds Checking مركزي (أولوية منخفضة-متوسطة)
+## الخطوة 3: Plugin Development Helpers
 
-### الملفات المتأثرة:
-- **مُعدَّل**: `src/core/commands/executor.ts`
-- **جديد**: `src/core/commands/validateAction.ts`
+### 3.1 إنشاء `src/plugins/devtools/pluginDevHelper.ts`
 
-### التفاصيل:
-
-**3.1 إنشاء `validateAction.ts` helper:**
 ```typescript
 /**
- * Clamp document positions to valid range.
- * Returns corrected from/to, or null if the document is empty.
+ * مساعد تطوير الإضافات — يوفر بيئة معزولة لاختبار إضافة واحدة
  */
-export function clampPositions(
-  state: EditorState,
-  from: number,
-  to?: number,
-): { from: number; to: number } | null {
-  const max = state.doc.content.size;
-  if (max === 0) return null;
-  const clampedFrom = Math.max(0, Math.min(from, max));
-  const clampedTo = to !== undefined ? Math.max(clampedFrom, Math.min(to, max)) : clampedFrom;
-  return { from: clampedFrom, to: clampedTo };
+
+export interface PluginTestBench {
+  /** بناء context وهمي لإضافة واحدة */
+  createPluginContext(options?: {
+    schema?: Schema;
+    commandBus?: EditorCommandBus;
+  }): PluginTestContext;
+
+  /** تسجيل وإدارة دورة حياة الإضافة */
+  loadPlugin(plugin: InkPlugin): Promise<void>;
+
+  /** محاكاة بيئة المستخدم */
+  simulateUserAction(action: EditorCommandAction): void;
+
+  /** فحص مساهمات الإضافة */
+  getContributions(): {
+    commands: EditorCommand[];
+    toolbarItems: ToolbarItem[];
+    prosePlugins: Plugin[];
+    nodeViews: NodeViewRegistration[];
+  };
+
+  /** تنظيف بعد الاختبار */
+  destroy(): void;
 }
+
+export function createPluginTestBench(): PluginTestBench { /* ... */ }
 ```
 
-**3.2 استخدامه في `executor.ts`:**
+### 3.2 إنشاء `src/test/helpers/pluginTestUtils.ts`
+
 ```typescript
-// بدلاً من التكرار في كل case:
-case "setSelection": {
-  const pos = clampPositions(state, action.from, action.to);
-  if (!pos) return {};
-  const tr = state.tr.setSelection(TextSelection.create(state.doc, pos.from, pos.to));
-  core.apply(tr);
-  return {};
-}
-
-case "deleteRange": {
-  const pos = clampPositions(state, action.from, action.to);
-  if (!pos || pos.from === pos.to) return {};
-  const tr = state.tr.delete(pos.from, pos.to);
-  core.apply(tr);
-  return {};
-}
+export function createTestPluginContext(): PluginTestContext
+export function createTestCommandAPI(): CommandAPI
+export function withTestPlugin(plugin: InkPlugin): PluginTestResult
 ```
-
----
-
-## المرحلة 4: تحسينات أمان الإدخال (أولوية متوسطة)
 
 ### الملفات المتأثرة:
-- **مُعدَّل**: `src/core/commands/actionSchema.ts` (الملف الجديد من المرحلة 1)
-- **مُعدَّل**: `src/core/operations/format.ts`
+| ملف | التغيير |
+|-----|---------|
+| `src/plugins/devtools/pluginDevHelper.ts` | **جديد** - PluginTestBench |
+| `src/test/helpers/pluginTestUtils.ts` | **جديد** - مساعدات اختبار الإضافات |
 
-### التفاصيل:
+---
 
-**4.1 تقييد `format` values:**
+## الخطوة 4: Audit Trail Logger (Dev-Only)
+
+### 4.1 إنشاء `src/plugins/devtools/auditLogger.ts`
+
 ```typescript
-// في actionSchema.ts
-const VALID_FORMATS = [
-  "bold", "italic", "underline", "strike", "code",
-  "h1", "h2", "h3", "paragraph",
-  "bullet", "numbered", "quote",
-  "alignLeft", "alignCenter", "alignRight", "alignJustify",
-  "link", "tableify",
-] as const;
+/**
+ * سجل أوامر مرئي في وضع التطوير — يعرض كل أمر يتم تنفيذه
+ * مع المصدر والمدة وحالة النجاح/Failure
+ */
 
-const FormatCommandSchema = z.object({
-  type: z.literal("format"),
-  format: z.enum(VALID_FORMATS),
-  attrs: z.record(z.any()).optional(),
-});
+export class AuditLogger {
+  private trail: CommandAuditTrail;
+  private listeners = new Set<(entry: CommandAuditEntry) => void>();
+
+  constructor(bus: EditorCommandBus) { /* ... */ }
+
+  /** الاشتراك في الأوامر الجديدة */
+  onCommand(callback: (entry: CommandAuditEntry) => void): () => void { /* ... */ }
+
+  /** تصدير السجل كـ JSON */
+  exportJSON(): string { /* ... */ }
+
+  /** تصدير كـ CSV */
+  exportCSV(): string { /* ... */ }
+
+  /** إحصائيات سريعة */
+  stats(): {
+    totalCommands: number;
+    bySource: Record<CommandSource, number>;
+    avgDuration: number;
+    failureRate: number;
+  } { /* ... */ }
+}
 ```
 
-**4.2 تقييد URL في `format.ts`:**
+### الملفات المتأثرة:
+| ملف | التغيير |
+|-----|---------|
+| `src/plugins/devtools/auditLogger.ts` | **جديد** - AuditLogger |
+
+---
+
+## الخطوة 5: التكامل والاختبارات
+
+### 5.1 اختبارات المساعدات الجديدة
+
+| ملف | الوصف |
+|-----|-------|
+| `src/test/commandTestUtils.test.ts` | **جديد** - اختبار المساعدات نفسها |
+| `src/test/pluginTestUtils.test.ts` | **جديد** - اختبار مساعدات الإضافات |
+| `src/test/commandInspector.test.ts` | **جديد** - اختبار CommandInspector |
+
+### 5.2 تحديث vite.config.ts
+
+إضافة alias للـ devtools:
+
 ```typescript
-// في applyFormat - case "link"
-case "link": {
-  if (!action.attrs?.href) return null;
-  // التحقق من أن URL آمن
-  const href = action.attrs.href;
-  if (/^javascript:/i.test(href) || /^data:/i.test(href)) {
-    pluginLogger.warn("executor", "format:unsafe-url", "Blocked unsafe URL in link format", { href });
-    return null;
-  }
-  return runCommand(setMark(schema.marks.link, { href }), state);
+// vite.config.ts
+resolve: {
+  alias: {
+    "@devtools": path.resolve(__dirname, "src/plugins/devtools"),
+  },
 }
 ```
 
 ---
 
-## المرحلة 5: اختبارات شاملة (تتداخل مع كل مرحلة)
-
-### الملفات الجديدة:
-
-**5.1 `src/test/commandActionValidation.test.ts`:**
-```typescript
-describe("EditorCommandAction validation", () => {
-  it("accepts all valid action types", () => {
-    const validActions = [
-      { type: "focus" },
-      { type: "format", format: "bold" },
-      { type: "insertText", before: "Hello" },
-      { type: "undo" },
-      // ... كل الأنواع الصحيحة
-    ];
-    for (const action of validActions) {
-      expect(EditorCommandActionSchema.safeParse(action).success).toBe(true);
-    }
-  });
-
-  it("rejects invalid format names", () => {
-    expect(EditorCommandActionSchema.safeParse({ type: "format", format: "" }).success).toBe(false);
-    expect(EditorCommandActionSchema.safeParse({ type: "format", format: "evil" }).success).toBe(false);
-  });
-
-  it("rejects negative positions", () => {
-    expect(EditorCommandActionSchema.safeParse({ type: "setSelection", from: -1, to: 5 }).success).toBe(false);
-  });
-
-  it("rejects unknown action types", () => {
-    expect(EditorCommandActionSchema.safeParse({ type: "unknown" }).success).toBe(false);
-  });
-});
-```
-
-**5.2 `src/test/commandAuditTrail.test.ts`:**
-```typescript
-describe("CommandAuditTrail", () => {
-  it("records entries with incrementing ids", () => {
-    const trail = new CommandAuditTrail({ maxEntries: 10 });
-    const e1 = trail.record({ action: { type: "undo" }, source: "user:keyboard", success: true });
-    const e2 = trail.record({ action: { type: "redo" }, source: "user:keyboard", success: true });
-    expect(e2.id).toBe(String(Number(e1.id) + 1));
-  });
-
-  it("respects maxEntries limit", () => {
-    const trail = new CommandAuditTrail({ maxEntries: 3 });
-    for (let i = 0; i < 5; i++) {
-      trail.record({ action: { type: "focus" }, source: "system", success: true });
-    }
-    expect(trail.getRecent().length).toBe(3);
-  });
-
-  it("filters by source", () => {
-    const trail = new CommandAuditTrail();
-    trail.record({ action: { type: "undo" }, source: "ai", success: true });
-    trail.record({ action: { type: "undo" }, source: "user:keyboard", success: true });
-    expect(trail.getBySource("ai").length).toBe(1);
-  });
-});
-```
-
----
-
-## خارطة التنفيذ
+## خارطة الطريق المقترحة
 
 ```
 الأسبوع 1:
-├── اليوم 1-2: المرحلة 1 (actionSchema.ts + dispatch validation)
-├── اليوم 3: اختبارات المرحلة 1
-├── اليوم 4-5: المرحلة 3 (validateAction.ts + executor cleanup)
-└── اليوم 5: اختبارات المرحلة 3
+├── Day 1-2: commandTestUtils.ts + تحديث ملفات الاختبار القديمة
+├── Day 3-4: pluginDevHelper.ts + pluginTestUtils.ts
+└── Day 5:   اختبارات المساعدات الجديدة
 
 الأسبوع 2:
-├── اليوم 1-2: المرحلة 2 (auditTrail.ts + bus integration)
-├── اليوم 3: تحديث المستهلكين الرئيسيين (source tagging)
-├── اليوم 4: اختبارات المرحلة 2
-└── اليوم 5: المرحلة 4 (format restrictions + URL validation)
+├── Day 1-2: commandInspector.ts + AuditLogger
+├── Day 3-4: CommandInspectorPanel.tsx
+└── Day 5:   devtoolsPlugin + التكامل
 
 الأسبوع 3:
-├── اليوم 1-2: اختبارات تكاملية شاملة
-├── اليوم 3: مراجعة الأداء (لا يوجد تأثير في production)
-├── اليوم 4: التوثيق
-└── اليوم 5: مراجعة نهائية
+├── Day 1-2: تحديث index.ts + اختبارات التكامل
+├── Day 3-4: مراجعة شاملة + تنظيف
+└── Day 5:   التوثيق النهائي
 ```
 
 ---
@@ -407,10 +343,11 @@ describe("CommandAuditTrail", () => {
 
 | المقياس | القيمة الحالية | القيمة المستهدفة |
 |---------|---------------|-----------------|
-| التحقق من صحة الأوامر | لا يوجد | 100% من أنواع `EditorCommandAction` |
-| تسجيل مسار التغييرات | لا يوجد | كل أمر مسجّل في DEV/test |
-| تغطية الاختبارات الجديدة | 0% | > 90% للملفات الجديدة |
-| الأداء في production | - | لا يوجد تأثير (validation خارج prod) |
-| الأخطاء المكتشفة مبكراً | بعد التشغيل | قبل الوصول للـ executor |
+| ملفات الاختبار المكررة | ~80% تكرار mocks | < 10% تكرار |
+| وقت إنشاء اختبار إضافة جديد | ~15 دقيقة | < 3 دقائق |
+| وقت تشخيص مشكلة أمر | ~30 دقيقة | < 5 دقائق |
+| تغطية اختبارات مساعدات DX | 0% | > 90% |
 
 ---
+
+هل تريد أن أبدأ بالتنفيذ من الخطوة 1 (Command Testing Utilities)؟

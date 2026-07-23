@@ -5,8 +5,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CommandAuditTrail } from "../core/commands/auditTrail";
 import { EditorCommandBus } from "../core/commands/commandBus";
-import type { EditorCommandAction, EditorCommandResult } from "../core/commands/commandBus";
 import type { CommandSource } from "../core/commands/auditTrail";
+import {
+  createMockCommandBus,
+  createMockExecutor,
+  expectAuditEntry,
+} from "./helpers/commandTestUtils";
 
 // ---------------------------------------------------------------------------
 // 1. CommandAuditTrail unit tests
@@ -112,14 +116,12 @@ describe("CommandAuditTrail", () => {
 
 describe("EditorCommandBus audit integration", () => {
   let bus: EditorCommandBus;
-  let exec: { run: ReturnType<typeof vi.fn> };
+  let exec: ReturnType<typeof createMockExecutor>;
 
   beforeEach(() => {
     bus = new EditorCommandBus({ audit: { enabled: true } });
-    // Properly typed mock: vi.fn with explicit signature.
-    const run = vi.fn<(action: EditorCommandAction) => EditorCommandResult>(() => ({}));
-    exec = { run };
-    bus.setExecutor(exec as any);
+    exec = createMockExecutor();
+    bus.setExecutor(exec);
   });
 
   it("records an audit entry when dispatching", () => {
@@ -134,16 +136,16 @@ describe("EditorCommandBus audit integration", () => {
 
   it("defaults source to 'system' when not provided", () => {
     bus.dispatch({ type: "focus" });
-    const log = bus.getAuditLog();
-    expect(log[0].source).toBe("system");
+    expectAuditEntry(bus, { action: { type: "focus" }, source: "system" });
   });
 
   it("records success when executor runs without throwing", () => {
-    exec.run.mockImplementation(() => ({ value: "ok" }));
     bus.dispatch({ type: "format", format: "bold" }, { source: "user:toolbar" });
-    const log = bus.getAuditLog();
-    expect(log).toHaveLength(1);
-    expect(log[0].success).toBe(true);
+    expectAuditEntry(bus, {
+      action: { type: "format", format: "bold" },
+      source: "user:toolbar",
+      success: true,
+    });
   });
 
   it("records failure when executor throws", () => {
@@ -175,8 +177,7 @@ describe("EditorCommandBus audit integration", () => {
   });
 
   it("returns empty log when audit trail is disabled", () => {
-    const noAuditBus = new EditorCommandBus({ audit: { enabled: false } });
-    noAuditBus.setExecutor(exec as any);
+    const { bus: noAuditBus } = createMockCommandBus({ audit: false });
     noAuditBus.dispatch({ type: "focus" });
     expect(noAuditBus.getAuditLog()).toHaveLength(0);
   });

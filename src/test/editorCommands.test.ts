@@ -1,16 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
 import { editorCommandsPlugin } from "../plugins/editorCommands";
 import type { EditorCommand, PluginContext } from "../plugins/types";
+import { EditorCommandBus } from "../core/commands/commandBus";
+import { createMockCommandBus, expectAuditEntry } from "./helpers/commandTestUtils";
+import type { MockExecutor } from "./helpers/commandTestUtils";
 
-function buildContext() {
+interface BuildContextResult {
+  ctx: PluginContext;
+  commands: EditorCommand[];
+  toolbarItems: unknown[];
+  executor: MockExecutor;
+  emitIntent: ReturnType<typeof vi.fn>;
+  bus: EditorCommandBus;
+}
+
+function buildContext(): BuildContextResult {
   const commands: EditorCommand[] = [];
   const toolbarItems: unknown[] = [];
-  const dispatch = vi.fn();
   const emitIntent = vi.fn();
-  const commandBus = { dispatch, query: vi.fn() } as any;
+  const { bus, executor } = createMockCommandBus({ audit: true });
   const ctx = {
     editor: { getView: () => null, isReady: () => false, focus: () => {} },
-    commandBus,
+    commandBus: bus,
     stores: {} as any,
     schema: {} as any,
     emitIntent,
@@ -27,7 +38,7 @@ function buildContext() {
     commands,
     settings: [],
   } as unknown as PluginContext;
-  return { ctx, commands, toolbarItems, dispatch, emitIntent };
+  return { ctx, commands, toolbarItems, executor, emitIntent, bus };
 }
 
 describe("editorCommands plugin", () => {
@@ -71,29 +82,35 @@ describe("editorCommands plugin", () => {
   });
 
   it("formatting commands dispatch to the bus with the right format", () => {
-    const { ctx, commands, dispatch } = buildContext();
+    const { ctx, commands, executor, bus } = buildContext();
     editorCommandsPlugin.init(ctx);
     const bold = commands.find((c) => c.id === "bold")!;
     bold.run(ctx);
-    expect(dispatch).toHaveBeenCalledWith(
-      { type: "format", format: "bold" },
-      { source: "user:keyboard" },
-    );
+    expect(executor.run).toHaveBeenCalledWith({ type: "format", format: "bold" });
+    expectAuditEntry(bus, {
+      action: { type: "format", format: "bold" },
+      source: "user:keyboard",
+      success: true,
+    });
 
     const numbered = commands.find((c) => c.id === "numbered")!;
     numbered.run(ctx);
-    expect(dispatch).toHaveBeenCalledWith(
-      { type: "format", format: "numbered" },
-      { source: "user:palette" },
-    );
+    expect(executor.run).toHaveBeenCalledWith({ type: "format", format: "numbered" });
+    expectAuditEntry(bus, {
+      action: { type: "format", format: "numbered" },
+      source: "user:palette",
+      success: true,
+    });
   });
 
   it("undo/redo commands dispatch action types to the bus", () => {
-    const { ctx, commands, dispatch } = buildContext();
+    const { ctx, commands, executor, bus } = buildContext();
     editorCommandsPlugin.init(ctx);
     commands.find((c) => c.id === "undo")!.run(ctx);
-    expect(dispatch).toHaveBeenCalledWith({ type: "undo" }, { source: "user:keyboard" });
+    expect(executor.run).toHaveBeenCalledWith({ type: "undo" });
+    expectAuditEntry(bus, { action: { type: "undo" }, source: "user:keyboard", success: true });
     commands.find((c) => c.id === "redo")!.run(ctx);
-    expect(dispatch).toHaveBeenCalledWith({ type: "redo" }, { source: "user:keyboard" });
+    expect(executor.run).toHaveBeenCalledWith({ type: "redo" });
+    expectAuditEntry(bus, { action: { type: "redo" }, source: "user:keyboard", success: true });
   });
 });

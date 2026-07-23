@@ -1,26 +1,12 @@
-import { describe, it, expect, vi } from "vitest";
-import {
-  EditorCommandBus,
-  type EditorCommandAction,
-  type EditorCommandResult,
-} from "../plugins/editorCommandBus";
-
-function mockExecutor(run?: (a: EditorCommandAction) => EditorCommandResult): {
-  run: ReturnType<typeof vi.fn<(a: EditorCommandAction) => EditorCommandResult>>;
-} {
-  const fn = vi.fn<(a: EditorCommandAction) => EditorCommandResult>(
-    run ?? ((_a: EditorCommandAction) => ({})),
-  );
-  return { run: fn };
-}
+import { describe, it, expect } from "vitest";
+import { EditorCommandBus } from "../core/commands/commandBus";
+import { createMockCommandBus } from "./helpers/commandTestUtils";
 
 describe("EditorCommandBus (Bus-Centric)", () => {
   it("dispatch routes to the executor", () => {
-    const { run } = mockExecutor();
-    const bus = new EditorCommandBus();
-    bus.setExecutor({ run });
+    const { bus, executor } = createMockCommandBus();
     bus.dispatch({ type: "setMarkdown", content: "# Hi" });
-    expect(run).toHaveBeenCalledWith({
+    expect(executor.run).toHaveBeenCalledWith({
       type: "setMarkdown",
       content: "# Hi",
     });
@@ -35,29 +21,22 @@ describe("EditorCommandBus (Bus-Centric)", () => {
   });
 
   it('dispatch forwards "undo" action type to the executor', () => {
-    const { run } = mockExecutor();
-    const bus = new EditorCommandBus();
-    bus.setExecutor({ run });
+    const { bus, executor } = createMockCommandBus();
     bus.dispatch({ type: "undo" });
-    expect(run).toHaveBeenCalledWith({ type: "undo" });
+    expect(executor.run).toHaveBeenCalledWith({ type: "undo" });
   });
 
   it('dispatch forwards "redo" action type to the executor', () => {
-    const { run } = mockExecutor();
-    const bus = new EditorCommandBus();
-    bus.setExecutor({ run });
+    const { bus, executor } = createMockCommandBus();
     bus.dispatch({ type: "redo" });
-    expect(run).toHaveBeenCalledWith({ type: "redo" });
+    expect(executor.run).toHaveBeenCalledWith({ type: "redo" });
   });
 
   it("non-undoable commands (no inverse) are dispatched without error", () => {
-    const { run } = mockExecutor(() => ({}));
-    const bus = new EditorCommandBus();
-    bus.setExecutor({ run });
+    const { bus, executor } = createMockCommandBus();
     bus.dispatch({ type: "format", format: "bold" });
     bus.dispatch({ type: "focus" });
-    // No properties to assert beyond the calls themselves
-    expect(run).toHaveBeenCalledTimes(2);
+    expect(executor.run).toHaveBeenCalledTimes(2);
   });
 
   it("dispatch / query are safe no-ops without an executor", () => {

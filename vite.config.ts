@@ -39,6 +39,7 @@ export default defineConfig(() => {
         // imports like '@core/commands/commandBus' resolve to src/core and are
         // not captured by the broader '@' -> repo-root mapping.
         "@core": path.resolve(__dirname, "src/core"),
+        "@devtools": path.resolve(__dirname, "src/plugins/devtools"),
         "@": path.resolve(__dirname, "."),
       },
     },
