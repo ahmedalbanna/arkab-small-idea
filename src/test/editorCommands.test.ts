@@ -75,22 +75,25 @@ describe("editorCommands plugin", () => {
     editorCommandsPlugin.init(ctx);
     const bold = commands.find((c) => c.id === "bold")!;
     bold.run(ctx);
-    expect(dispatch).toHaveBeenCalledWith({ type: "format", format: "bold" });
+    expect(dispatch).toHaveBeenCalledWith(
+      { type: "format", format: "bold" },
+      { source: "user:keyboard" },
+    );
 
     const numbered = commands.find((c) => c.id === "numbered")!;
     numbered.run(ctx);
-    expect(dispatch).toHaveBeenCalledWith({
-      type: "format",
-      format: "numbered",
-    });
+    expect(dispatch).toHaveBeenCalledWith(
+      { type: "format", format: "numbered" },
+      { source: "user:palette" },
+    );
   });
 
   it("undo/redo commands dispatch action types to the bus", () => {
     const { ctx, commands, dispatch } = buildContext();
     editorCommandsPlugin.init(ctx);
     commands.find((c) => c.id === "undo")!.run(ctx);
-    expect(dispatch).toHaveBeenCalledWith({ type: "undo" });
+    expect(dispatch).toHaveBeenCalledWith({ type: "undo" }, { source: "user:keyboard" });
     commands.find((c) => c.id === "redo")!.run(ctx);
-    expect(dispatch).toHaveBeenCalledWith({ type: "redo" });
+    expect(dispatch).toHaveBeenCalledWith({ type: "redo" }, { source: "user:keyboard" });
   });
 });

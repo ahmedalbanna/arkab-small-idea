@@ -29,7 +29,10 @@ export function useFormatting({ viewRef }: FormattingParams) {
       if (type === "link") {
         const url = window.prompt("Enter URL:");
         if (url && validateUrl(url)) {
-          bus.dispatch({ type: "format", format: "link", attrs: { href: url } });
+          bus.dispatch(
+            { type: "format", format: "link", attrs: { href: url } },
+            { source: "user:toolbar" },
+          );
         } else if (url) {
           window.alert("Invalid URL. Only http, https, and mailto links are allowed.");
         }
@@ -37,7 +40,7 @@ export function useFormatting({ viewRef }: FormattingParams) {
         return;
       }
 
-      bus.dispatch({ type: "format", format: type });
+      bus.dispatch({ type: "format", format: type }, { source: "user:toolbar" });
       viewRef.current?.focus();
     },
     [bus, viewRef],

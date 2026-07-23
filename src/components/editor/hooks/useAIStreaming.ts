@@ -170,7 +170,10 @@ export function useAIStreaming({
             // The executor's streamMarkdown handler manages core.streamRange
             // to accumulate chunks correctly.
             const isNew = fullResponse.length === chunk.length;
-            bus.dispatch({ type: "streamMarkdown", content: fullResponse, isNew });
+            bus.dispatch(
+              { type: "streamMarkdown", content: fullResponse, isNew },
+              { source: "ai" },
+            );
 
             // Recalculate streamEnd from the fresh state for the UI.
             const parsed = parseMarkdownDoc(fullResponse);
@@ -238,11 +241,17 @@ export function useAIStreaming({
       // Restore original content via bus: set selection to the AI range,
       // then replace it with the original text.
       const restoreTo = aiDraftRef.current?.streamEnd ?? initialDraftState.to;
-      bus.dispatch({ type: "setSelection", from: initialDraftState.from, to: restoreTo });
-      bus.dispatch({
-        type: "replaceSelectionWithMarkdown",
-        markdown: initialDraftState.originalText,
-      });
+      bus.dispatch(
+        { type: "setSelection", from: initialDraftState.from, to: restoreTo },
+        { source: "ai" },
+      );
+      bus.dispatch(
+        {
+          type: "replaceSelectionWithMarkdown",
+          markdown: initialDraftState.originalText,
+        },
+        { source: "ai" },
+      );
       // Clear the highlight decoration via view (UI-only).
       if (viewRef.current) {
         const decoTr = viewRef.current.state.tr.setMeta(draftHighlightKey, null);
@@ -262,17 +271,35 @@ export function useAIStreaming({
     let clearDeco = true;
 
     if (decision === "cancel") {
-      bus.dispatch({ type: "setSelection", from: draft.from, to: draft.streamEnd });
-      bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown: draft.originalText });
+      bus.dispatch(
+        { type: "setSelection", from: draft.from, to: draft.streamEnd },
+        { source: "ai" },
+      );
+      bus.dispatch(
+        { type: "replaceSelectionWithMarkdown", markdown: draft.originalText },
+        { source: "ai" },
+      );
     } else if (decision === "append") {
       // Restore original, then append the draft below it.
-      bus.dispatch({ type: "setSelection", from: draft.from, to: draft.streamEnd });
-      bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown: draft.originalText });
-      bus.dispatch({ type: "insertText", before: "\n\n" + draft.content });
+      bus.dispatch(
+        { type: "setSelection", from: draft.from, to: draft.streamEnd },
+        { source: "ai" },
+      );
+      bus.dispatch(
+        { type: "replaceSelectionWithMarkdown", markdown: draft.originalText },
+        { source: "ai" },
+      );
+      bus.dispatch({ type: "insertText", before: "\n\n" + draft.content }, { source: "ai" });
     } else if (decision === "retry") {
       // Replace the AI range with the original text, then restart.
-      bus.dispatch({ type: "setSelection", from: draft.from, to: draft.streamEnd });
-      bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown: draft.originalText });
+      bus.dispatch(
+        { type: "setSelection", from: draft.from, to: draft.streamEnd },
+        { source: "ai" },
+      );
+      bus.dispatch(
+        { type: "replaceSelectionWithMarkdown", markdown: draft.originalText },
+        { source: "ai" },
+      );
       clearDeco = false; // Keep decoration until the new generation starts
 
       // Restart the AI action on the restored range.
@@ -307,7 +334,7 @@ export function useAIStreaming({
     const startPos = slashMenu.pos - 1;
     const finalStart = Math.max(0, Math.min(startPos, state.doc.content.size));
     const finalEnd = Math.max(finalStart, Math.min(endPos, state.doc.content.size));
-    bus.dispatch({ type: "deleteRange", from: finalStart, to: finalEnd });
+    bus.dispatch({ type: "deleteRange", from: finalStart, to: finalEnd }, { source: "user:slash" });
     return finalStart;
   };
 
@@ -339,10 +366,17 @@ export function useAIStreaming({
           priorityTag = "(L)";
           break;
       }
-      bus.dispatch({ type: "insertText", before: `- [ ] ${priorityTag} ` });
-    } else if (action === "code") bus.dispatch({ type: "format", format: "code" });
+      bus.dispatch(
+        { type: "insertText", before: `- [ ] ${priorityTag} ` },
+        { source: "user:slash" },
+      );
+    } else if (action === "code")
+      bus.dispatch({ type: "format", format: "code" }, { source: "user:slash" });
     else if (action === "scribble")
-      bus.dispatch({ type: "insertNodeAt", nodeName: "scribble", attrs: { aspectRatio: 0.5 } });
+      bus.dispatch(
+        { type: "insertNodeAt", nodeName: "scribble", attrs: { aspectRatio: 0.5 } },
+        { source: "user:slash" },
+      );
     else if (action === "tableify") {
       handleFormat("tableify");
     } else if (action === "image") onImageUploadRequest?.();
@@ -365,7 +399,7 @@ export function useAIStreaming({
       const end = depth > 0 ? resolvedPos.end(depth) : afterDeleteState.doc.content.size;
 
       try {
-        bus.dispatch({ type: "setSelection", from: start, to: end });
+        bus.dispatch({ type: "setSelection", from: start, to: end }, { source: "user:slash" });
         await handleAIAction(type);
       } catch (err) {
         console.error("Failed to set selection for AI action:", err);

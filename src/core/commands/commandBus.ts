@@ -1,3 +1,7 @@
+import { EditorCommandActionSchema, formatZodIssues } from "./actionSchema";
+import { CommandAuditTrail, type AuditTrailConfig, type CommandSource } from "./auditTrail";
+export type { CommandSource, AuditTrailConfig } from "./auditTrail";
+
 /**
  * A single, typed command language for the editor — now part of the headless
  * core (`@core/commands`).
@@ -91,22 +95,111 @@ export interface EditorCommandExecutor {
  */
 export class EditorCommandBus {
   private executor: EditorCommandExecutor | null = null;
+  private auditTrail: CommandAuditTrail | null = null;
+
+  /**
+   * Create a command bus with optional audit trail.
+   *
+   * @param config - If `audit.enabled` is not explicitly `false`, an audit
+   *   trail is created (default: enabled). Pass `{ audit: { enabled: false } }`
+   *   to disable it entirely.
+   */
+  constructor(config?: { audit?: AuditTrailConfig }) {
+    // Create the audit trail unless explicitly disabled.
+    if (config?.audit?.enabled !== false) {
+      this.auditTrail = new CommandAuditTrail(config?.audit);
+    }
+  }
 
   /** Register (or clear with `null`) the live editor executor. */
   setExecutor(executor: EditorCommandExecutor | null): void {
     this.executor = executor;
   }
 
-  /** Execute a mutating command. No-op until an executor is registered. */
-  dispatch(action: EditorCommandAction): void {
+  /**
+   * Execute a mutating command. No-op until an executor is registered.
+   *
+   * In dev/test mode the action is validated against the Zod schema before
+   * reaching the executor. Invalid actions are logged (not thrown) so the
+   * editor remains usable during development; set `strict: true` to skip
+   * them entirely. In production all validation is skipped for performance.
+   *
+   * Each successfully-dispatched action is recorded in the audit trail (when
+   * enabled) with its source, timing, and success/failure status.
+   */
+  dispatch(
+    action: EditorCommandAction,
+    options?: { strict?: boolean; source?: CommandSource },
+  ): void {
     if (!this.executor) return;
-    this.executor.run(action);
+
+    // Runtime validation – dev/test only (TypeScript catches most errors in
+    // production builds, and skipping the check avoids any perf impact).
+    if (import.meta.env.DEV || import.meta.env.MODE === "test") {
+      const result = EditorCommandActionSchema.safeParse(action);
+      if (!result.success) {
+        const issues = formatZodIssues(result.error.issues);
+        console.warn(
+          `[commandBus] Invalid action (${(action as Record<string, unknown>).type as string}):\n` +
+            issues.map((i) => `  ${i.path || "(root)"}: ${i.message}`).join("\n"),
+          action,
+        );
+        // In strict mode, skip invalid actions instead of forwarding them.
+        if (options?.strict) return;
+      }
+    }
+
+    // Audit trail — record the action with timing.
+    const start = performance.now();
+    const source = options?.source ?? "system";
+    try {
+      this.executor.run(action);
+      this.auditTrail?.record({
+        action,
+        source,
+        success: true,
+        duration: performance.now() - start,
+      });
+    } catch (err) {
+      this.auditTrail?.record({
+        action,
+        source,
+        success: false,
+        duration: performance.now() - start,
+      });
+      throw err;
+    }
   }
 
-  /** Execute a query command and return its value. `undefined` without an executor. */
+  /**
+   * Execute a query command and return its value. `undefined` without an executor.
+   * Same dev/test validation as `dispatch` (non-strict – only logs).
+   */
   query<T = unknown>(action: EditorCommandAction): T | undefined {
     if (!this.executor) return undefined;
+
+    if (import.meta.env.DEV || import.meta.env.MODE === "test") {
+      const result = EditorCommandActionSchema.safeParse(action);
+      if (!result.success) {
+        const issues = formatZodIssues(result.error.issues);
+        console.warn(
+          `[commandBus] Invalid query (${(action as Record<string, unknown>).type as string}):\n` +
+            issues.map((i) => `  ${i.path || "(root)"}: ${i.message}`).join("\n"),
+          action,
+        );
+      }
+    }
+
     return this.executor.run(action).value as T | undefined;
+  }
+
+  /**
+   * Return the most recent audit trail entries (primarily for debugging /
+   * introspection). Returns an empty array when the trail is disabled or
+   * there are no entries yet.
+   */
+  getAuditLog(count?: number) {
+    return this.auditTrail?.getRecent(count) ?? [];
   }
 }
 

@@ -19,7 +19,12 @@ function formatCommand(id: string, label: string, format: string, key?: string):
     label,
     key,
     run: (api: CommandAPI) => {
-      api.commandBus.dispatch({ type: "format", format });
+      // Commands with a keyboard shortcut get "user:keyboard"; palette-only
+      // commands get "user:palette" so the audit trail can distinguish them.
+      api.commandBus.dispatch(
+        { type: "format", format },
+        { source: key ? "user:keyboard" : "user:palette" },
+      );
       return true;
     },
   };
@@ -61,7 +66,7 @@ export const editorCommandsPlugin: InkPlugin = {
       label: "Undo",
       key: "Mod-z",
       run: (api) => {
-        api.commandBus.dispatch({ type: "undo" });
+        api.commandBus.dispatch({ type: "undo" }, { source: "user:keyboard" });
         return true;
       },
     });
@@ -70,7 +75,7 @@ export const editorCommandsPlugin: InkPlugin = {
       label: "Redo",
       key: "Mod-y",
       run: (api) => {
-        api.commandBus.dispatch({ type: "redo" });
+        api.commandBus.dispatch({ type: "redo" }, { source: "user:keyboard" });
         return true;
       },
     });

@@ -11,7 +11,15 @@ export const EditorCommandBusContext = createContext<EditorCommandBus | null>(nu
 
 /** Provides a fresh command bus to the subtree (shared by the editor + consumers). */
 export function EditorCommandBusProvider({ children }: { children: ReactNode }) {
-  const bus = useMemo(() => new EditorCommandBus(), []);
+  const bus = useMemo(
+    () =>
+      new EditorCommandBus({
+        // Enable the audit trail in dev/test only; production skips it for
+        // performance and memory reasons.
+        audit: { enabled: import.meta.env.DEV || import.meta.env.MODE === "test" },
+      }),
+    [],
+  );
   return (
     <EditorCommandBusContext.Provider value={bus}>{children}</EditorCommandBusContext.Provider>
   );

@@ -146,6 +146,30 @@ describe("operations/format", () => {
     const state = atEnd(paragraphDoc("x"));
     expect(applyFormat(state, "nope", schema, io)).toBeNull();
   });
+
+  it("blocks javascript: URLs in link format", () => {
+    const state = atEnd(paragraphDoc("click here"));
+    const tr = applyFormat(state, "link", schema, io, {
+      href: "javascript:alert(1)",
+    });
+    expect(tr).toBeNull();
+  });
+
+  it("blocks data: URLs in link format", () => {
+    const state = atEnd(paragraphDoc("click here"));
+    const tr = applyFormat(state, "link", schema, io, {
+      href: "data:text/html,<script>alert(1)</script>",
+    });
+    expect(tr).toBeNull();
+  });
+
+  it("allows valid http URLs in link format", () => {
+    const state = atEnd(paragraphDoc("click here"));
+    const tr = applyFormat(state, "link", schema, io, {
+      href: "https://example.com",
+    });
+    expect(tr).not.toBeNull();
+  });
 });
 
 describe("operations/query", () => {

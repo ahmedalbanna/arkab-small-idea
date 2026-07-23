@@ -91,9 +91,20 @@ export function applyFormat(
       return setAlign("justify");
     case "bullet":
       return runCommand(wrapInList(schema.nodes.bullet_list), state);
-    case "link":
+    case "link": {
       if (!schema.marks.link) return null;
+      const href = attrs?.href;
+      // Block javascript: and data: URLs to prevent XSS via links.
+      if (typeof href === "string" && /^javascript:/i.test(href)) {
+        console.warn("[format] Blocked javascript: URL in link format", { href });
+        return null;
+      }
+      if (typeof href === "string" && /^data:/i.test(href)) {
+        console.warn("[format] Blocked data: URL in link format", { href });
+        return null;
+      }
       return runCommand(toggleMark(schema.marks.link, attrs ?? { href: "" }), state);
+    }
     case "tableify": {
       const { from, to } = state.selection;
       const selectedText = state.doc.textBetween(from, to, "\n");

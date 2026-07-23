@@ -11,4 +11,6 @@ export type {
   EditorCommandAction,
   EditorCommandResult,
   EditorCommandExecutor,
+  CommandSource,
+  AuditTrailConfig,
 } from "@core/commands/commandBus";

@@ -1,6 +1,7 @@
 import { TextSelection, type EditorState } from "prosemirror-state";
 import type { EditorCommandAction, EditorCommandExecutor, EditorCommandResult } from "./commandBus";
 import type { CoreEditor } from "../CoreEditor";
+import { clampPosition, clampPositions } from "./validateAction";
 import { insertText, insertImage, insertGallery } from "../operations/text";
 import {
   setMarkdown,
@@ -123,8 +124,8 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
         }
 
         case "scrollToPos": {
-          const max = state.doc.content.size;
-          const p = Math.min(action.pos, max);
+          const p = clampPosition(state, action.pos);
+          if (p === null) return {};
           const tr = state.tr.setSelection(TextSelection.create(state.doc, p));
           core.apply(tr);
           return {};
@@ -161,21 +162,19 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
 
         // --- Selection & Range ---
         case "setSelection": {
-          const max = core.getState().doc.content.size;
-          const from = Math.min(action.from, max);
-          const to = Math.min(action.to, max);
-          const tr = core
-            .getState()
-            .tr.setSelection(TextSelection.create(core.getState().doc, from, to));
+          const state = core.getState();
+          const pos = clampPositions(state, action.from, action.to);
+          if (!pos) return {};
+          const tr = state.tr.setSelection(TextSelection.create(state.doc, pos.from, pos.to));
           core.apply(tr);
           return {};
         }
 
         case "deleteRange": {
-          const max = core.getState().doc.content.size;
-          const from = Math.min(action.from, max);
-          const to = Math.min(action.to, max);
-          const tr = core.getState().tr.delete(from, to);
+          const state = core.getState();
+          const pos = clampPositions(state, action.from, action.to);
+          if (!pos || pos.from === pos.to) return {};
+          const tr = state.tr.delete(pos.from, pos.to);
           core.apply(tr);
           return {};
         }
@@ -185,10 +184,10 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
           const nodeType = schema.nodes[action.nodeName];
           if (!nodeType) return {};
           const node = nodeType.create(action.attrs);
-          const pos = action.pos ?? core.getState().selection.from;
-          const max = core.getState().doc.content.size;
-          const clampedPos = Math.min(pos, max);
-          const tr = core.getState().tr.insert(clampedPos, node);
+          const state = core.getState();
+          const pos = clampPosition(state, action.pos ?? state.selection.from);
+          if (pos === null) return {};
+          const tr = state.tr.insert(pos, node);
           core.apply(tr);
           return {};
         }
