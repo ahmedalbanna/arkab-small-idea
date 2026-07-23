@@ -4,24 +4,49 @@ import { Play, Pause, Square, Volume2, VolumeX, X } from "lucide-react";
 import { useUIStore } from "../stores/uiStore";
 import { useEditorStore } from "../stores/editorStore";
 import { type EditorRef } from "./ProseMirrorEditor";
+import { buildTTSSegments, mapCharIndexToDocPosition, type TTSSegment } from "./ttsMapping";
 
 interface TTSSpeakerProps {
   editorRef: React.RefObject<EditorRef>;
 }
 
 const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
-  const { showTTS, setTTS, ttsRate, setTTSRate, setTTSHighlightRange } = useUIStore();
+  const {
+    showTTS,
+    setTTS,
+    ttsRate,
+    setTTSRate,
+    ttsPitch,
+    setTTSPitch,
+    ttsVoiceURI,
+    setTTSVoiceURI,
+  } = useUIStore();
   const { activeFocusedPageId, pages } = useEditorStore();
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   const synth = useRef<SpeechSynthesis | null>(
     typeof window !== "undefined" ? window.speechSynthesis : null,
   );
   const utterance = useRef<SpeechSynthesisUtterance | null>(null);
-  const segmentsRef = useRef<{ text: string; pos: number; cumulativeIndex: number }[]>([]);
+  const segmentsRef = useRef<TTSSegment[]>([]);
+  const fullTextRef = useRef("");
+  const lastCharIndexRef = useRef(0);
+  // Set right before a deliberate cancel+restart (e.g. mute toggle) so the
+  // outgoing utterance's onend/onerror don't reset playback state.
+  const isRestartingRef = useRef(false);
+
+  useEffect(() => {
+    if (!synth.current) return;
+
+    const loadVoices = () => setVoices(synth.current!.getVoices());
+    loadVoices();
+    synth.current.addEventListener("voiceschanged", loadVoices);
+    return () => synth.current?.removeEventListener("voiceschanged", loadVoices);
+  }, []);
 
   const stopSpeech = useCallback(() => {
     if (synth.current) {
@@ -31,6 +56,67 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
       editorRef.current?.setTTSHighlight(null);
     }
   }, [editorRef]);
+
+  const speakFrom = useCallback(
+    (baseCharIndex: number, muted: boolean) => {
+      if (!synth.current) return;
+
+      const textToSpeak = fullTextRef.current.slice(baseCharIndex);
+      if (!textToSpeak) {
+        setIsPlaying(false);
+        setIsPaused(false);
+        editorRef.current?.setTTSHighlight(null);
+        return;
+      }
+
+      const selectedVoice = ttsVoiceURI
+        ? (voices.find((v) => v.voiceURI === ttsVoiceURI) ?? null)
+        : null;
+
+      const u = new SpeechSynthesisUtterance(textToSpeak);
+      u.rate = ttsRate;
+      u.pitch = ttsPitch;
+      u.volume = muted ? 0 : 1;
+      if (selectedVoice) u.voice = selectedVoice;
+
+      u.onboundary = (event) => {
+        if (event.name === "word") {
+          const absoluteCharIndex = baseCharIndex + event.charIndex;
+          lastCharIndexRef.current = absoluteCharIndex;
+
+          const range = mapCharIndexToDocPosition(segmentsRef.current, absoluteCharIndex);
+          if (range) editorRef.current?.setTTSHighlight(range);
+        }
+      };
+
+      u.onend = () => {
+        if (isRestartingRef.current) {
+          isRestartingRef.current = false;
+          return;
+        }
+        setIsPlaying(false);
+        setIsPaused(false);
+        editorRef.current?.setTTSHighlight(null);
+      };
+
+      u.onerror = (e) => {
+        if (isRestartingRef.current) {
+          isRestartingRef.current = false;
+          return;
+        }
+        console.error("Speech error:", e);
+        setIsPlaying(false);
+        setIsPaused(false);
+        editorRef.current?.setTTSHighlight(null);
+      };
+
+      utterance.current = u;
+      synth.current.speak(u);
+      setIsPlaying(true);
+      setIsPaused(false);
+    },
+    [editorRef, ttsRate, ttsPitch, ttsVoiceURI, voices],
+  );
 
   const togglePlay = useCallback(() => {
     if (!synth.current) return;
@@ -54,74 +140,28 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
         }
       }
 
-      let cumulative = 0;
-      segmentsRef.current = rawSegments.map((s) => {
-        const seg = { ...s, cumulativeIndex: cumulative };
-        cumulative += s.text.length + 1; // +1 for the space we join with
-        return seg;
-      });
+      const { segments, fullText } = buildTTSSegments(rawSegments);
+      segmentsRef.current = segments;
+      fullTextRef.current = fullText;
+      lastCharIndexRef.current = 0;
 
-      const fullText = rawSegments.map((s) => s.text).join(" ");
-
-      utterance.current = new SpeechSynthesisUtterance(fullText);
-      utterance.current.rate = ttsRate;
-      utterance.current.volume = isMuted ? 0 : 1;
-
-      utterance.current.onboundary = (event) => {
-        if (event.name === "word") {
-          const charIndex = event.charIndex;
-
-          // Find which segment contains this charIndex
-          const segmentIndex = segmentsRef.current.findIndex((s, i) => {
-            const next = segmentsRef.current[i + 1];
-            return charIndex >= s.cumulativeIndex && (!next || charIndex < next.cumulativeIndex);
-          });
-
-          if (segmentIndex !== -1) {
-            const segment = segmentsRef.current[segmentIndex];
-            const offsetInSegment = charIndex - segment.cumulativeIndex;
-
-            // Find end of the word in the segment text
-            const textAfter = segment.text.substring(offsetInSegment);
-            const wordMatch = textAfter.match(/^\w+/);
-            const wordLength = wordMatch ? wordMatch[0].length : 1;
-
-            const from = segment.pos + offsetInSegment;
-            const to = from + wordLength;
-
-            editorRef.current?.setTTSHighlight({ from, to });
-          }
-        }
-      };
-
-      utterance.current.onend = () => {
-        setIsPlaying(false);
-        setIsPaused(false);
-        editorRef.current?.setTTSHighlight(null);
-      };
-
-      utterance.current.onerror = (e) => {
-        console.error("Speech error:", e);
-        setIsPlaying(false);
-        setIsPaused(false);
-        editorRef.current?.setTTSHighlight(null);
-      };
-
-      synth.current.speak(utterance.current);
-      setIsPlaying(true);
-      setIsPaused(false);
+      speakFrom(0, isMuted);
     }
-  }, [
-    isPlaying,
-    isPaused,
-    editorRef,
-    pages,
-    activeFocusedPageId,
-    stopSpeech,
-    ttsRate,
-    isMuted,
-    setTTSHighlightRange,
-  ]);
+  }, [isPlaying, isPaused, editorRef, pages, activeFocusedPageId, stopSpeech, isMuted, speakFrom]);
+
+  const handleMuteToggle = useCallback(() => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+
+    // SpeechSynthesisUtterance.volume can't be changed after speak() has
+    // started in most browsers, so restart from the current word to apply
+    // the new mute state immediately.
+    if (isPlaying && !isPaused && synth.current) {
+      isRestartingRef.current = true;
+      synth.current.cancel();
+      speakFrom(lastCharIndexRef.current, nextMuted);
+    }
+  }, [isMuted, isPlaying, isPaused, speakFrom]);
 
   useEffect(() => {
     return () => {
@@ -178,7 +218,7 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
           </div>
 
           {/* Speed Slider */}
-          <div className="flex-1 flex flex-col gap-2 min-w-[120px]">
+          <div className="flex-1 flex flex-col gap-2 min-w-[100px]">
             <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-minimal-muted font-bold">
               <span>Speed</span>
               <span>{ttsRate.toFixed(1)}x</span>
@@ -194,9 +234,43 @@ const TTSSpeaker: React.FC<TTSSpeakerProps> = ({ editorRef }) => {
             />
           </div>
 
+          {/* Pitch Slider */}
+          <div className="flex-1 flex flex-col gap-2 min-w-[100px]">
+            <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-minimal-muted font-bold">
+              <span>Pitch</span>
+              <span>{ttsPitch.toFixed(1)}</span>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.1"
+              value={ttsPitch}
+              onChange={(e) => setTTSPitch(parseFloat(e.target.value))}
+              className="w-full h-1.5 bg-minimal-border rounded-lg appearance-none cursor-pointer accent-minimal-accent"
+            />
+          </div>
+
+          {/* Voice Selector */}
+          {voices.length > 0 && (
+            <select
+              value={ttsVoiceURI ?? ""}
+              onChange={(e) => setTTSVoiceURI(e.target.value || null)}
+              aria-label="Voice"
+              className="bg-minimal-bg border border-minimal-border rounded-lg text-xs text-minimal-text px-2 py-1.5 max-w-[140px]"
+            >
+              <option value="">Default</option>
+              {voices.map((voice) => (
+                <option key={voice.voiceURI} value={voice.voiceURI}>
+                  {voice.name} ({voice.lang})
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* Mute Toggle */}
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={handleMuteToggle}
             className={`p-2 rounded-lg transition-colors ${isMuted ? "text-red-500 bg-red-50" : "text-minimal-muted hover:text-minimal-accent"}`}
           >
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}

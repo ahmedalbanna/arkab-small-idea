@@ -17,6 +17,8 @@ interface UIState {
   isAutoSaving: boolean;
   showTTS: boolean;
   ttsRate: number;
+  ttsPitch: number;
+  ttsVoiceURI: string | null;
   ttsHighlightRange: { from: number; to: number } | null;
 
   toggleAIAssistant: () => void;
@@ -33,6 +35,8 @@ interface UIState {
   setAutoSaving: (isAutoSaving: boolean) => void;
   setTTS: (show: boolean | ((prev: boolean) => boolean)) => void;
   setTTSRate: (rate: number | ((prev: number) => number)) => void;
+  setTTSPitch: (pitch: number | ((prev: number) => number)) => void;
+  setTTSVoiceURI: (voiceURI: string | null) => void;
   setTTSHighlightRange: (range: { from: number; to: number } | null) => void;
 }
 
@@ -53,6 +57,8 @@ export const useUIStore = create<UIState>()(
       isAutoSaving: false,
       showTTS: false,
       ttsRate: 1,
+      ttsPitch: 1,
+      ttsVoiceURI: null as string | null,
       ttsHighlightRange: null as { from: number; to: number } | null,
 
       toggleAIAssistant: () => set((state) => ({ showAIAssistant: !state.showAIAssistant })),
@@ -117,6 +123,11 @@ export const useUIStore = create<UIState>()(
         set((state) => ({
           ttsRate: typeof ttsRate === "function" ? ttsRate(state.ttsRate) : ttsRate,
         })),
+      setTTSPitch: (ttsPitch) =>
+        set((state) => ({
+          ttsPitch: typeof ttsPitch === "function" ? ttsPitch(state.ttsPitch) : ttsPitch,
+        })),
+      setTTSVoiceURI: (ttsVoiceURI) => set({ ttsVoiceURI }),
       setTTSHighlightRange: (ttsHighlightRange) => set({ ttsHighlightRange }),
     }),
     {
