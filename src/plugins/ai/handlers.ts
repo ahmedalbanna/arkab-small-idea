@@ -1,26 +1,63 @@
 import { chatWithAI, type ChatMessage } from "../../services/aiService";
 import { ragService } from "../../services/ragService";
 import { getEditorRef } from "../editorAccess";
-import { useEditorStore } from "../../stores/editorStore";
-import { useAIStore, getEmbeddingOptions } from "../../stores/aiStore";
-import { useUIStore } from "../../stores/uiStore";
-import { useAIUIStore } from "../../stores/aiUIStore";
+import type { AppStores } from "../types";
+import { getEmbeddingOptions } from "../../stores/aiStore";
 import { StreamBuffer } from "../../services/streamBuffer";
 
 /**
  * Stable, module-level handlers shared by both the `ai` plugin host (chat
  * sidebar, search bar) and the editor tree (slash menu, search highlighting).
  *
- * They intentionally read all mutable state via the zustand `getState()`
- * accessors at call time (and reach editors through `getEditorRef`), so the
- * same function instance stays correct across re-renders without being
- * re-created or re-supplied through props.
+ * They intentionally read all mutable state via zustand `getState()` accessors
+ * at call time (and reach editors through `getEditorRef`), so the same function
+ * instance stays correct across re-renders without being re-created or
+ * re-supplied through props.
+ *
+ * Stores are injected once during plugin initialisation via `setHandlerStores`
+ * rather than imported directly, so this module has no import-time coupling to
+ * any concrete Zustand store module.
  */
 
+// ── Injected store access ──────────────────────────────────────────────
+
+let _stores: AppStores | null = null;
+
+/**
+ * Must be called once during plugin initialisation (see `aiPlugin.init`).
+ * After that all handlers read stores through this reference instead of
+ * importing store modules directly.
+ */
+export function setHandlerStores(stores: AppStores): void {
+  _stores = stores;
+}
+
+/** Accessor that throws if stores have not been injected yet. */
+function stores(): AppStores {
+  if (!_stores) throw new Error("Handler stores not initialised — call setHandlerStores first");
+  return _stores;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────
+
 function getActivePage() {
-  const { pages, activeFocusedPageId } = useEditorStore.getState();
+  const { pages, activeFocusedPageId } = stores().editor.getState();
   return pages.find((p) => p.id === activeFocusedPageId) || pages[0];
 }
+
+function aiUI() {
+  return stores().aiUI.getState();
+}
+
+function ui() {
+  return stores().ui.getState();
+}
+
+function ai() {
+  return stores().ai.getState();
+}
+
+// ── Exported handlers ──────────────────────────────────────────────────
 
 export function insertText(before: string, after = "") {
   const activePage = getActivePage();
@@ -30,18 +67,18 @@ export function insertText(before: string, after = "") {
 
 export function handleKeyDown(e: KeyboardEvent) {
   if (e.ctrlKey || e.metaKey) {
-    const ui = useUIStore.getState();
-    const aiUI = useAIUIStore.getState();
+    const u = ui();
+    const a = aiUI();
     if (e.key === "k") {
       e.preventDefault();
       insertText("[", "](url)");
     } else if (e.key === "f") {
       e.preventDefault();
-      ui.setSearch(!ui.showSearch);
-      if (!ui.showSearch) aiUI.setSearchIndex(-1);
+      u.setSearch(!u.showSearch);
+      if (!u.showSearch) a.setSearchIndex(-1);
     } else if (e.key === "/") {
       e.preventDefault();
-      aiUI.setShowShortcuts(!aiUI.showShortcuts);
+      a.setShowShortcuts(!a.showShortcuts);
     }
   }
 }
@@ -67,7 +104,7 @@ export function applyContent(content: string, method: "append" | "insert" | "rep
       );
       break;
   }
-  useUIStore.getState().setAIAssistant(false);
+  ui().setAIAssistant(false);
 }
 
 export async function handleAiAction(actionId: string, customInstruction?: string) {
@@ -124,28 +161,27 @@ export async function handleAiAction(actionId: string, customInstruction?: strin
     prompt += `\n\nAdditional Instruction: ${customInstruction}`;
   }
 
-  const ai = useAIStore.getState();
-  const aiUI = useAIUIStore.getState();
+  const a = ai();
+  const aUI = aiUI();
 
-  aiUI.setAiPrompt(prompt);
+  aUI.setAiPrompt(prompt);
   const userMessage: ChatMessage = {
     role: "user",
     parts: [{ text: prompt }],
   };
-  const historyWithUser = [...ai.chatHistory, userMessage];
-  ai.setChatHistory(historyWithUser);
-  aiUI.setAiPrompt("");
-  ai.setGenerating(true);
-  ai.setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "" }] }]);
+  const historyWithUser = [...a.chatHistory, userMessage];
+  a.setChatHistory(historyWithUser);
+  aUI.setAiPrompt("");
+  a.setGenerating(true);
+  a.setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "" }] }]);
 
   try {
-    let fullResponse = "";
     const embeddingOptions = getEmbeddingOptions();
 
     // Build stream buffer for smoother UI updates
     const streamBuffer = new StreamBuffer({
       onFlush: (text) => {
-        ai.setChatHistory((prev) => {
+        a.setChatHistory((prev) => {
           const next = [...prev];
           const last = next[next.length - 1];
           if (last && last.role === "model") {
@@ -160,14 +196,13 @@ export async function handleAiAction(actionId: string, customInstruction?: strin
     });
 
     await chatWithAI(historyWithUser, markdown, {
-      personalInstructions: ai.personalInstructions,
-      model: ai.serviceConfigs.chat.model,
-      provider: ai.serviceConfigs.chat.provider,
-      apiKeys: ai.apiKeys,
-      providerConfigs: ai.providerConfigs,
-      templateOverrides: ai.promptTemplates,
+      personalInstructions: a.personalInstructions,
+      model: a.serviceConfigs.chat.model,
+      provider: a.serviceConfigs.chat.provider,
+      apiKeys: a.apiKeys,
+      providerConfigs: a.providerConfigs,
+      templateOverrides: a.promptTemplates,
       onChunk: (chunk) => {
-        fullResponse += chunk;
         streamBuffer.push(chunk);
       },
       cursorContext: editor.getCursorContext() || "",
@@ -177,7 +212,7 @@ export async function handleAiAction(actionId: string, customInstruction?: strin
   } catch (error) {
     console.error("AI Action failed:", error);
     const errorMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
-    ai.setChatHistory((prev) => {
+    a.setChatHistory((prev) => {
       const next = [...prev];
       next[next.length - 1] = {
         role: "model",
@@ -186,12 +221,12 @@ export async function handleAiAction(actionId: string, customInstruction?: strin
       return next;
     });
   } finally {
-    ai.setGenerating(false);
+    a.setGenerating(false);
   }
 }
 
 export function handleFindNext() {
-  const aiUI = useAIUIStore.getState();
+  const aUI = aiUI();
   const {
     findText,
     matchCount,
@@ -200,11 +235,11 @@ export function handleFindNext() {
     isCaseSensitive,
     isWholeWord,
     searchIndex,
-  } = aiUI;
+  } = aUI;
   if (!findText || matchCount === 0) return;
 
   if (isSemantic) {
-    aiUI.setCurrentMatchIndex((currentMatchIndex % matchCount) + 1);
+    aUI.setCurrentMatchIndex((currentMatchIndex % matchCount) + 1);
     return;
   }
 
@@ -223,17 +258,17 @@ export function handleFindNext() {
     result = regex.exec(markdown);
   }
 
-  if (result) aiUI.setSearchIndex(result.index);
-  else aiUI.setSearchIndex(-1);
+  if (result) aUI.setSearchIndex(result.index);
+  else aUI.setSearchIndex(-1);
 }
 
 export function handleReplace() {
-  const aiUI = useAIUIStore.getState();
-  const { findText, replaceText, searchIndex } = aiUI;
+  const aUI = aiUI();
+  const { findText, replaceText, searchIndex } = aUI;
   if (!findText) return;
   const activePage = getActivePage();
   if (!activePage) return;
-  const { setPageContent } = useEditorStore.getState();
+  const { setPageContent } = stores().editor.getState();
   const markdown = activePage.content;
   const start = searchIndex;
   if (start !== -1) {
@@ -248,8 +283,8 @@ export function handleReplace() {
 }
 
 export function handleReplaceAll() {
-  const aiUI = useAIUIStore.getState();
-  const { findText, replaceText, matchCount, isCaseSensitive, isWholeWord } = aiUI;
+  const aUI = aiUI();
+  const { findText, replaceText, matchCount, isCaseSensitive, isWholeWord } = aUI;
   if (!findText || matchCount === 0) return;
 
   if (
@@ -259,7 +294,7 @@ export function handleReplaceAll() {
   ) {
     const activePage = getActivePage();
     if (!activePage) return;
-    const { setPageContent } = useEditorStore.getState();
+    const { setPageContent } = stores().editor.getState();
     const markdown = activePage.content;
     const flags = isCaseSensitive ? "g" : "gi";
     let pattern = findText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -271,7 +306,7 @@ export function handleReplaceAll() {
     getEditorRef(activePage.id)?.setMarkdown(newMarkdown);
 
     alert(`Successfully replaced ${matchCount} occurrence(s).`);
-    aiUI.setSearchIndex(-1);
+    aUI.setSearchIndex(-1);
   }
 }
 

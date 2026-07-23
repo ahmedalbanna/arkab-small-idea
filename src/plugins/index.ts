@@ -240,6 +240,9 @@ export function getPluginList(): {
 export { PluginRegistry } from "./registry";
 export { buildEditorSchema } from "./editor/schema";
 export { buildPluginContext, createCollectors } from "./context";
+export { setIntentHandler, emitIntent } from "./intents";
+export type { PluginIntent } from "./intents";
+export type { CommandAPI } from "./pluginAPI";
 export type {
   InkPlugin,
   PluginContext,

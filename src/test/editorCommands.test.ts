@@ -1,18 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { editorCommandsPlugin } from "../plugins/editorCommands";
 import type { EditorCommand, PluginContext } from "../plugins/types";
-import { useAIUIStore } from "../stores/aiUIStore";
 
 function buildContext() {
   const commands: EditorCommand[] = [];
   const toolbarItems: unknown[] = [];
   const dispatch = vi.fn();
+  const emitIntent = vi.fn();
   const commandBus = { dispatch, query: vi.fn() } as any;
   const ctx = {
     editor: { getView: () => null, isReady: () => false, focus: () => {} },
     commandBus,
     stores: {} as any,
     schema: {} as any,
+    emitIntent,
     registerProsePlugin: () => {},
     registerNodeView: () => {},
     registerToolbarItem: (i: unknown) => toolbarItems.push(i),
@@ -26,7 +27,7 @@ function buildContext() {
     commands,
     settings: [],
   } as unknown as PluginContext;
-  return { ctx, commands, toolbarItems, dispatch };
+  return { ctx, commands, toolbarItems, dispatch, emitIntent };
 }
 
 describe("editorCommands plugin", () => {
@@ -58,16 +59,15 @@ describe("editorCommands plugin", () => {
     }
   });
 
-  it("registers a toolbar item that opens the palette", () => {
-    const { ctx, toolbarItems } = buildContext();
+  it("registers a toolbar item that triggers the showCommandPalette intent", () => {
+    const { ctx, toolbarItems, emitIntent } = buildContext();
     editorCommandsPlugin.init(ctx);
     const item = toolbarItems.find((i) => (i as any).id === "command-palette") as any;
     expect(item).toBeTruthy();
     expect(item.label).toBe("Command Palette");
-    // Invoking it flips the palette open in the shared UI store.
+    // Invoking it emits a UI intent instead of touching the store directly.
     item.onClick(ctx);
-    expect(useAIUIStore.getState().commandPaletteOpen).toBe(true);
-    useAIUIStore.getState().setCommandPaletteOpen(false);
+    expect(emitIntent).toHaveBeenCalledWith({ type: "showCommandPalette" });
   });
 
   it("formatting commands dispatch to the bus with the right format", () => {

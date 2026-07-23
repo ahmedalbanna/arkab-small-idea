@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { editorUIPlugin } from "../plugins/editorUI";
 import { aiPlugin, selectBlock, setAiActionHandler, runAiAction } from "../plugins/ai";
 import { useAIUIStore } from "../stores/aiUIStore";
+import { useUIStore } from "../stores/uiStore";
 import type { PluginContext } from "../plugins/types";
 import type { Plugin } from "prosemirror-state";
 import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
@@ -23,7 +24,7 @@ function fakeContext(): PluginContext {
   return {
     editor: { getView: () => null, isReady: () => false, focus: () => {} },
     commandBus: defaultEditorCommandBus,
-    stores: {} as any,
+    stores: { aiUI: useAIUIStore, ui: useUIStore } as any,
     schema: {} as any,
     registerProsePlugin: () => {},
     registerNodeView: () => {},
@@ -32,6 +33,7 @@ function fakeContext(): PluginContext {
     registerOverlay: () => {},
     registerSetting: () => {},
     registerHost: () => {},
+    emitIntent: () => {},
     editorPlugins: [],
     nodeViews: {},
     toolbarItems: [],
@@ -61,8 +63,8 @@ describe("editorUI plugin", () => {
       registerProsePlugin: (p: any) => registered.push(p),
     };
     editorUIPlugin.init(ctx);
-    // side menu, context menu, bubble menu, tts highlight
-    expect(resolve(registered).length).toBe(4);
+    // side menu, context menu, bubble menu, active formats, tts highlight
+    expect(resolve(registered).length).toBe(5);
   });
 
   it("dispatches side menu state to the store on mousemove", () => {

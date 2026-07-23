@@ -8,7 +8,11 @@ import { useMediaQuery } from "./lib/utils";
 import type { EditorRef } from "./components/ProseMirrorEditor";
 import { useEditorStore } from "./stores/editorStore";
 import { useUIStore } from "./stores/uiStore";
+import { useAIUIStore } from "./stores/aiUIStore";
 import { useSettingsStore } from "./stores/settingsStore";
+import { setIntentHandler } from "./plugins/intents";
+import { runAiAction } from "./plugins/ai";
+import type { AIAssistantAction } from "./services/aiService";
 import type { LoadedPlugins } from "./plugins";
 import { PluginProvider, type AppApi } from "./plugins/appContext";
 import { setEditorRefs } from "./plugins/editorAccess";
@@ -105,6 +109,55 @@ export default function App() {
     root.style.setProperty("--editor-line-height", lineHeight.toString());
     root.style.setProperty("--editor-max-width", maxWidth);
   }, [theme, fontFamily, fontSize, lineHeight, maxWidth]);
+
+  // Bridge the intent system to actual store mutations. Every plugin emits
+  // intents via emitIntent(); this handler translates them into concrete
+  // store calls so plugins never import stores directly.
+  useEffect(() => {
+    setIntentHandler((intent) => {
+      const aiUI = useAIUIStore.getState();
+      const ui = useUIStore.getState();
+      switch (intent.type) {
+        case "showCommandPalette":
+          aiUI.setCommandPaletteOpen(true);
+          break;
+        case "hideCommandPalette":
+          aiUI.setCommandPaletteOpen(false);
+          break;
+        case "showSearch":
+          ui.setSearch(true);
+          break;
+        case "hideSearch":
+          ui.setSearch(false);
+          break;
+        case "showShortcuts":
+          aiUI.setShowShortcuts(true);
+          break;
+        case "hideShortcuts":
+          aiUI.setShowShortcuts(false);
+          break;
+        case "showQuickCommands":
+          ui.setQuickCommands(true);
+          break;
+        case "hideQuickCommands":
+          ui.setQuickCommands(false);
+          break;
+        case "showTTS":
+          ui.setTTS(true);
+          break;
+        case "hideTTS":
+          ui.setTTS(false);
+          break;
+        case "runAIAction":
+          runAiAction(intent.actionId as AIAssistantAction, intent.customInstruction);
+          break;
+        case "toggleAIAssistant":
+          ui.setAIAssistant((prev) => !prev);
+          break;
+      }
+    });
+    return () => setIntentHandler(null);
+  }, []);
 
   // Expose the live editors to UI plugins (overlays) via context.
   const appApi = useMemo<AppApi>(

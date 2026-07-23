@@ -27,6 +27,7 @@ function fakeContext(): PluginContext {
     registerOverlay: () => {},
     registerSetting: () => {},
     registerHost: () => {},
+    emitIntent: () => {},
     editorPlugins: [],
     nodeViews: {},
     toolbarItems: [],

@@ -1,21 +1,25 @@
 import { Command } from "lucide-react";
+import type { CommandAPI } from "../pluginAPI";
 import type { EditorCommand, InkPlugin, PluginContext } from "../types";
-import { useAIUIStore } from "../../stores/aiUIStore";
 
 /**
  * Core editing commands surfaced through the command palette (and any other
  * consumer of `context.commands`). Each command delegates to the editor's
- * command bus so the actual ProseMirror operation stays defined in one place
- * (the bus executor / `useFormatting`), avoiding a second implementation that
- * could drift from the toolbar and context menu.
+ * command bus so the actual ProseMirror operation stays defined in one place,
+ * avoiding a second implementation that could drift from the toolbar and
+ * context menu.
+ *
+ * Receives a narrow `CommandAPI` (not the full `PluginContext`) so callbacks
+ * can only dispatch editor actions, read stores, and emit UI intents — not
+ * register new plugins or node views.
  */
 function formatCommand(id: string, label: string, format: string, key?: string): EditorCommand {
   return {
     id,
     label,
     key,
-    run: (ctx: PluginContext) => {
-      ctx.commandBus.dispatch({ type: "format", format });
+    run: (api: CommandAPI) => {
+      api.commandBus.dispatch({ type: "format", format });
       return true;
     },
   };
@@ -56,8 +60,8 @@ export const editorCommandsPlugin: InkPlugin = {
       id: "undo",
       label: "Undo",
       key: "Mod-z",
-      run: (c) => {
-        c.commandBus.dispatch({ type: "undo" });
+      run: (api) => {
+        api.commandBus.dispatch({ type: "undo" });
         return true;
       },
     });
@@ -65,8 +69,8 @@ export const editorCommandsPlugin: InkPlugin = {
       id: "redo",
       label: "Redo",
       key: "Mod-y",
-      run: (c) => {
-        c.commandBus.dispatch({ type: "redo" });
+      run: (api) => {
+        api.commandBus.dispatch({ type: "redo" });
         return true;
       },
     });
@@ -77,8 +81,8 @@ export const editorCommandsPlugin: InkPlugin = {
       icon: Command,
       label: "Command Palette",
       group: "editor",
-      onClick: () => {
-        useAIUIStore.getState().setCommandPaletteOpen(true);
+      onClick: (api) => {
+        api.emitIntent({ type: "showCommandPalette" });
       },
     });
   },

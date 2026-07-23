@@ -12,9 +12,12 @@ import type { EditorView, NodeViewConstructor } from "prosemirror-view";
 import type { ComponentType } from "react";
 
 import type { EditorCommandBus } from "./editorCommandBus";
+import type { CommandAPI } from "./pluginAPI";
+import type { PluginIntent } from "./intents";
 import type { useEditorStore } from "../stores/editorStore";
 import type { useUIStore } from "../stores/uiStore";
 import type { useAIStore } from "../stores/aiStore";
+import type { useAIUIStore } from "../stores/aiUIStore";
 import type { useSettingsStore } from "../stores/settingsStore";
 
 export type LucideIcon = ComponentType<{ className?: string }>;
@@ -25,6 +28,8 @@ export interface AppStores {
   ui: typeof useUIStore;
   ai: typeof useAIStore;
   settings: typeof useSettingsStore;
+  /** AI + editor UI store (menus, search state, AI panels). */
+  aiUI: typeof useAIUIStore;
 }
 
 /**
@@ -67,8 +72,12 @@ export interface EditorCommand {
   /** ProseMirror keymap binding, e.g. `"Mod-b"`. Optional. */
   key?: string;
   label?: string;
-  /** Returns true if the command handled the event. */
-  run: (ctx: PluginContext) => boolean | void;
+  /**
+   * Execute the command. Receives a narrow `CommandAPI` instead of the full
+   * `PluginContext` so callbacks can only dispatch editor actions, read stores,
+   * and emit UI intents — not register new plugins or node views.
+   */
+  run: (api: CommandAPI) => boolean | void;
   /** Whether the command should appear in the slash menu. */
   slash?: boolean;
 }
@@ -80,7 +89,12 @@ export interface ToolbarItem {
   label: string;
   group?: string;
   order?: number;
-  onClick: (ctx: PluginContext) => void;
+  /**
+   * Handle a click on this toolbar item. Receives a narrow `CommandAPI`
+   * instead of the full `PluginContext` so it can only dispatch editor actions,
+   * read stores, and emit UI intents.
+   */
+  onClick: (api: CommandAPI) => void;
   isActive?: () => boolean;
   show?: () => boolean;
 }
@@ -118,6 +132,11 @@ export interface PluginContext {
   /** The editor's command bus — the single typed command language for the editor. */
   commandBus: EditorCommandBus;
   stores: AppStores;
+  /**
+   * Emit a UI intent to the app shell. Plugins should use this instead of
+   * calling store setters directly, keeping the plugin store-agnostic.
+   */
+  emitIntent(intent: PluginIntent): void;
   schema: Schema;
   registerProsePlugin(plugin: Plugin | (() => Plugin), key?: PluginKey): void;
   registerNodeView(reg: NodeViewRegistration): void;

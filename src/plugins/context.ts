@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { useEditorStore } from "../stores/editorStore";
 import { useUIStore } from "../stores/uiStore";
 import { useAIStore } from "../stores/aiStore";
+import { useAIUIStore } from "../stores/aiUIStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import type {
   EditorAPI,
@@ -16,6 +17,7 @@ import type {
   EditorCommand,
 } from "./types";
 import type { EditorCommandBus } from "./editorCommandBus";
+import { emitIntent } from "./intents";
 import { pluginLogger } from "./logger";
 import {
   editorCommandSchema,
@@ -95,6 +97,7 @@ export function buildPluginContext(
     ui: useUIStore,
     ai: useAIStore,
     settings: useSettingsStore,
+    aiUI: useAIUIStore,
   };
 
   // Declared with `let` so the registration hooks (defined inside the object
@@ -104,6 +107,7 @@ export function buildPluginContext(
     editor,
     commandBus,
     stores,
+    emitIntent,
     schema,
     registerProsePlugin(plugin, key) {
       collectors.prosePlugins.push({ plugin, key });

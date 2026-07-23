@@ -2,9 +2,12 @@ import { keymap } from "prosemirror-keymap";
 import { TextSelection } from "prosemirror-state";
 import type { EditorState, Transaction } from "prosemirror-state";
 import type { InkPlugin, PluginContext } from "../types";
+import type { CommandAPI } from "../pluginAPI";
 import type { AIAssistantAction } from "../../services/aiService";
 import { AIHost } from "./AIHost";
 import { useAIUIStore } from "../../stores/aiUIStore";
+import { setHandlerStores } from "./handlers";
+import { setEditorAccessStores } from "../editorAccess";
 
 /**
  * Selects the block containing the cursor (when the selection is collapsed) so
@@ -56,10 +59,16 @@ export const aiPlugin: InkPlugin = {
   name: "AI Assistant & Search",
   version: "1.0.0",
   init(ctx: PluginContext) {
+    // Inject store access so handlers/editorAccess don't import stores directly
+    setHandlerStores(ctx.stores);
+    setEditorAccessStores(ctx.stores);
+
     ctx.registerHost(AIHost);
 
-    // AI editing actions surfaced in the command palette. Each acts on the
-    // current selection via the same handler the toolbar/keymap use.
+    // AI editing actions surfaced in the command palette. Each emits a UI intent
+    // instead of calling runAiAction directly, keeping the plugin store-agnostic.
+    // Keymap handlers (below) still use runAiAction() since they are ProseMirror
+    // callbacks without access to CommandAPI.
     for (const [id, label, action] of [
       ["ai-improve", "AI: Improve Writing", "improve"],
       ["ai-fix-grammar", "AI: Fix Grammar", "fix-grammar"],
@@ -70,8 +79,8 @@ export const aiPlugin: InkPlugin = {
       ctx.registerCommand({
         id,
         label,
-        run: () => {
-          runAiAction(action);
+        run: (api: CommandAPI) => {
+          api.emitIntent({ type: "runAIAction", actionId: action });
           return true;
         },
       });
