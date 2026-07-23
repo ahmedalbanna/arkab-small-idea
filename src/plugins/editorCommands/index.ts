@@ -49,14 +49,15 @@ export const editorCommandsPlugin: InkPlugin = {
     ctx.registerCommand(formatCommand("alignRight", "Align Right", "alignRight"));
     ctx.registerCommand(formatCommand("alignJustify", "Justify", "alignJustify"));
 
-    // History — routed through the bus so undo/redo respects the recorded
-    // command history (including plugin-driven mutations).
+    // History — routed through the bus as action types that delegate to PM's
+    // native history (same queue as Mod-z / Mod-y keymaps), so the command
+    // palette "Undo" and the keyboard shortcut share one undo stack.
     ctx.registerCommand({
       id: "undo",
       label: "Undo",
       key: "Mod-z",
       run: (c) => {
-        c.commandBus.undo();
+        c.commandBus.dispatch({ type: "undo" });
         return true;
       },
     });
@@ -65,7 +66,7 @@ export const editorCommandsPlugin: InkPlugin = {
       label: "Redo",
       key: "Mod-y",
       run: (c) => {
-        c.commandBus.redo();
+        c.commandBus.dispatch({ type: "redo" });
         return true;
       },
     });

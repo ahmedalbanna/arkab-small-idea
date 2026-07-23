@@ -13,7 +13,6 @@ import {
   getTextWithPositions,
   getCursorContext,
 } from "./operations/query";
-import { applyUndo, applyRedo } from "./operations/history";
 import { noopStorage, type CoreConfig, type Draft, type StorageAdapter } from "./types";
 import { countWords } from "./util/words";
 
@@ -119,21 +118,19 @@ export class CoreEditor {
   }
 
   /**
-   * Undo the most recent change. Uses ProseMirror's native history, which
-   * tracks every transaction applied via `apply` (text, marks, markdown
-   * replacements, …) so a single `undo` reverts correctly regardless of the
-   * command type. `bus.undo()` remains available for callers that specifically
-   * want the recorded command-history semantics.
+   * Undo the most recent change. Routes through the bus to the executor,
+   * which delegates to ProseMirror's native history (`prosemirror-history`
+   * plugin). This ensures every mutation — whether from the keyboard shortcut
+   * (`Mod-z` → PM keymap → PM history) or from a named command (`undo`
+   * action via bus) — goes through ProseMirror's single undo stack.
    */
   undo(): void {
-    const tr = applyUndo(this._state);
-    if (tr) this.apply(tr);
+    this.bus.dispatch({ type: "undo" });
   }
 
   /** Redo the most recently undone change (native history). */
   redo(): void {
-    const tr = applyRedo(this._state);
-    if (tr) this.apply(tr);
+    this.bus.dispatch({ type: "redo" });
   }
 
   // --- Convenience queries -------------------------------------------------

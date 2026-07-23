@@ -7,9 +7,7 @@ function buildContext() {
   const commands: EditorCommand[] = [];
   const toolbarItems: unknown[] = [];
   const dispatch = vi.fn();
-  const undo = vi.fn();
-  const redo = vi.fn();
-  const commandBus = { dispatch, undo, redo, query: vi.fn() } as any;
+  const commandBus = { dispatch, query: vi.fn() } as any;
   const ctx = {
     editor: { getView: () => null, isReady: () => false, focus: () => {} },
     commandBus,
@@ -28,7 +26,7 @@ function buildContext() {
     commands,
     settings: [],
   } as unknown as PluginContext;
-  return { ctx, commands, toolbarItems, dispatch, undo, redo };
+  return { ctx, commands, toolbarItems, dispatch };
 }
 
 describe("editorCommands plugin", () => {
@@ -87,12 +85,12 @@ describe("editorCommands plugin", () => {
     });
   });
 
-  it("undo/redo commands delegate to the bus history", () => {
-    const { ctx, commands, undo, redo } = buildContext();
+  it("undo/redo commands dispatch action types to the bus", () => {
+    const { ctx, commands, dispatch } = buildContext();
     editorCommandsPlugin.init(ctx);
     commands.find((c) => c.id === "undo")!.run(ctx);
-    expect(undo).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith({ type: "undo" });
     commands.find((c) => c.id === "redo")!.run(ctx);
-    expect(redo).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith({ type: "redo" });
   });
 });

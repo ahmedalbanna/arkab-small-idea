@@ -9,15 +9,13 @@ function mockExecutor(run?: (a: EditorCommandAction) => EditorCommandResult): {
   run: ReturnType<typeof vi.fn<(a: EditorCommandAction) => EditorCommandResult>>;
 } {
   const fn = vi.fn<(a: EditorCommandAction) => EditorCommandResult>(
-    run ??
-      ((a: EditorCommandAction) =>
-        a.type === "setMarkdown" ? { inverse: { type: "setMarkdown", content: "BEFORE" } } : {}),
+    run ?? ((_a: EditorCommandAction) => ({})),
   );
   return { run: fn };
 }
 
-describe("EditorCommandBus", () => {
-  it("dispatch routes to the executor and records undoable commands", () => {
+describe("EditorCommandBus (Bus-Centric)", () => {
+  it("dispatch routes to the executor", () => {
     const { run } = mockExecutor();
     const bus = new EditorCommandBus();
     bus.setExecutor({ run });
@@ -26,8 +24,6 @@ describe("EditorCommandBus", () => {
       type: "setMarkdown",
       content: "# Hi",
     });
-    expect(bus.canUndo).toBe(true);
-    expect(bus.canRedo).toBe(false);
   });
 
   it("query returns the executor's value", () => {
@@ -38,69 +34,30 @@ describe("EditorCommandBus", () => {
     expect(bus.query<string>({ type: "getHtml" })).toBe("<p>x</p>");
   });
 
-  it("undo replays the inverse, redo replays the original (LIFO ordering)", () => {
-    const types: string[] = [];
+  it('dispatch forwards "undo" action type to the executor', () => {
+    const { run } = mockExecutor();
     const bus = new EditorCommandBus();
-    bus.setExecutor({
-      run: (a) => {
-        types.push(a.type);
-        if (a.type === "setMarkdown")
-          return { inverse: { type: "setMarkdown", content: "BEFORE" } };
-        return {};
-      },
-    });
-
-    bus.dispatch({ type: "setMarkdown", content: "ONE" });
-    bus.dispatch({ type: "setMarkdown", content: "TWO" });
-
-    bus.undo(); // inverse of TWO
-    bus.undo(); // inverse of ONE
-    bus.redo(); // re-run ONE
-    bus.redo(); // re-run TWO
-
-    expect(types).toEqual([
-      "setMarkdown", // dispatch ONE
-      "setMarkdown", // dispatch TWO
-      "setMarkdown", // undo TWO (inverse)
-      "setMarkdown", // undo ONE (inverse)
-      "setMarkdown", // redo ONE
-      "setMarkdown", // redo TWO
-    ]);
-    expect(bus.canRedo).toBe(false); // redo stack exhausted
-    expect(bus.canUndo).toBe(true); // both back in undo stack
+    bus.setExecutor({ run });
+    bus.dispatch({ type: "undo" });
+    expect(run).toHaveBeenCalledWith({ type: "undo" });
   });
 
-  it("dispatching a new command after undo clears the redo stack", () => {
+  it('dispatch forwards "redo" action type to the executor', () => {
+    const { run } = mockExecutor();
     const bus = new EditorCommandBus();
-    bus.setExecutor({
-      run: () => ({ inverse: { type: "setMarkdown", content: "" } }),
-    });
-
-    bus.dispatch({ type: "setMarkdown", content: "A" });
-    bus.dispatch({ type: "setMarkdown", content: "B" });
-    bus.undo(); // back to A
-    expect(bus.canRedo).toBe(true);
-
-    bus.dispatch({ type: "setMarkdown", content: "C" }); // new branch
-    expect(bus.canRedo).toBe(false); // redo stack cleared
+    bus.setExecutor({ run });
+    bus.dispatch({ type: "redo" });
+    expect(run).toHaveBeenCalledWith({ type: "redo" });
   });
 
-  it("non-undoable commands (no inverse) are not recorded", () => {
+  it("non-undoable commands (no inverse) are dispatched without error", () => {
+    const { run } = mockExecutor(() => ({}));
     const bus = new EditorCommandBus();
-    bus.setExecutor({ run: () => ({}) }); // never returns an inverse
-
+    bus.setExecutor({ run });
     bus.dispatch({ type: "format", format: "bold" });
     bus.dispatch({ type: "focus" });
-    expect(bus.canUndo).toBe(false);
-  });
-
-  it("clearHistory resets both undo and redo stacks", () => {
-    const bus = new EditorCommandBus();
-    bus.setExecutor({ run: () => ({ inverse: { type: "setMarkdown", content: "" } }) });
-    bus.dispatch({ type: "setMarkdown", content: "x" });
-    bus.clearHistory();
-    expect(bus.canUndo).toBe(false);
-    expect(bus.canRedo).toBe(false);
+    // No properties to assert beyond the calls themselves
+    expect(run).toHaveBeenCalledTimes(2);
   });
 
   it("dispatch / query are safe no-ops without an executor", () => {

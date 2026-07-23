@@ -17,6 +17,7 @@ import {
   getCursorContext,
 } from "../operations/query";
 import { getHtml } from "../operations/html";
+import { applyUndo, applyRedo } from "../operations/history";
 
 /** Find the document position of the first occurrence of `text`. */
 function findTextPosition(state: EditorState, text: string): number | null {
@@ -48,10 +49,12 @@ function findTextPosition(state: EditorState, text: string): number | null {
  *
  * Mutations are applied through `core.apply(tr)` so they flow through the
  * core's history + listener pipeline exactly like any other change. Queries
- * read the live state and return a value without mutating it. `inverse` values
- * (for markdown-replacement commands) are returned so the command bus can
- * record them; the core's own `undo`/`redo` use ProseMirror's native history,
- * which already tracks every transaction applied here.
+ * read the live state and return a value without mutating it.
+ *
+ * Undo/redo use ProseMirror's native history (`prosemirror-history` plugin),
+ * which tracks every transaction applied via `core.apply`. Both the keyboard
+ * shortcut (`Mod-z` → PM keymap) and the command-palette "Undo" (`bus.dispatch`
+ * → executor) reach the same history queue, eliminating the dual-undo problem.
  */
 export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor {
   return {
@@ -64,7 +67,7 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
           return {};
 
         case "format": {
-          const tr = applyFormat(state, action.format, core.schema, core.io);
+          const tr = applyFormat(state, action.format, core.schema, core.io, action.attrs);
           if (tr) core.apply(tr);
           return {};
         }
@@ -143,6 +146,54 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
           return { inverse };
         }
 
+        // --- Undo / Redo via PM native history ---
+        case "undo": {
+          const tr = applyUndo(core.getState());
+          if (tr) core.apply(tr);
+          return {};
+        }
+
+        case "redo": {
+          const tr = applyRedo(core.getState());
+          if (tr) core.apply(tr);
+          return {};
+        }
+
+        // --- Selection & Range ---
+        case "setSelection": {
+          const max = core.getState().doc.content.size;
+          const from = Math.min(action.from, max);
+          const to = Math.min(action.to, max);
+          const tr = core
+            .getState()
+            .tr.setSelection(TextSelection.create(core.getState().doc, from, to));
+          core.apply(tr);
+          return {};
+        }
+
+        case "deleteRange": {
+          const max = core.getState().doc.content.size;
+          const from = Math.min(action.from, max);
+          const to = Math.min(action.to, max);
+          const tr = core.getState().tr.delete(from, to);
+          core.apply(tr);
+          return {};
+        }
+
+        case "insertNodeAt": {
+          const { schema } = core;
+          const nodeType = schema.nodes[action.nodeName];
+          if (!nodeType) return {};
+          const node = nodeType.create(action.attrs);
+          const pos = action.pos ?? core.getState().selection.from;
+          const max = core.getState().doc.content.size;
+          const clampedPos = Math.min(pos, max);
+          const tr = core.getState().tr.insert(clampedPos, node);
+          core.apply(tr);
+          return {};
+        }
+
+        // --- Queries ---
         case "getSelectedText":
           return { value: getSelectedText(state) };
 

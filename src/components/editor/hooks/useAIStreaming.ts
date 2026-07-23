@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
-import { TextSelection } from "prosemirror-state";
-import { setBlockType } from "prosemirror-commands";
-import type { Schema, Node } from "prosemirror-model";
+import type { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { draftHighlightKey } from "../../../lib/draftPlugin";
 import { processAIAction, type AIAssistantAction } from "../../../services/aiService";
@@ -9,6 +7,7 @@ import { setAiActionHandler } from "../../../plugins/ai";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { PluginContext, EditorCommand } from "../../../plugins/types";
 import type { SlashMenuState } from "../../../stores/aiUIStore";
+import { useEditorCommandBus } from "../../../plugins/editorCommandContext";
 
 /** Snapshot of the AI draft currently being generated / reviewed. */
 export interface AIDraftState {
@@ -64,7 +63,6 @@ export function getCursorContextInternal(viewRef: RefObject<EditorView | null>):
 interface AIStreamingParams {
   viewRef: RefObject<EditorView | null>;
   containerRef: RefObject<HTMLDivElement | null>;
-  editorSchema: Schema;
   parseMarkdownDoc: (md: string) => Node;
   /** Latest props snapshot, kept in a ref to avoid stale closures. */
   latestProps: MutableRefObject<any>;
@@ -88,7 +86,6 @@ interface AIStreamingParams {
 export function useAIStreaming({
   viewRef,
   containerRef,
-  editorSchema,
   parseMarkdownDoc,
   latestProps,
   loaded,
@@ -98,6 +95,7 @@ export function useAIStreaming({
   handleFormat,
   onImageUploadRequest,
 }: AIStreamingParams) {
+  const bus = useEditorCommandBus();
   // AI Draft State
   const [aiDraft, setAiDraft] = useState<AIDraftState | null>(null);
   const aiDraftRef = useRef(aiDraft);
@@ -168,20 +166,26 @@ export function useAIStreaming({
           fullResponse += chunk;
 
           if (viewRef.current) {
-            const { state: curState, dispatch: curDispatch } = viewRef.current;
+            // Content mutation through the bus (Bus-Centric Architecture).
+            // The executor's streamMarkdown handler manages core.streamRange
+            // to accumulate chunks correctly.
+            const isNew = fullResponse.length === chunk.length;
+            bus.dispatch({ type: "streamMarkdown", content: fullResponse, isNew });
+
+            // Recalculate streamEnd from the fresh state for the UI.
             const parsed = parseMarkdownDoc(fullResponse);
-
-            const tr = curState.tr.replaceWith(streamStart, streamEnd, parsed.content);
-
             streamEnd = streamStart + parsed.content.size;
 
-            tr.setMeta(draftHighlightKey, {
-              from: streamStart,
-              to: streamEnd,
-              isGenerating: true,
-            });
-            tr.scrollIntoView();
-            curDispatch(tr);
+            // UI-only decoration (draft highlight) — not a document mutation,
+            // so it stays at the view level as a ProseMirror decoration.
+            const decoTr = viewRef.current.state.tr
+              .setMeta(draftHighlightKey, {
+                from: streamStart,
+                to: streamEnd,
+                isGenerating: true,
+              })
+              .scrollIntoView();
+            viewRef.current.dispatch(decoTr);
 
             setAiDraft((prev) =>
               prev
@@ -201,18 +205,17 @@ export function useAIStreaming({
       });
 
       if (viewRef.current) {
-        const { state: finalState, dispatch: finalDispatch } = viewRef.current;
-        const tr = finalState.tr;
-        tr.setMeta(draftHighlightKey, {
+        // Decoration-only update: clear the "generating" state on the
+        // highlight. The content was already streamed through the bus.
+        const decoTr = viewRef.current.state.tr.setMeta(draftHighlightKey, {
           from: streamStart,
           to: streamEnd,
           isGenerating: false,
         });
+        viewRef.current.dispatch(decoTr);
 
         const finalCoords = viewRef.current.coordsAtPos(streamEnd);
         const finalY = finalCoords.bottom - (editorRect?.top || 0);
-
-        finalDispatch(tr);
 
         setAiDraft((prev) =>
           prev
@@ -232,18 +235,18 @@ export function useAIStreaming({
         console.error("AI Action failed:", error);
         alert("Failed to process AI request. Check console for details.");
       }
+      // Restore original content via bus: set selection to the AI range,
+      // then replace it with the original text.
+      const restoreTo = aiDraftRef.current?.streamEnd ?? initialDraftState.to;
+      bus.dispatch({ type: "setSelection", from: initialDraftState.from, to: restoreTo });
+      bus.dispatch({
+        type: "replaceSelectionWithMarkdown",
+        markdown: initialDraftState.originalText,
+      });
+      // Clear the highlight decoration via view (UI-only).
       if (viewRef.current) {
-        const { state: finalState, dispatch: finalDispatch } = viewRef.current;
-        const tr = finalState.tr;
-
-        const parsed = parseMarkdownDoc(initialDraftState.originalText);
-        tr.replaceWith(
-          initialDraftState.from,
-          aiDraftRef.current?.streamEnd ?? initialDraftState.to,
-          parsed.content,
-        );
-        tr.setMeta(draftHighlightKey, null);
-        finalDispatch(tr);
+        const decoTr = viewRef.current.state.tr.setMeta(draftHighlightKey, null);
+        viewRef.current.dispatch(decoTr);
       }
       setAiDraft(null);
     } finally {
@@ -254,27 +257,26 @@ export function useAIStreaming({
   const handleAIActionDecision = (decision: AIDecision) => {
     if (!aiDraftRef.current || !viewRef.current) return;
     const draft = aiDraftRef.current;
-    const { state, dispatch } = viewRef.current;
-    const tr = state.tr;
 
-    tr.setMeta(draftHighlightKey, null); // clear highlight
+    // Clear the highlight decoration (UI-only).
+    let clearDeco = true;
 
     if (decision === "cancel") {
-      const parsed = parseMarkdownDoc(draft.originalText);
-      tr.replaceWith(draft.from, draft.streamEnd, parsed.content);
+      bus.dispatch({ type: "setSelection", from: draft.from, to: draft.streamEnd });
+      bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown: draft.originalText });
     } else if (decision === "append") {
-      const parsedOrg = parseMarkdownDoc(draft.originalText);
-      const parsedDraft = parseMarkdownDoc("\n\n" + draft.content);
-
-      tr.replaceWith(draft.from, draft.streamEnd, parsedOrg.content);
-
-      tr.insert(draft.from + parsedOrg.content.size, parsedDraft.content);
-      tr.scrollIntoView();
+      // Restore original, then append the draft below it.
+      bus.dispatch({ type: "setSelection", from: draft.from, to: draft.streamEnd });
+      bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown: draft.originalText });
+      bus.dispatch({ type: "insertText", before: "\n\n" + draft.content });
     } else if (decision === "retry") {
-      const parsedOrg = parseMarkdownDoc(draft.originalText);
-      tr.replaceWith(draft.from, draft.streamEnd, parsedOrg.content);
-      dispatch(tr);
+      // Replace the AI range with the original text, then restart.
+      bus.dispatch({ type: "setSelection", from: draft.from, to: draft.streamEnd });
+      bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown: draft.originalText });
+      clearDeco = false; // Keep decoration until the new generation starts
 
+      // Restart the AI action on the restored range.
+      const parsedOrg = parseMarkdownDoc(draft.originalText);
       handleAIAction(
         draft.action!,
         draft.originalText,
@@ -284,12 +286,14 @@ export function useAIStreaming({
         draft.customInstruction,
       );
       return;
-    } else if (decision === "replace") {
-      tr.setMeta("addToHistory", true);
-      tr.setMeta("ai-modification", true);
     }
+    // "replace" — keep the AI content as-is; no bus dispatch needed
+    // (the AI content is already in the document via streaming).
 
-    dispatch(tr);
+    if (clearDeco && viewRef.current) {
+      const decoTr = viewRef.current.state.tr.setMeta(draftHighlightKey, null);
+      viewRef.current.dispatch(decoTr);
+    }
     setAiDraft(null);
     viewRef.current.focus();
   };
@@ -303,7 +307,7 @@ export function useAIStreaming({
     const startPos = slashMenu.pos - 1;
     const finalStart = Math.max(0, Math.min(startPos, state.doc.content.size));
     const finalEnd = Math.max(finalStart, Math.min(endPos, state.doc.content.size));
-    viewRef.current.dispatch(state.tr.delete(finalStart, finalEnd));
+    bus.dispatch({ type: "deleteRange", from: finalStart, to: finalEnd });
     return finalStart;
   };
 
@@ -335,16 +339,11 @@ export function useAIStreaming({
           priorityTag = "(L)";
           break;
       }
-      const tr = afterDeleteState.tr.replaceSelectionWith(
-        editorSchema.text(`- [ ] ${priorityTag} `),
-      );
-      viewRef.current.dispatch(tr);
-    } else if (action === "code")
-      setBlockType(editorSchema.nodes.code_block)(afterDeleteState, viewRef.current.dispatch);
-    else if (action === "scribble") {
-      const node = editorSchema.nodes.scribble.create({ aspectRatio: 0.5 });
-      viewRef.current.dispatch(afterDeleteState.tr.replaceSelectionWith(node));
-    } else if (action === "tableify") {
+      bus.dispatch({ type: "insertText", before: `- [ ] ${priorityTag} ` });
+    } else if (action === "code") bus.dispatch({ type: "format", format: "code" });
+    else if (action === "scribble")
+      bus.dispatch({ type: "insertNodeAt", nodeName: "scribble", attrs: { aspectRatio: 0.5 } });
+    else if (action === "tableify") {
       handleFormat("tableify");
     } else if (action === "image") onImageUploadRequest?.();
     else if (action === "gallery") {
@@ -366,10 +365,7 @@ export function useAIStreaming({
       const end = depth > 0 ? resolvedPos.end(depth) : afterDeleteState.doc.content.size;
 
       try {
-        const trSelect = afterDeleteState.tr.setSelection(
-          TextSelection.create(afterDeleteState.doc, start, end),
-        );
-        viewRef.current.dispatch(trSelect);
+        bus.dispatch({ type: "setSelection", from: start, to: end });
         await handleAIAction(type);
       } catch (err) {
         console.error("Failed to set selection for AI action:", err);

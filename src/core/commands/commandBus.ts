@@ -8,17 +8,28 @@
  * sidebar, TTS, import) from the concrete editor instance and gives us a single
  * point through which commands can be recorded, intercepted and replayed.
  *
+ * In the Bus-Centric architecture, the bus is the single entry-point for all
+ * user-invoked (named) commands. Low-level ProseMirror mechanics (typing,
+ * backspace, input rules, drop/paste) dispatch through the view directly and
+ * reach `CoreEditor.apply` via `dispatchTransaction` — both paths converge
+ * on `core.apply` as the single source of truth.
+ *
+ * Undo/redo are unified through ProseMirror's native history plugin. The bus
+ * itself no longer maintains a dual undo stack (`past`/`future`). The `undo`
+ * and `redo` action types delegate to `prosemirror-history` through the
+ * executor, so the keyboard shortcut (Mod-z → PM keymap → PM history) and
+ * the command-palette "Undo" (bus → executor → PM history) route to the
+ * same queue.
+ *
  * Commands are split into two shapes:
  * - **Actions** (mutating): `focus`, `format`, `insert*`, `*Markdown`, `stream*`,
- *   `setTTSHighlight`, `scroll*`. These are dispatched and may be recorded in
- *   the undo history.
- * - **Queries** (read-only): `get*`. These return a value synchronously and are
- *   never recorded.
+ *   `setTTSHighlight`, `scroll*`, `undo`, `redo`. These are dispatched.
+ * - **Queries** (read-only): `get*`. These return a value synchronously.
  */
 export type EditorCommandAction =
   // --- Actions (mutating) ---
   | { type: "focus" }
-  | { type: "format"; format: string }
+  | { type: "format"; format: string; attrs?: Record<string, any> }
   | { type: "insertText"; before: string; after?: string }
   | { type: "insertImage"; src: string; alt?: string; title?: string }
   | {
@@ -32,6 +43,13 @@ export type EditorCommandAction =
   | { type: "scrollToText"; text: string }
   | { type: "scrollToPos"; pos: number }
   | { type: "streamMarkdown"; content: string; isNew?: boolean }
+  // --- Undo / Redo (delegated to PM native history) ---
+  | { type: "undo" }
+  | { type: "redo" }
+  // --- Selection & Range (AI streaming, editors) ---
+  | { type: "setSelection"; from: number; to: number }
+  | { type: "deleteRange"; from: number; to: number }
+  | { type: "insertNodeAt"; nodeName: string; attrs?: Record<string, any>; pos?: number }
   // --- Queries (read-only) ---
   | { type: "getSelectedText" }
   | { type: "getHtml" }
@@ -45,9 +63,9 @@ export interface EditorCommandResult {
   /** Return value for query commands. */
   value?: unknown;
   /**
-   * A command that undoes this one. When present, the bus records the pair in
-   * its history so `undo()`/`redo()` can replay it. Absent for non-undoable
-   * commands (e.g. `format`, `focus`, `scroll`).
+   * A command that undoes this one. Kept for backward compatibility (some
+   * callers still inspect it), but the bus no longer consumes it for its own
+   * undo/redo stack — all undo flows through ProseMirror's native history.
    */
   inverse?: EditorCommandAction | null;
 }
@@ -63,27 +81,16 @@ export interface EditorCommandExecutor {
   run(action: EditorCommandAction): EditorCommandResult;
 }
 
-interface HistoryEntry {
-  action: EditorCommandAction;
-  inverse: EditorCommandAction;
-}
-
 /**
- * Dispatches editor commands and records them so they can be undone/redone.
+ * Dispatches editor commands and routes them to the executor.
  *
- * Routing every mutation through `dispatch` (instead of calling editor methods
- * directly) is what makes undo/redo of commands possible: the executor returns
- * an `inverse` command for each mutating action, and the bus keeps a
- * last-in-first-out history of `{ action, inverse }` pairs. `undo()` runs the
- * inverse and `redo()` re-runs the original.
- *
- * The bus is transport-agnostic — it only knows about `EditorCommandExecutor`,
- * so it can be unit-tested with a fake executor and reused for any editor.
+ * In the Bus-Centric architecture the bus is transport-agnostic — it only
+ * knows about `EditorCommandExecutor`, so it can be unit-tested with a fake
+ * executor and reused for any editor. Undo/redo are handled through dedicated
+ * action types routed to ProseMirror's native history (see `executor.ts`).
  */
 export class EditorCommandBus {
   private executor: EditorCommandExecutor | null = null;
-  private past: HistoryEntry[] = [];
-  private future: HistoryEntry[] = [];
 
   /** Register (or clear with `null`) the live editor executor. */
   setExecutor(executor: EditorCommandExecutor | null): void {
@@ -93,47 +100,13 @@ export class EditorCommandBus {
   /** Execute a mutating command. No-op until an executor is registered. */
   dispatch(action: EditorCommandAction): void {
     if (!this.executor) return;
-    const { inverse } = this.executor.run(action);
-    if (inverse) {
-      this.past.push({ action, inverse });
-      this.future = [];
-    }
+    this.executor.run(action);
   }
 
   /** Execute a query command and return its value. `undefined` without an executor. */
   query<T = unknown>(action: EditorCommandAction): T | undefined {
     if (!this.executor) return undefined;
     return this.executor.run(action).value as T | undefined;
-  }
-
-  get canUndo(): boolean {
-    return this.past.length > 0;
-  }
-
-  get canRedo(): boolean {
-    return this.future.length > 0;
-  }
-
-  /** Revert the most recent undoable command by running its inverse. */
-  undo(): void {
-    const entry = this.past.pop();
-    if (!entry || !this.executor) return;
-    this.executor.run(entry.inverse);
-    this.future.push(entry);
-  }
-
-  /** Re-apply the most recently undone command. */
-  redo(): void {
-    const entry = this.future.pop();
-    if (!entry || !this.executor) return;
-    this.executor.run(entry.action);
-    this.past.push(entry);
-  }
-
-  /** Drop all recorded history (e.g. on document reset). */
-  clearHistory(): void {
-    this.past = [];
-    this.future = [];
   }
 }
 

@@ -7,7 +7,6 @@ import { EditorCommandBusProvider } from "../plugins/editorCommandContext";
 import ProseMirrorEditor from "../components/ProseMirrorEditor";
 import type { EditorRef } from "../components/ProseMirrorEditor";
 import { useSettingsStore } from "../stores/settingsStore";
-import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
 
 // The embedding service instantiates a `Worker` and `VectorStore` (IndexedDB)
 // at module load. Those browser APIs aren't available under the test DOM and
@@ -56,7 +55,6 @@ vi.mock("../services/embeddingService", () => {
 describe("Full editor mount + plugin load (integration)", () => {
   afterEach(() => {
     cleanup();
-    defaultEditorCommandBus.clearHistory();
     // Reset persisted plugin toggles so tests don't leak state into each other.
     useSettingsStore.setState({ disabledPlugins: [] });
   });

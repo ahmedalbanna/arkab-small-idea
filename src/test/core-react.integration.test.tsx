@@ -5,8 +5,6 @@ import { createRef } from "react";
 import ProseMirrorEditor from "../components/ProseMirrorEditor";
 import type { EditorRef } from "../components/ProseMirrorEditor";
 import type { LoadedPlugins } from "../plugins";
-import { defaultEditorCommandBus } from "../plugins/editorCommandBus";
-import { useAIUIStore } from "../stores/aiUIStore";
 
 // The embedding service instantiates a `Worker` at module load; stub it so the
 // editor's import graph evaluates without spinning up a real worker.
@@ -45,7 +43,6 @@ vi.mock("../services/embeddingService", () => {
 describe("CoreEditor <-> EditorView integration (Phase 6)", () => {
   afterEach(() => {
     cleanup();
-    defaultEditorCommandBus.clearHistory();
   });
 
   it("routes commands through core and keeps the view in sync", async () => {

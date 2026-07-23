@@ -50,7 +50,6 @@ vi.mock("../services/embeddingService", () => {
 describe("ProseMirrorEditor (mount + plugin loading)", () => {
   afterEach(() => {
     cleanup();
-    defaultEditorCommandBus.clearHistory();
   });
 
   it("loads plugins, builds the EditorView, and exposes a working API", async () => {
@@ -91,14 +90,12 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
     expect(headings[0].text).toBe("Hello");
 
     // --- EditorCommandBus wiring & undo integration -------------------------
-    // The setMarkdown call above went through the bus, so it recorded history.
-    expect(defaultEditorCommandBus.canUndo).toBe(true);
+    // The setMarkdown call above went through the bus, so PM history recorded it.
     const htmlBeforeUndo = ref.current?.getHtml() ?? "";
 
-    // Undo should restore the empty document (the "before" captured at
-    // setMarkdown time).
+    // Dispatch undo through the bus -> executor -> applyUndo.
     act(() => {
-      defaultEditorCommandBus.undo();
+      defaultEditorCommandBus.dispatch({ type: "undo" });
     });
     await waitFor(() => {
       const htmlAfterUndo = ref.current?.getHtml() ?? "";
@@ -107,7 +104,7 @@ describe("ProseMirrorEditor (mount + plugin loading)", () => {
 
     // Redo should re-apply the undone command.
     act(() => {
-      defaultEditorCommandBus.redo();
+      defaultEditorCommandBus.dispatch({ type: "redo" });
     });
     await waitFor(() => {
       const htmlAfterRedo = ref.current?.getHtml() ?? "";

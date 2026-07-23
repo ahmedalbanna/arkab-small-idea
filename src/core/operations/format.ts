@@ -30,7 +30,10 @@ const wrapInBlock = (type: any) => (state: EditorState, dispatch?: (tr: Transact
 /**
  * Apply a formatting action identified by `format` (the same strings the
  * toolbar/slash menu use: "bold", "italic", "h1"…"h3", "paragraph", "bullet",
- * "numbered", "quote", "alignLeft/Center/Right/Justify", "tableify").
+ * "numbered", "quote", "link", "alignLeft/Center/Right/Justify", "tableify").
+ *
+ * When present, `attrs` are passed to the mark command (e.g. `{ href }` for
+ * the `link` mark) or block-type command.
  *
  * Returns the transaction to apply, or `null` if the action did not change the
  * document (no-op).
@@ -40,6 +43,7 @@ export function applyFormat(
   format: string,
   schema: Schema,
   io: MarkdownIO,
+  attrs?: Record<string, any>,
 ): Transaction | null {
   const setAlign = (alignment: string): Transaction | null => {
     const { from, to } = state.selection;
@@ -87,6 +91,9 @@ export function applyFormat(
       return setAlign("justify");
     case "bullet":
       return runCommand(wrapInList(schema.nodes.bullet_list), state);
+    case "link":
+      if (!schema.marks.link) return null;
+      return runCommand(toggleMark(schema.marks.link, attrs ?? { href: "" }), state);
     case "tableify": {
       const { from, to } = state.selection;
       const selectedText = state.doc.textBetween(from, to, "\n");
