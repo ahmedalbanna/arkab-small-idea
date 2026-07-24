@@ -71,6 +71,7 @@ export interface EditorRef {
   insertText: (before: string, after?: string) => void;
   insertImage: (src: string, alt?: string, title?: string) => void;
   insertGallery: (srcs: string[]) => void;
+  insertScribble: () => void;
   appendMarkdown: (markdown: string) => void;
   replaceSelectionWithMarkdown: (markdown: string) => void;
   getSelectedText: () => string;

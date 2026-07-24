@@ -200,37 +200,6 @@ export function buildEditorSchema(extra?: SchemaContribution): Schema {
           return ["div", { class: "image-gallery", "data-layout": node.attrs.layout }, 0];
         },
       },
-      scribble: {
-        group: "block",
-        attrs: {
-          data: { default: null },
-          width: { default: "100%" },
-          aspectRatio: { default: 0.5 },
-        },
-        draggable: true,
-        selectable: true,
-        parseDOM: [
-          {
-            tag: "div.scribble-block",
-            getAttrs: (dom: any) => ({
-              data: dom.getAttribute("data-scribble"),
-              width: dom.style.width || "100%",
-              aspectRatio: parseFloat(dom.getAttribute("data-aspect") || "0.5"),
-            }),
-          },
-        ],
-        toDOM(node) {
-          return [
-            "div",
-            {
-              class: "scribble-block",
-              "data-scribble": node.attrs.data,
-              "data-aspect": node.attrs.aspectRatio,
-              style: `width: ${node.attrs.width}; position: relative;`,
-            },
-          ];
-        },
-      },
       diagram: diagramNodeSpec,
     });
 

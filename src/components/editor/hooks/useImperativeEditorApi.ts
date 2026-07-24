@@ -91,6 +91,12 @@ export function useImperativeEditorApi({
       insertText: (before, after) => bus.dispatch({ type: "insertText", before, after }),
       insertImage: (src, alt, title) => bus.dispatch({ type: "insertImage", src, alt, title }),
       insertGallery: (srcs) => bus.dispatch({ type: "insertGallery", srcs }),
+      insertScribble: () =>
+        bus.dispatch({
+          type: "insertNodeAt",
+          nodeName: "scribble",
+          attrs: { data: null, width: "100%", aspectRatio: 0.5 },
+        }),
       appendMarkdown: (markdown) => bus.dispatch({ type: "appendMarkdown", markdown }),
       replaceSelectionWithMarkdown: (markdown) =>
         bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown }),

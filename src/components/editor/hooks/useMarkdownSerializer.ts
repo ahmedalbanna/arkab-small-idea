@@ -7,6 +7,7 @@ import {
 } from "prosemirror-markdown";
 import type { Node, Schema } from "prosemirror-model";
 import { diagramTransform } from "../../../lib/markdown/diagramTransform";
+import { scribbleTokenGetAttrs } from "../../../core/serialization/scribbleTokens";
 import { buildEditorSchema } from "../../../plugins/editor/schema";
 import type { LoadedPlugins } from "../../../plugins";
 
@@ -126,29 +127,25 @@ export function useMarkdownSerializer(loaded: LoadedPlugins | null) {
   const editorSchema: Schema = loaded?.context.schema ?? buildEditorSchema();
 
   // Markdown parser — rebuilt only when the schema changes.
-  const editorParser = useMemo(
-    () =>
-      new MarkdownParser(editorSchema, tokenizer, {
-        ...((defaultMarkdownParser as any).tokens || {}),
-        s: { mark: "strike" },
-        strike: { mark: "strike" },
-        u: { mark: "underline" },
-        scribble: {
-          block: "scribble",
-          getAttrs: (tok: any) => {
-            const lines = tok.content.split("\n");
-            const aspectLine = lines.find((l: string) => l.startsWith("aspect:"));
-            const data = lines.find((l: string) => l.startsWith("data:image"));
-            return {
-              data: data || null,
-              aspectRatio: aspectLine ? parseFloat(aspectLine.split(":")[1]) : 0.5,
-            };
-          },
-        },
-        ...tableTokens,
-      }),
-    [editorSchema],
-  );
+  const editorParser = useMemo(() => {
+    const tokens: Record<string, any> = {
+      ...((defaultMarkdownParser as any).tokens || {}),
+      s: { mark: "strike" },
+      strike: { mark: "strike" },
+      u: { mark: "underline" },
+      ...tableTokens,
+    };
+
+    // Only register the scribble token handler when the schema has the node.
+    if (editorSchema.nodes.scribble) {
+      tokens.scribble = {
+        block: "scribble",
+        getAttrs: scribbleTokenGetAttrs,
+      };
+    }
+
+    return new MarkdownParser(editorSchema, tokenizer, tokens);
+  }, [editorSchema]);
 
   const parseMarkdownDoc = useCallback(
     (md: string): Node => {

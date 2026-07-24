@@ -5,13 +5,12 @@ describe("buildEditorSchema", () => {
   it("produces the core Ink & Quill schema without contributions", () => {
     const schema = buildEditorSchema();
 
-    // Core custom nodes
+    // Core custom nodes (scribble is now contributed by the scribble plugin)
     for (const name of [
       "paragraph",
       "heading",
       "image",
       "gallery",
-      "scribble",
       "diagram",
       "table",
       "table_row",

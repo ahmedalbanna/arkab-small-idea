@@ -5,6 +5,7 @@ import {
   MarkdownParser,
 } from "prosemirror-markdown";
 import type { Node, Schema } from "prosemirror-model";
+import { serializeScribble, scribbleTokenGetAttrs } from "./scribbleTokens";
 
 /**
  * Markdown serialization / parsing for the headless core.
@@ -82,14 +83,7 @@ export const editorSerializer = new MarkdownSerializer(
       state.renderContent(node);
       state.write("\n");
     },
-    scribble: (state, node) => {
-      state.write("\n```scribble\n");
-      state.write(`aspect: ${node.attrs.aspectRatio}\n`);
-      if (node.attrs.data) {
-        state.write(`${node.attrs.data}\n`);
-      }
-      state.write("```\n");
-    },
+    scribble: serializeScribble,
     diagram: (state, node) => {
       state.write("```" + (node.attrs.lang || "") + "\n");
       state.text(node.attrs.source || "", false);
@@ -143,15 +137,7 @@ export function buildMarkdownParser(schema: Schema): MarkdownParser {
   if (schema.nodes.scribble) {
     tokens.scribble = {
       block: "scribble",
-      getAttrs: (tok: any) => {
-        const lines = tok.content.split("\n");
-        const aspectLine = lines.find((l: string) => l.startsWith("aspect:"));
-        const data = lines.find((l: string) => l.startsWith("data:image"));
-        return {
-          data: data || null,
-          aspectRatio: aspectLine ? parseFloat(aspectLine.split(":")[1]) : 0.5,
-        };
-      },
+      getAttrs: scribbleTokenGetAttrs,
     };
   }
   if (

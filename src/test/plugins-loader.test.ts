@@ -47,7 +47,7 @@ describe("loadPlugins (phase 1 wiring)", () => {
     // resolved plugin context. The ai plugin contributes the "/ask-ai" slash
     // command; the status-bar plugin contributes its visibility setting.
     const toolbarIds = loaded.collectors.toolbarItems.map((t) => t.id).sort();
-    expect(toolbarIds).toEqual(["command-palette"]);
+    expect(toolbarIds).toEqual(["command-palette", "scribble"]);
 
     const slashIds = loaded.collectors.commands.filter((c) => c.slash).map((c) => c.id);
     expect(slashIds).not.toContain("ai-ask");
@@ -56,7 +56,7 @@ describe("loadPlugins (phase 1 wiring)", () => {
     expect(settingKeys).toContain("status-bar.visible");
 
     // The same contributions are exposed on the resolved PluginContext.
-    expect(loaded.context.toolbarItems).toHaveLength(1);
+    expect(loaded.context.toolbarItems).toHaveLength(2);
     expect(loaded.context.commands.some((c) => c.id === "ai-improve")).toBe(true);
     expect(loaded.context.commands.some((c) => c.id === "bold")).toBe(true);
     expect(loaded.context.settings.some((s) => s.pluginId === "status-bar")).toBe(true);

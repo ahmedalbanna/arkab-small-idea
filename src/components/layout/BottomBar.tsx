@@ -196,7 +196,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
             />
             <ToolbarButton
               icon={PenTool}
-              onClick={() => (editorRef as any)?.insertScribble()}
+              onClick={() => editorRef?.insertScribble()}
               label="Scribble"
             />
             <div className="w-px h-8 bg-minimal-border mx-1 shrink-0" />
