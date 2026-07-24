@@ -75,6 +75,8 @@ interface AIStreamingParams {
   /** Shared with the imperative API (`streamMarkdown`). */
   streamStartRef: MutableRefObject<number | null>;
   streamEndRef: MutableRefObject<number | null>;
+  /** Unique editor id, used to scope the AI action handler (fixes multi-editor). */
+  editorId: string;
 }
 
 /**
@@ -94,6 +96,7 @@ export function useAIStreaming({
   setBubbleMenu,
   handleFormat,
   onImageUploadRequest,
+  editorId,
 }: AIStreamingParams) {
   const bus = useEditorCommandBus();
   // AI Draft State
@@ -268,7 +271,7 @@ export function useAIStreaming({
     const draft = aiDraftRef.current;
 
     // Clear the highlight decoration (UI-only).
-    let clearDeco = true;
+    const clearDeco = true;
 
     if (decision === "cancel") {
       bus.dispatch(
@@ -300,7 +303,8 @@ export function useAIStreaming({
         { type: "replaceSelectionWithMarkdown", markdown: draft.originalText },
         { source: "ai" },
       );
-      clearDeco = false; // Keep decoration until the new generation starts
+      // clearDeco intentionally NOT set here — decoration stays visible while
+      // the retry generates new content.
 
       // Restart the AI action on the restored range.
       const parsedOrg = parseMarkdownDoc(draft.originalText);
@@ -418,6 +422,14 @@ export function useAIStreaming({
     cmd.run(loaded?.context as PluginContext);
   };
 
+  // Abort any in-flight AI stream on unmount (fixes A2).
+  useEffect(() => {
+    return () => {
+      aiDraft?.abortController?.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Bridge the inline AI draft handler to the `ai` plugin's keymap (which is
   // registered at the plugin level so it is removed when the plugin is
   // disabled). The handler is coupled to this component's local `aiDraft`
@@ -426,7 +438,7 @@ export function useAIStreaming({
   // eslint-disable-next-line react-hooks/refs
   handleAIActionRef.current = handleAIAction;
   useEffect(() => {
-    setAiActionHandler((a, ci) =>
+    setAiActionHandler(editorId, (a, ci) =>
       handleAIActionRef.current(
         a as AIAssistantAction,
         undefined,
@@ -436,8 +448,8 @@ export function useAIStreaming({
         ci,
       ),
     );
-    return () => setAiActionHandler(null);
-  }, []);
+    return () => setAiActionHandler(editorId, null);
+  }, [editorId]);
 
   return {
     aiDraft,

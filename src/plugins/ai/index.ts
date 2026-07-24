@@ -6,6 +6,7 @@ import type { CommandAPI } from "../pluginAPI";
 import type { AIAssistantAction } from "../../services/aiService";
 import { AIHost } from "./AIHost";
 import { useAIUIStore } from "../../stores/aiUIStore";
+import { useEditorStore } from "../../stores/editorStore";
 import { setHandlerStores } from "./handlers";
 import { setEditorAccessStores } from "../editorAccess";
 
@@ -36,13 +37,34 @@ export function selectBlock(state: EditorState, dispatch?: (tr: Transaction) => 
  * handler, matching the registry/context pattern used elsewhere.
  */
 export function setAiActionHandler(
+  editorId: string,
   handler: ((action: AIAssistantAction, customInstruction?: string) => void) | null,
 ): void {
-  useAIUIStore.getState().setAiActionHandler(handler);
+  useAIUIStore.getState().setAiActionHandler(editorId, handler);
 }
 
-export function runAiAction(action: AIAssistantAction, customInstruction?: string): void {
-  useAIUIStore.getState().aiActionHandler?.(action, customInstruction);
+export function runAiAction(
+  action: AIAssistantAction,
+  customInstruction?: string,
+  editorId?: string,
+): void {
+  const state = useAIUIStore.getState();
+  // When an editorId is explicitly provided, use that editor's handler.
+  if (editorId) {
+    state.aiActionHandlers[editorId]?.(action, customInstruction);
+    return;
+  }
+  // Otherwise, look up the handler for the currently focused page.
+  const focusedId = useEditorStore.getState().activeFocusedPageId;
+  if (focusedId && state.aiActionHandlers[focusedId]) {
+    state.aiActionHandlers[focusedId]?.(action, customInstruction);
+    return;
+  }
+  // Fallback: use any available handler (backward compat).
+  const handlers = Object.values(state.aiActionHandlers).filter(Boolean) as Array<
+    (action: AIAssistantAction, customInstruction?: string) => void
+  >;
+  handlers[0]?.(action, customInstruction);
 }
 
 /**

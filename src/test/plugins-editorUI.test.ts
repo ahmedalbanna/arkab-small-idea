@@ -47,7 +47,7 @@ function resolve(plugins: (Plugin | (() => Plugin))[]): Plugin[] {
 }
 
 afterEach(() => {
-  setAiActionHandler(null);
+  setAiActionHandler("test-editor", null);
   useAIUIStore.setState({
     sideMenu: { y: 0, show: false, pos: 0, editorId: "" },
     bubbleMenu: { x: 0, y: 0, show: false, editorId: "" },
@@ -204,12 +204,12 @@ describe("ai plugin keymap", () => {
 describe("inline draft bridge", () => {
   it("routes runAiAction to the registered handler and stops when cleared", () => {
     const handler = vi.fn();
-    setAiActionHandler(handler);
-    runAiAction("improve");
+    setAiActionHandler("test-editor", handler);
+    runAiAction("improve", undefined, "test-editor");
     expect(handler).toHaveBeenCalledWith("improve", undefined);
 
-    setAiActionHandler(null);
-    runAiAction("summarize");
+    setAiActionHandler("test-editor", null);
+    runAiAction("summarize", undefined, "test-editor");
     expect(handler).toHaveBeenCalledTimes(1);
   });
 });

@@ -92,6 +92,7 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
       exit={{ opacity: 0, scale: 0.95, y: -20 }}
       transition={{ duration: 0.4, ease: "circOut" }}
       onClick={() => setActiveFocusedPageId(id)}
+      data-page-id={id}
       className={cn(
         "flex-shrink-0 w-[calc(100vw-2rem)] md:w-full max-w-[850px] h-full bg-minimal-bg shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] rounded-xl border flex flex-col snap-start relative group me-1 md:me-4 transition-all duration-300 overflow-hidden",
         activeFocusedPageId === id
@@ -222,6 +223,25 @@ export const ActivePageEditor: React.FC<ActivePageEditorProps> = ({
                     const url = window.prompt("Enter Image URL:");
                     if (url && validateUrl(url)) {
                       editorRefs.current[id]?.insertImage(url, "Image");
+                    } else if (url) {
+                      window.alert("Invalid URL. Only http and https URLs are allowed.");
+                    }
+                  }}
+                  title={item.title!}
+                  icon={item.icon ? <item.icon className="w-3.5 h-3.5" /> : undefined}
+                />
+              );
+            }
+
+            // Link button prompts for URL before formatting (fixes F2)
+            if (item.type === "link") {
+              return (
+                <FormatButton
+                  key={item.type}
+                  onClick={() => {
+                    const url = window.prompt("Enter URL:");
+                    if (url && validateUrl(url)) {
+                      editorRefs.current[id]?.handleFormat("link", { href: url });
                     } else if (url) {
                       window.alert("Invalid URL. Only http and https URLs are allowed.");
                     }

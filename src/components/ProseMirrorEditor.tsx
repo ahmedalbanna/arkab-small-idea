@@ -80,7 +80,7 @@ export interface EditorRef {
   getTextWithPositions: () => { text: string; pos: number }[];
   getHeadings: () => { text: string; level: number; pos: number; id: string }[];
   setTTSHighlight: (range: { from: number; to: number } | null) => void;
-  handleFormat: (type: string) => void;
+  handleFormat: (type: string, attrs?: Record<string, any>) => void;
   getCursorContext: () => string;
   scrollToText: (text: string) => void;
   scrollToPos: (pos: number) => void;
@@ -275,6 +275,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       viewRef,
       core: loaded?.core,
       isUpdatingFromProps,
+      editorId: myEditorId,
     });
     const {
       aiDraft,
@@ -296,6 +297,7 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
       onImageUploadRequest,
       streamStartRef,
       streamEndRef,
+      editorId: myEditorId,
     });
 
     // Stable callback for the embedded AI toolbar — prevents React.memo from
@@ -398,14 +400,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
           }}
         />
 
-        <ContextMenu
-          contextMenu={contextMenu}
-          onClose={() => setContextMenu((prev) => ({ ...prev, show: false }))}
-          handleFormat={handleFormat}
-          handleAIAction={handleAIAction}
-          viewRef={viewRef}
-          editorSchema={editorSchema}
-        />
+        {contextMenu.editorId === myEditorId && (
+          <ContextMenu
+            contextMenu={contextMenu}
+            onClose={() => setContextMenu((prev) => ({ ...prev, show: false }))}
+            handleFormat={handleFormat}
+            handleAIAction={handleAIAction}
+            viewRef={viewRef}
+            editorSchema={editorSchema}
+          />
+        )}
 
         {commandPaletteOpen && (
           <CommandPalette

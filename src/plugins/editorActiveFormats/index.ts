@@ -26,35 +26,26 @@ export const editorActiveFormatsPlugin: InkPlugin = {
             update(view) {
               const { state } = view;
               const { from, to } = state.selection;
-
-              // When the selection is collapsed, clear formats (bubble menu
-              // will be hidden by editorMenus).
-              if (from === to) {
-                stores.aiUI.getState().setActiveFormats(editorId, {});
-                return;
-              }
-
               const { $from } = state.selection;
 
+              // For collapsed cursor: still show active marks at cursor
+              // via storedMarks/$from.marks(), and show the parent block type.
+              // The bubble menu may be hidden by editorMenus, but the format
+              // indicators in the per-page toolbar still need to reflect
+              // the state (fixes F1).
+              const activeMarks = from === to ? state.storedMarks || $from.marks() : null;
+
+              const hasMark = (markType: any) =>
+                activeMarks
+                  ? !!markType && markType.isInSet(activeMarks)
+                  : from !== to && !!markType && state.doc.rangeHasMark(from, to, markType);
+
               const formats: Record<string, boolean> = {
-                bold:
-                  state.doc.rangeHasMark(from, to, schema.marks.strong) ||
-                  (from === to &&
-                    !!schema.marks.strong.isInSet(state.storedMarks || $from.marks())),
-                italic:
-                  state.doc.rangeHasMark(from, to, schema.marks.em) ||
-                  (from === to && !!schema.marks.em.isInSet(state.storedMarks || $from.marks())),
-                underline:
-                  state.doc.rangeHasMark(from, to, schema.marks.underline) ||
-                  (from === to &&
-                    !!schema.marks.underline.isInSet(state.storedMarks || $from.marks())),
-                strike:
-                  state.doc.rangeHasMark(from, to, schema.marks.strike) ||
-                  (from === to &&
-                    !!schema.marks.strike.isInSet(state.storedMarks || $from.marks())),
-                code:
-                  state.doc.rangeHasMark(from, to, schema.marks.code) ||
-                  (from === to && !!schema.marks.code.isInSet(state.storedMarks || $from.marks())),
+                bold: hasMark(schema.marks.strong),
+                italic: hasMark(schema.marks.em),
+                underline: hasMark(schema.marks.underline),
+                strike: hasMark(schema.marks.strike),
+                code: hasMark(schema.marks.code),
                 h1: $from.parent.type.name === "heading" && $from.parent.attrs.level === 1,
                 h2: $from.parent.type.name === "heading" && $from.parent.attrs.level === 2,
                 h3: $from.parent.type.name === "heading" && $from.parent.attrs.level === 3,

@@ -133,6 +133,18 @@ export const useUIStore = create<UIState>()(
     {
       name: "ink-quill-ui-storage",
       storage: createJSONStorage(() => idbStorage),
+      // Only persist stable user preferences — exclude transient UI state like
+      // modal visibility, indexing status, and TTS highlight range (fixes F4).
+      partialize: (state) => ({
+        direction: state.direction,
+        showAIAssistant: state.showAIAssistant,
+        showSearch: state.showSearch,
+        showQuickCommands: state.showQuickCommands,
+        showTTS: state.showTTS,
+        ttsRate: state.ttsRate,
+        ttsPitch: state.ttsPitch,
+        ttsVoiceURI: state.ttsVoiceURI,
+      }),
     },
   ),
 );

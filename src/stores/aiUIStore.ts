@@ -117,8 +117,13 @@ interface AIUIState {
   // `useAIStreaming` hook (coupled to the editor's draft state) and is
   // published here so the `ai` plugin's keymap can invoke it without a module
   // global. `null` when no editor is mounted.
-  aiActionHandler: ((action: AIAssistantAction, customInstruction?: string) => void) | null;
+  // Now keyed by editorId so each editor has its own handler (fixes R1/R2).
+  aiActionHandlers: Record<
+    string,
+    ((action: AIAssistantAction, customInstruction?: string) => void) | null
+  >;
   setAiActionHandler: (
+    editorId: string,
     handler: ((action: AIAssistantAction, customInstruction?: string) => void) | null,
   ) => void;
 }
@@ -175,6 +180,9 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   slashMenu: { x: 0, y: 0, show: false, pos: 0, query: "", editorId: "" },
   setSlashMenu: (v) => set((s) => ({ slashMenu: typeof v === "function" ? v(s.slashMenu) : v })),
 
-  aiActionHandler: null,
-  setAiActionHandler: (handler) => set({ aiActionHandler: handler }),
+  aiActionHandlers: {},
+  setAiActionHandler: (editorId, handler) =>
+    set((s) => ({
+      aiActionHandlers: { ...s.aiActionHandlers, [editorId]: handler },
+    })),
 }));

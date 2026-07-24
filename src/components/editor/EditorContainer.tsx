@@ -37,16 +37,32 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
     .filter(Boolean) as Page[];
 
   const handleReorderActivePages = (newActivePages: Page[]) => {
-    const activeIndices = pages
-      .map((p, idx) => (activePageIds.includes(p.id) ? idx : -1))
-      .filter((idx) => idx !== -1);
-
-    const newPages = [...pages];
-    activeIndices.forEach((masterIdx, activeIdx) => {
-      newPages[masterIdx] = newActivePages[activeIdx];
-    });
-
-    reorderPages(newPages);
+    // Extract just the ids in the new order, preserving inactive pages'
+    // positions. This avoids clobbering concurrent edits on Page objects
+    // that may have changed between render and drop (fixes P3).
+    const newActiveIds = newActivePages.map((p) => p.id);
+    const inactivePages = pages.filter((p) => !activePageIds.includes(p.id));
+    // Reconstruct: insert inactive pages at their original positions
+    // relative to the active pages they were sandwiched between.
+    let inactiveIdx = 0;
+    const reorderedIds: string[] = [];
+    for (const id of newActiveIds) {
+      // Insert any inactive pages that originally came before this active page
+      while (
+        inactiveIdx < inactivePages.length &&
+        pages.indexOf(inactivePages[inactiveIdx]) < pages.findIndex((p) => p.id === id)
+      ) {
+        reorderedIds.push(inactivePages[inactiveIdx].id);
+        inactiveIdx++;
+      }
+      reorderedIds.push(id);
+    }
+    // Append remaining inactive pages
+    while (inactiveIdx < inactivePages.length) {
+      reorderedIds.push(inactivePages[inactiveIdx].id);
+      inactiveIdx++;
+    }
+    reorderPages(reorderedIds);
   };
 
   return (

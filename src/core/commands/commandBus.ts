@@ -94,8 +94,12 @@ export interface EditorCommandExecutor {
  * action types routed to ProseMirror's native history (see `executor.ts`).
  */
 export class EditorCommandBus {
-  private executor: EditorCommandExecutor | null = null;
+  /** Map of editorId → executor, plus a "default" key for backward compat. */
+  private executors = new Map<string, EditorCommandExecutor>();
   private auditTrail: CommandAuditTrail | null = null;
+
+  /** The "default" key used by legacy callers that don't specify an editorId. */
+  private static readonly DEFAULT_KEY = "default";
 
   /**
    * Create a command bus with optional audit trail.
@@ -111,13 +115,64 @@ export class EditorCommandBus {
     }
   }
 
-  /** Register (or clear with `null`) the live editor executor. */
+  /**
+   * Register (or clear with `null`) the live editor executor.
+   * Stores under the "default" key for backward compatibility.
+   * Prefer `setExecutorForEditor` when the editor id is known.
+   */
   setExecutor(executor: EditorCommandExecutor | null): void {
-    this.executor = executor;
+    if (executor) {
+      this.executors.set(EditorCommandBus.DEFAULT_KEY, executor);
+    } else {
+      this.executors.delete(EditorCommandBus.DEFAULT_KEY);
+    }
   }
 
   /**
-   * Execute a mutating command. No-op until an executor is registered.
+   * Register an executor for a specific editor. Call with `null` to remove.
+   * This is the preferred registration method for multi-editor scenarios.
+   */
+  setExecutorForEditor(editorId: string, executor: EditorCommandExecutor | null): void {
+    if (executor) {
+      this.executors.set(editorId, executor);
+    } else {
+      this.executors.delete(editorId);
+    }
+  }
+
+  /**
+   * Remove an executor for a specific editor. Safe to call even if the
+   * editor was never registered.
+   */
+  removeExecutor(editorId: string): void {
+    this.executors.delete(editorId);
+  }
+
+  /** Resolve the executor for a given editorId (falls back to "default", then
+   * to any available executor for backward compat). */
+  private resolveExecutor(editorId?: string): EditorCommandExecutor | null {
+    if (editorId && this.executors.has(editorId)) {
+      return this.executors.get(editorId) ?? null;
+    }
+    // Try the "default" key used by legacy callers via setExecutor().
+    if (this.executors.has(EditorCommandBus.DEFAULT_KEY)) {
+      return this.executors.get(EditorCommandBus.DEFAULT_KEY) ?? null;
+    }
+    // Last resort: return the first available executor (backward compat for
+    // tests and legacy code that dispatches without editorId).
+    for (const [, executor] of this.executors) {
+      return executor;
+    }
+    return null;
+  }
+
+  /**
+   * Execute a mutating command. No-op until an executor is registered for
+   * the target editor (or the default executor exists).
+   *
+   * When `options.editorId` is provided, dispatches to that editor's executor.
+   * Otherwise falls back to the "default" executor (last registered via
+   * `setExecutor`).
    *
    * In dev/test mode the action is validated against the Zod schema before
    * reaching the executor. Invalid actions are logged (not thrown) so the
@@ -129,9 +184,10 @@ export class EditorCommandBus {
    */
   dispatch(
     action: EditorCommandAction,
-    options?: { strict?: boolean; source?: CommandSource },
+    options?: { strict?: boolean; source?: CommandSource; editorId?: string },
   ): void {
-    if (!this.executor) return;
+    const executor = this.resolveExecutor(options?.editorId);
+    if (!executor) return;
 
     // Runtime validation – dev/test only (TypeScript catches most errors in
     // production builds, and skipping the check avoids any perf impact).
@@ -153,7 +209,7 @@ export class EditorCommandBus {
     const start = performance.now();
     const source = options?.source ?? "system";
     try {
-      this.executor.run(action);
+      executor.run(action);
       this.auditTrail?.record({
         action,
         source,
@@ -174,9 +230,13 @@ export class EditorCommandBus {
   /**
    * Execute a query command and return its value. `undefined` without an executor.
    * Same dev/test validation as `dispatch` (non-strict – only logs).
+   *
+   * When `editorId` is provided, queries that editor's executor. Otherwise falls
+   * back to the "default" executor.
    */
-  query<T = unknown>(action: EditorCommandAction): T | undefined {
-    if (!this.executor) return undefined;
+  query<T = unknown>(action: EditorCommandAction, editorId?: string): T | undefined {
+    const executor = this.resolveExecutor(editorId);
+    if (!executor) return undefined;
 
     if (import.meta.env.DEV || import.meta.env.MODE === "test") {
       const result = EditorCommandActionSchema.safeParse(action);
@@ -190,7 +250,7 @@ export class EditorCommandBus {
       }
     }
 
-    return this.executor.run(action).value as T | undefined;
+    return executor.run(action).value as T | undefined;
   }
 
   /**

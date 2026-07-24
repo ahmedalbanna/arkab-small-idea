@@ -56,8 +56,22 @@ export default function App() {
 
   const [hasHydrated, setHasHydrated] = useState(false);
   useEffect(() => {
+    const validateFocus = () => {
+      const { pages, activeFocusedPageId } = useEditorStore.getState();
+      // If the focused page id points to a page that no longer exists,
+      // reset it to the first page (fixes P2).
+      if (activeFocusedPageId && !pages.some((p) => p.id === activeFocusedPageId)) {
+        useEditorStore.getState().setActiveFocusedPageId(pages[0]?.id ?? null);
+      }
+    };
     setHasHydrated(useEditorStore.persist.hasHydrated()); // eslint-disable-line react-hooks/set-state-in-effect
-    const unsub = useEditorStore.persist.onFinishHydration(() => setHasHydrated(true));
+    if (useEditorStore.persist.hasHydrated()) {
+      validateFocus();
+    }
+    const unsub = useEditorStore.persist.onFinishHydration(() => {
+      setHasHydrated(true);
+      validateFocus();
+    });
     return unsub;
   }, []);
 

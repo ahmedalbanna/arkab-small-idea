@@ -53,6 +53,7 @@ export function usePluginLoader(
       isReady: () => viewRef.current !== null,
       focus: () => viewRef.current?.focus(),
     };
+    let loadedResult: LoadedPlugins | null = null;
     loadPlugins(editorApi, {
       disabled: useSettingsStore.getState().disabledPlugins,
       collab,
@@ -60,12 +61,17 @@ export function usePluginLoader(
       postProcess: diagramTransform,
     }).then((result) => {
       if (!cancelled) {
+        loadedResult = result;
         setLoaded(result);
         onLoaded?.(result);
       }
     });
     return () => {
       cancelled = true;
+      // Properly tear down all initialized plugins (fixes A3).
+      // This calls destroy() on every initialized plugin in reverse dependency
+      // order, cleaning up subscriptions, timers, and host components.
+      loadedResult?.registry?.destroyAll();
     };
   }, [pluginSignature, viewRef, onLoaded, reloadNonce, commandBus]);
 

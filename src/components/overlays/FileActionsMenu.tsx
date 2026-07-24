@@ -30,7 +30,7 @@ export const FileActionsMenu: React.FC<FileActionsMenuProps> = ({
   pageId,
   inline = false,
 }) => {
-  const { wipePage } = useEditorStore();
+  const { removePage, wipePage } = useEditorStore();
   const { setImportModal } = useUIStore();
 
   return (
@@ -59,19 +59,38 @@ export const FileActionsMenu: React.FC<FileActionsMenuProps> = ({
             <span className="text-[9px] font-bold text-minimal-muted uppercase tracking-widest">
               File Actions
             </span>
-            <button
-              onClick={() => {
-                if (
-                  window.confirm("Are you sure you want to wipe this page? This cannot be undone.")
-                ) {
-                  wipePage(pageId);
-                  setShowFileActions(false);
-                }
-              }}
-              className="px-2 py-0.5 rounded bg-red-50 text-[9px] font-bold text-red-500 hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest"
-            >
-              Wipe
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Are you sure you want to delete this page? Its content and snapshots will be lost.",
+                    )
+                  ) {
+                    removePage(pageId);
+                    setShowFileActions(false);
+                  }
+                }}
+                className="px-2 py-0.5 rounded bg-red-600 text-[9px] font-bold text-white hover:bg-red-700 transition-all uppercase tracking-widest"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Are you sure you want to wipe this page? This cannot be undone.",
+                    )
+                  ) {
+                    wipePage(pageId);
+                    setShowFileActions(false);
+                  }
+                }}
+                className="px-2 py-0.5 rounded bg-red-50 text-[9px] font-bold text-red-500 hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest"
+              >
+                Wipe
+              </button>
+            </div>
           </div>
           <div className="p-1 space-y-1">
             {/* Import Section */}
@@ -97,9 +116,16 @@ export const FileActionsMenu: React.FC<FileActionsMenuProps> = ({
             </p>
             <button
               onClick={async () => {
-                const editorElem = document.querySelector(".ProseMirror") as HTMLElement;
-                if (editorElem) {
-                  await exportToPDF(editorElem, "Ink-Quill-Doc");
+                // Use the scoped editor ref instead of global querySelector (fixes P4)
+                const view = editorRef.current?.getDoc?.() as any;
+                if (view) {
+                  // Get the ProseMirror editor DOM element from the node view
+                  // by looking up this page's editor in the DOM
+                  const pageEl = document.querySelector(`[data-page-id="${pageId}"]`);
+                  const editorElem = pageEl?.querySelector(".ProseMirror") as HTMLElement;
+                  if (editorElem) {
+                    await exportToPDF(editorElem, "Ink-Quill-Doc");
+                  }
                 }
               }}
               className="w-full text-left p-2.5 hover:bg-minimal-accent/5 rounded-xl transition-all flex items-center gap-3 group/item"

@@ -31,7 +31,7 @@ interface EditorState {
   removePage: (id: string) => void;
   togglePageOpen: (id: string) => void;
   setActiveFocusedPageId: (id: string | null) => void;
-  reorderPages: (pages: Page[]) => void;
+  reorderPages: (pageIds: string[]) => void;
   setPageCursor: (id: string, cursor: { from: number; to: number } | null) => void;
   setSemanticClusters: (clusters: SemanticCluster[]) => void;
   addSnapshot: (pageId: string, content: string, userNote?: string) => Promise<void>;
@@ -75,7 +75,10 @@ export const useEditorStore = create<EditorState>()(
         })),
       addPage: (title = "New Page", content = "") =>
         set((state) => {
-          const id = Math.random().toString(36).substring(2, 9);
+          let id: string;
+          do {
+            id = Math.random().toString(36).substring(2, 9);
+          } while (id === "default" || state.pages.some((p) => p.id === id));
           const newPage: Page = {
             id,
             title,
@@ -93,14 +96,21 @@ export const useEditorStore = create<EditorState>()(
           };
         }),
       removePage: (id) =>
-        set((state) => ({
-          pages: state.pages.filter((p) => p.id !== id),
-          activePageIds: state.activePageIds.filter((pid) => pid !== id),
-          activeFocusedPageId:
-            state.activeFocusedPageId === id
-              ? state.activePageIds.filter((pid) => pid !== id)[0] || null
-              : state.activeFocusedPageId,
-        })),
+        set((state) => {
+          const remainingPages = state.pages.filter((p) => p.id !== id);
+          const remainingOpenPages = state.activePageIds.filter((pid) => pid !== id);
+          return {
+            pages: remainingPages,
+            activePageIds: remainingOpenPages,
+            activeFocusedPageId:
+              state.activeFocusedPageId === id
+                ? remainingOpenPages[0] ||
+                  // If no open pages remain, focus the last remaining page (even if closed)
+                  remainingPages[remainingPages.length - 1]?.id ||
+                  null
+                : state.activeFocusedPageId,
+          };
+        }),
       togglePageOpen: (id) =>
         set((state) => {
           const isOpen = state.activePageIds.includes(id);
@@ -118,7 +128,14 @@ export const useEditorStore = create<EditorState>()(
           };
         }),
       setActiveFocusedPageId: (id) => set({ activeFocusedPageId: id }),
-      reorderPages: (pages) => set({ pages }),
+      reorderPages: (pageIds) =>
+        set((state) => {
+          const pageMap = new Map(state.pages.map((p) => [p.id, p]));
+          const reordered = pageIds.map((id) => pageMap.get(id)!).filter(Boolean);
+          // Include any pages not in the id list (they keep their relative order at the end)
+          const remaining = state.pages.filter((p) => !pageIds.includes(p.id));
+          return { pages: [...reordered, ...remaining] };
+        }),
       setPageCursor: (id, cursor) =>
         set((state) => ({
           pages: state.pages.map((p) => (p.id === id ? { ...p, cursor: cursor || undefined } : p)),

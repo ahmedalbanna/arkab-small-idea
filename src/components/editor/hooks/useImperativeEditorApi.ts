@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -27,6 +28,9 @@ interface ImperativeEditorApiParams {
   core: CoreEditor | undefined;
   /** Guards `onChange` from echoing programmatic updates back out. */
   isUpdatingFromProps: MutableRefObject<boolean>;
+  /** Unique id of this editor — used to scope bus dispatch to the correct
+   * executor when multiple editors are mounted simultaneously. */
+  editorId: string;
 }
 
 /**
@@ -43,6 +47,7 @@ export function useImperativeEditorApi({
   viewRef,
   core,
   isUpdatingFromProps,
+  editorId,
 }: ImperativeEditorApiParams): void {
   const bus = useEditorCommandBus();
 
@@ -78,52 +83,69 @@ export function useImperativeEditorApi({
     [headless, viewRef],
   );
 
-  // Register the executor with the bus so dispatch/query reach the core.
+  // Register this editor's executor with the bus so dispatch/query target
+  // the correct editor. On cleanup only this editor's slot is removed — other
+  // editors keep working (fixes R1/R2 from the review).
   useEffect(() => {
-    bus.setExecutor(executor);
-    return () => bus.setExecutor(null);
-  }, [bus, executor]);
+    bus.setExecutorForEditor(editorId, executor);
+    return () => bus.removeExecutor(editorId);
+  }, [bus, executor, editorId]);
+
+  // Thread `editorId` through every dispatch/query call so the bus routes
+  // to this editor's executor, not the last-registered one.
+  const dispatch = useCallback(
+    (action: EditorCommandAction) => bus.dispatch(action, { editorId }),
+    [bus, editorId],
+  );
+  const query = useCallback(
+    <T>(action: EditorCommandAction): T | undefined => bus.query<T>(action, editorId),
+    [bus, editorId],
+  );
 
   useImperativeHandle(
     ref,
     (): EditorRef => ({
-      focus: () => bus.dispatch({ type: "focus" }),
-      insertText: (before, after) => bus.dispatch({ type: "insertText", before, after }),
-      insertImage: (src, alt, title) => bus.dispatch({ type: "insertImage", src, alt, title }),
-      insertGallery: (srcs) => bus.dispatch({ type: "insertGallery", srcs }),
+      focus: () => dispatch({ type: "focus" }),
+      insertText: (before, after) => dispatch({ type: "insertText", before, after }),
+      insertImage: (src, alt, title) => dispatch({ type: "insertImage", src, alt, title }),
+      insertGallery: (srcs) =>
+        dispatch({
+          type: "insertGallery",
+          srcs,
+        }),
       insertScribble: () =>
-        bus.dispatch({
+        dispatch({
           type: "insertNodeAt",
           nodeName: "scribble",
           attrs: { data: null, width: "100%", aspectRatio: 0.5 },
         }),
-      appendMarkdown: (markdown) => bus.dispatch({ type: "appendMarkdown", markdown }),
+      appendMarkdown: (markdown) => dispatch({ type: "appendMarkdown", markdown }),
       replaceSelectionWithMarkdown: (markdown) =>
-        bus.dispatch({ type: "replaceSelectionWithMarkdown", markdown }),
+        dispatch({ type: "replaceSelectionWithMarkdown", markdown }),
       setMarkdown: (content) => {
         // Programmatic full replacement: don't echo it back as an onChange.
         isUpdatingFromProps.current = true;
-        bus.dispatch({ type: "setMarkdown", content });
+        dispatch({ type: "setMarkdown", content });
         isUpdatingFromProps.current = false;
       },
-      getSelectedText: () => bus.query<string>({ type: "getSelectedText" }) ?? "",
-      getHtml: () => bus.query<string>({ type: "getHtml" }) ?? "",
-      getDoc: () => bus.query<Node>({ type: "getDoc" }),
+      getSelectedText: () => query<string>({ type: "getSelectedText" }) ?? "",
+      getHtml: () => query<string>({ type: "getHtml" }) ?? "",
+      getDoc: () => query<Node>({ type: "getDoc" }),
       getTextWithPositions: () =>
-        bus.query<{ text: string; pos: number }[]>({
+        query<{ text: string; pos: number }[]>({
           type: "getTextWithPositions",
         }) ?? [],
       getHeadings: () =>
-        bus.query<{ text: string; level: number; pos: number; id: string }[]>({
+        query<{ text: string; level: number; pos: number; id: string }[]>({
           type: "getHeadings",
         }) ?? [],
-      setTTSHighlight: (range) => bus.dispatch({ type: "setTTSHighlight", range }),
-      handleFormat: (type) => bus.dispatch({ type: "format", format: type }),
-      getCursorContext: () => bus.query<string>({ type: "getCursorContext" }) ?? "",
-      scrollToText: (text) => bus.dispatch({ type: "scrollToText", text }),
-      scrollToPos: (pos) => bus.dispatch({ type: "scrollToPos", pos }),
-      streamMarkdown: (content, isNew) => bus.dispatch({ type: "streamMarkdown", content, isNew }),
+      setTTSHighlight: (range) => dispatch({ type: "setTTSHighlight", range }),
+      handleFormat: (type, attrs) => dispatch({ type: "format", format: type, attrs }),
+      getCursorContext: () => query<string>({ type: "getCursorContext" }) ?? "",
+      scrollToText: (text) => dispatch({ type: "scrollToText", text }),
+      scrollToPos: (pos) => dispatch({ type: "scrollToPos", pos }),
+      streamMarkdown: (content, isNew) => dispatch({ type: "streamMarkdown", content, isNew }),
     }),
-    [bus, isUpdatingFromProps],
+    [dispatch, query, isUpdatingFromProps],
   );
 }

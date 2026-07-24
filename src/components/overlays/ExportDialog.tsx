@@ -112,7 +112,10 @@ export const ExportDialog: React.FC = () => {
     try {
       switch (selectedFormat) {
         case "pdf": {
-          const editorElem = document.querySelector(".ProseMirror") as HTMLElement;
+          // Use scoped editor ref instead of global querySelector (fixes P4)
+          const pageId = appApi.getActivePageId();
+          const pageEl = pageId ? document.querySelector(`[data-page-id="${pageId}"]`) : null;
+          const editorElem = pageEl?.querySelector(".ProseMirror") as HTMLElement;
           if (!editorElem) throw new Error("Editor not found");
           await exportToPDF(editorElem, "Ink-Quill-Doc", onProgress);
           break;

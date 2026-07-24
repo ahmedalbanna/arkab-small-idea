@@ -16,17 +16,18 @@ interface FormattingParams {
  * and all mutations flow through the headless core, keeping the command bus as
  * the single entry-point for user-invoked commands (Bus-Centric architecture).
  *
- * The "link" format is the only exception: the URL prompt (`window.prompt`) is a
- * UI concern that lives at this layer. The validated URL is passed as an attribute
- * on the bus command so the headless executor never touches the DOM.
+ * The "link" format is handled here when called directly (e.g. context menu):
+ * the URL prompt (`window.prompt`) is a UI concern at this layer. When attrs
+ * are pre-populated (e.g. per-page toolbar with a prompt), they are forwarded
+ * as-is.
  */
 export function useFormatting({ viewRef }: FormattingParams) {
   const bus = useEditorCommandBus();
 
   const handleFormat = useCallback(
-    (type: string) => {
-      // Link format requires a URL prompt — purely a UI concern.
-      if (type === "link") {
+    (type: string, attrs?: Record<string, any>) => {
+      // Link format without pre-populated attrs requires a URL prompt.
+      if (type === "link" && !attrs?.href) {
         const url = window.prompt("Enter URL:");
         if (url && validateUrl(url)) {
           bus.dispatch(
@@ -40,7 +41,10 @@ export function useFormatting({ viewRef }: FormattingParams) {
         return;
       }
 
-      bus.dispatch({ type: "format", format: type }, { source: "user:toolbar" });
+      bus.dispatch(
+        { type: "format", format: type, ...(attrs ? { attrs } : {}) },
+        { source: "user:toolbar" },
+      );
       viewRef.current?.focus();
     },
     [bus, viewRef],
