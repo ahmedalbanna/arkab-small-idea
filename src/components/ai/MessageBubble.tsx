@@ -3,6 +3,7 @@ import {
   Bot,
   Check,
   Copy,
+  CornerDownLeft,
   MessageSquarePlus,
   Pencil,
   RefreshCw,
@@ -10,6 +11,7 @@ import {
   Wand2,
 } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { cn } from "../../lib/utils";
 import type { ChatMessage } from "../../services/aiService";
 
@@ -103,7 +105,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <div className="min-w-0 flex-1 rounded-2xl rounded-es-md border border-minimal-border bg-minimal-sidebar px-3.5 py-2.5">
             {text ? (
               <div className="break-words text-sm leading-relaxed text-minimal-text">
-                <Markdown>{text}</Markdown>
+                <Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>
               </div>
             ) : (
               <div className="flex items-center gap-2 py-1 text-sm text-minimal-muted">
@@ -123,8 +125,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <Copy className="h-3.5 w-3.5" />
             )}
           </ActionButton>
-          <ActionButton label="Replace document" onClick={() => onApply(text, "replace")}>
+          <ActionButton label="Replace selection" onClick={() => onApply(text, "replace")}>
             <Wand2 className="h-3.5 w-3.5" />
+          </ActionButton>
+          <ActionButton label="Insert at cursor" onClick={() => onApply(text, "insert")}>
+            <CornerDownLeft className="h-3.5 w-3.5" />
           </ActionButton>
           <ActionButton label="Append to end" onClick={() => onApply(text, "append")}>
             <MessageSquarePlus className="h-3.5 w-3.5" />

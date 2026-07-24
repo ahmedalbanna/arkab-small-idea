@@ -122,6 +122,8 @@ export function useImperativeEditorApi({
       appendMarkdown: (markdown) => dispatch({ type: "appendMarkdown", markdown }),
       replaceSelectionWithMarkdown: (markdown) =>
         dispatch({ type: "replaceSelectionWithMarkdown", markdown }),
+      replaceRangeWithMarkdown: (from, to, markdown) =>
+        dispatch({ type: "replaceRangeWithMarkdown", from, to, markdown }),
       setMarkdown: (content) => {
         // Programmatic full replacement: don't echo it back as an onChange.
         isUpdatingFromProps.current = true;
@@ -142,6 +144,8 @@ export function useImperativeEditorApi({
       setTTSHighlight: (range) => dispatch({ type: "setTTSHighlight", range }),
       handleFormat: (type, attrs) => dispatch({ type: "format", format: type, attrs }),
       getCursorContext: () => query<string>({ type: "getCursorContext" }) ?? "",
+      getSelectedMarkdown: () => query<string>({ type: "getSelectedMarkdown" }) ?? "",
+      getSectionMarkdown: (pos) => query<string>({ type: "getSectionMarkdown", pos }) ?? "",
       scrollToText: (text) => dispatch({ type: "scrollToText", text }),
       scrollToPos: (pos) => dispatch({ type: "scrollToPos", pos }),
       streamMarkdown: (content, isNew) => dispatch({ type: "streamMarkdown", content, isNew }),

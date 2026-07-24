@@ -38,6 +38,32 @@ export function replaceSelectionWithMarkdown(
 }
 
 /**
+ * Replace an explicit document range with parsed markdown, then select the
+ * inserted content. Unlike `replaceSelectionWithMarkdown`, the range does not
+ * depend on the current selection — this is the atomic primitive that AI
+ * streaming / apply should use so positions are mapped correctly through
+ * `tr.mapping` and stale-selection bugs are eliminated.
+ *
+ * `from` and `to` are clamped to valid document bounds before use.
+ */
+export function replaceRangeWithMarkdown(
+  state: EditorState,
+  from: number,
+  to: number,
+  markdown: string,
+  io: MarkdownIO,
+): OpResult {
+  const before = serializeDoc(state.doc);
+  const safeFrom = Math.max(0, Math.min(from, state.doc.content.size));
+  const safeTo = Math.max(safeFrom, Math.min(to, state.doc.content.size));
+  const parsed = io.parse(markdown);
+  const tr = state.tr
+    .replaceWith(safeFrom, safeTo, parsed.content)
+    .setMeta("aiReplaceRange", { from: safeFrom, to: safeTo });
+  return { tr, inverse: { type: "setMarkdown", content: before } };
+}
+
+/**
  * Stream parsed markdown into the document.
  *
  * @param range Optional explicit range `{ from, to }` to replace. When omitted

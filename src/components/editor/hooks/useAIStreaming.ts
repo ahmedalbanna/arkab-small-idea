@@ -8,6 +8,11 @@ import { editorSerializer } from "./useMarkdownSerializer";
 import type { PluginContext, EditorCommand } from "../../../plugins/types";
 import type { SlashMenuState } from "../../../stores/aiUIStore";
 import { useEditorCommandBus } from "../../../plugins/editorCommandContext";
+import type { CoreEditor } from "@core/CoreEditor";
+import { getSectionMarkdown, getSelectedMarkdown } from "@core/operations/query";
+
+/** Which part of the document the AI action will operate on. */
+export type AIScope = "sel" | "section" | "doc";
 
 /** Snapshot of the AI draft currently being generated / reviewed. */
 export interface AIDraftState {
@@ -23,6 +28,7 @@ export interface AIDraftState {
   originalSelection: { from: number; to: number };
   streamEnd: number;
   customInstruction?: string;
+  scope: AIScope;
 }
 
 type AIDecision = "replace" | "append" | "retry" | "cancel";
@@ -115,21 +121,74 @@ export function useAIStreaming({
     retryFrom?: number,
     retryTo?: number,
     customInstruction?: string,
+    scope?: AIScope,
   ) => {
     if (!viewRef.current) return;
 
     const { state } = viewRef.current;
-    const from = retryFrom ?? state.selection.from;
-    const to = retryTo ?? state.selection.to;
-    const selectedText = retryText ?? state.doc.textBetween(from, to, " ");
+    const effectiveScope = scope ?? "sel";
+    let from = retryFrom ?? state.selection.from;
+    let to = retryTo ?? state.selection.to;
+
+    // Determine the text range and serialized content based on scope.
+    let selectedText: string;
+
+    switch (effectiveScope) {
+      case "doc": {
+        // Whole document: use full markdown.
+        from = 0;
+        to = state.doc.content.size;
+        selectedText = editorSerializer.serialize(state.doc);
+        break;
+      }
+      case "section": {
+        // Heading-bounded section: use getSectionMarkdown via the query.
+        selectedText = getSectionMarkdown(state, from);
+        break;
+      }
+      default:
+      case "sel": {
+        // Selection: use markdown-serialized selection (preserving formatting).
+        if (retryText) {
+          selectedText = retryText;
+        } else if (from !== to) {
+          selectedText = getSelectedMarkdown(state);
+        } else {
+          // Collapsed selection: use the current block content.
+          const { $from } = state.selection;
+          const depth = $from.depth;
+          const blockStart = depth > 0 ? $from.start(depth) : 0;
+          const blockEnd = depth > 0 ? $from.end(depth) : state.doc.content.size;
+          from = blockStart;
+          to = blockEnd;
+          const sliced = state.doc.slice(blockStart, blockEnd);
+          const tempDoc = state.doc.type.create({}, sliced.content);
+          selectedText = editorSerializer.serialize(tempDoc);
+        }
+        break;
+      }
+    }
 
     if (!selectedText.trim()) return;
 
     const abortController = new AbortController();
 
-    const coords = viewRef.current.coordsAtPos(to);
+    // Clamp coordsAtPos to prevent RangeError crashes when the position is
+    // temporarily out of bounds (e.g. during streaming when the doc hasn't
+    // caught up with the parsed content size yet).
+    const safeCoordsAtPos = (pos: number) => {
+      if (!viewRef.current) return null;
+      const clampedPos = Math.max(0, Math.min(pos, viewRef.current.state.doc.content.size));
+      try {
+        return viewRef.current.coordsAtPos(clampedPos);
+      } catch {
+        return null;
+      }
+    };
+
+    const coords = safeCoordsAtPos(to);
     const editorRect = containerRef.current?.getBoundingClientRect();
-    const y = coords.bottom - (editorRect?.top || 0);
+    const y = coords?.bottom ?? (editorRect?.top ?? 0) + 40;
 
     const initialDraftState: AIDraftState = {
       isStreaming: true,
@@ -144,6 +203,7 @@ export function useAIStreaming({
       originalSelection: { from, to },
       streamEnd: to,
       customInstruction,
+      scope: effectiveScope,
     };
 
     setAiDraft(initialDraftState);
@@ -171,16 +231,32 @@ export function useAIStreaming({
           if (viewRef.current) {
             // Content mutation through the bus (Bus-Centric Architecture).
             // The executor's streamMarkdown handler manages core.streamRange
-            // to accumulate chunks correctly.
+            // to accumulate chunks correctly. Pass `streamStart` explicitly as
+            // `from` so the executor uses the same origin as the hook (P0.3 fix).
             const isNew = fullResponse.length === chunk.length;
             bus.dispatch(
-              { type: "streamMarkdown", content: fullResponse, isNew },
+              {
+                type: "streamMarkdown",
+                content: fullResponse,
+                isNew,
+                from: streamStart,
+              },
               { source: "ai" },
             );
 
-            // Recalculate streamEnd from the fresh state for the UI.
-            const parsed = parseMarkdownDoc(fullResponse);
-            streamEnd = streamStart + parsed.content.size;
+            // Read the end position from the executor's streamRange, which is
+            // the single source of truth. This replaces the dual-parser approach
+            // that previously caused drift between the blue highlight and the
+            // actual replaced range (P0.2 fix).
+            const core = (viewRef.current as any)._core as CoreEditor | undefined;
+            const executorEnd = core?.streamRange?.to;
+            if (executorEnd !== undefined && executorEnd >= streamStart) {
+              streamEnd = executorEnd;
+            } else {
+              // Fallback: compute from the parser (shouldn't happen in practice).
+              const parsed = parseMarkdownDoc(fullResponse);
+              streamEnd = streamStart + parsed.content.size;
+            }
 
             // UI-only decoration (draft highlight) — not a document mutation,
             // so it stays at the view level as a ProseMirror decoration.
@@ -220,8 +296,8 @@ export function useAIStreaming({
         });
         viewRef.current.dispatch(decoTr);
 
-        const finalCoords = viewRef.current.coordsAtPos(streamEnd);
-        const finalY = finalCoords.bottom - (editorRect?.top || 0);
+        const finalCoords = safeCoordsAtPos(streamEnd);
+        const finalY = finalCoords?.bottom ?? (editorRect?.top ?? 0) + 40;
 
         setAiDraft((prev) =>
           prev
@@ -241,16 +317,15 @@ export function useAIStreaming({
         console.error("AI Action failed:", error);
         alert("Failed to process AI request. Check console for details.");
       }
-      // Restore original content via bus: set selection to the AI range,
-      // then replace it with the original text.
+      // Restore original content via bus: use the atomic replaceRangeWithMarkdown
+      // (P0.1) instead of setSelection + replaceSelectionWithMarkdown, so the
+      // range is self-contained and not subject to stale-selection drift.
       const restoreTo = aiDraftRef.current?.streamEnd ?? initialDraftState.to;
       bus.dispatch(
-        { type: "setSelection", from: initialDraftState.from, to: restoreTo },
-        { source: "ai" },
-      );
-      bus.dispatch(
         {
-          type: "replaceSelectionWithMarkdown",
+          type: "replaceRangeWithMarkdown",
+          from: initialDraftState.from,
+          to: restoreTo,
           markdown: initialDraftState.originalText,
         },
         { source: "ai" },
@@ -275,32 +350,35 @@ export function useAIStreaming({
 
     if (decision === "cancel") {
       bus.dispatch(
-        { type: "setSelection", from: draft.from, to: draft.streamEnd },
-        { source: "ai" },
-      );
-      bus.dispatch(
-        { type: "replaceSelectionWithMarkdown", markdown: draft.originalText },
+        {
+          type: "replaceRangeWithMarkdown",
+          from: draft.from,
+          to: draft.streamEnd,
+          markdown: draft.originalText,
+        },
         { source: "ai" },
       );
     } else if (decision === "append") {
       // Restore original, then append the draft below it.
       bus.dispatch(
-        { type: "setSelection", from: draft.from, to: draft.streamEnd },
-        { source: "ai" },
-      );
-      bus.dispatch(
-        { type: "replaceSelectionWithMarkdown", markdown: draft.originalText },
+        {
+          type: "replaceRangeWithMarkdown",
+          from: draft.from,
+          to: draft.streamEnd,
+          markdown: draft.originalText,
+        },
         { source: "ai" },
       );
       bus.dispatch({ type: "insertText", before: "\n\n" + draft.content }, { source: "ai" });
     } else if (decision === "retry") {
       // Replace the AI range with the original text, then restart.
       bus.dispatch(
-        { type: "setSelection", from: draft.from, to: draft.streamEnd },
-        { source: "ai" },
-      );
-      bus.dispatch(
-        { type: "replaceSelectionWithMarkdown", markdown: draft.originalText },
+        {
+          type: "replaceRangeWithMarkdown",
+          from: draft.from,
+          to: draft.streamEnd,
+          markdown: draft.originalText,
+        },
         { source: "ai" },
       );
       // clearDeco intentionally NOT set here — decoration stays visible while
@@ -315,6 +393,7 @@ export function useAIStreaming({
         draft.from,
         draft.from + parsedOrg.content.size,
         draft.customInstruction,
+        draft.scope,
       );
       return;
     }

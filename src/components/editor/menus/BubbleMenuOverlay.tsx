@@ -2,13 +2,15 @@ import { motion, AnimatePresence } from "motion/react";
 import type { BubbleMenuState } from "../../../stores/aiUIStore";
 import { AIFloatingToolbar } from "../AIFloatingToolbar";
 import type { EditorView } from "prosemirror-view";
+import type { AIAssistantAction } from "../../../services/aiService";
+import type { AIScope } from "../hooks/useAIStreaming";
 
 interface Props {
   bubbleMenu: BubbleMenuState;
   editorId: string;
   isProcessingAI: boolean;
   aiStreaming: boolean;
-  onAction: (action: string, customInstruction?: string) => void;
+  onAction: (action: AIAssistantAction, customInstruction?: string, scope?: AIScope) => void;
   onStop: () => void;
   onClose: () => void;
   viewRef: React.RefObject<EditorView | null>;

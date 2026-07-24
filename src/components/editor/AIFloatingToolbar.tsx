@@ -17,6 +17,7 @@ import {
   Send,
 } from "lucide-react";
 import type { AIAssistantAction } from "../../services/aiService";
+import type { AIScope } from "./hooks/useAIStreaming";
 import { cn } from "../../lib/utils";
 
 interface AIFloatingToolbarProps {
@@ -24,7 +25,7 @@ interface AIFloatingToolbarProps {
   isProcessingAI: boolean;
   /** When the AI is streaming inline, we show a simpler indicator instead. */
   aiStreaming: boolean;
-  onAction: (action: AIAssistantAction, customInstruction?: string) => void;
+  onAction: (action: AIAssistantAction, customInstruction?: string, scope?: AIScope) => void;
   onStop: () => void;
   /** Called when the user presses Escape with an empty input. */
   onClose?: () => void;
@@ -109,8 +110,8 @@ export const AIFloatingToolbar = memo(
     }, [customInstruction, onAction]);
 
     const handleAction = useCallback(
-      (id: AIAssistantAction) => {
-        onAction(id);
+      (id: AIAssistantAction, scope?: AIScope) => {
+        onAction(id, undefined, scope);
         setCustomInstruction("");
         setExpanded(false);
       },
@@ -277,7 +278,7 @@ export const AIFloatingToolbar = memo(
                   {EDITING_ACTIONS.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => handleAction(item.id)}
+                      onClick={() => handleAction(item.id, item.scope as AIScope)}
                       disabled={isProcessingAI}
                       className="flex items-center gap-1.5 p-1.5 hover:bg-minimal-sidebar rounded-lg text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed group/pop"
                     >
@@ -300,7 +301,7 @@ export const AIFloatingToolbar = memo(
                   {STRUCTURE_ACTIONS.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => handleAction(item.id)}
+                      onClick={() => handleAction(item.id, item.scope as AIScope)}
                       disabled={isProcessingAI}
                       className="flex items-center gap-1.5 p-1.5 hover:bg-minimal-sidebar rounded-lg text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed group/pop"
                     >

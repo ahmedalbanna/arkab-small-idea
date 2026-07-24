@@ -21,6 +21,7 @@ import { SideMenuOverlay } from "./editor/menus/SideMenuOverlay";
 import { ContextMenu } from "./editor/menus/ContextMenu";
 import type { LoadedPlugins } from "../plugins";
 import type { EditorCommand } from "../plugins/types";
+import type { AIScope } from "./editor/hooks/useAIStreaming";
 
 interface Props {
   value: string;
@@ -74,6 +75,7 @@ export interface EditorRef {
   insertScribble: () => void;
   appendMarkdown: (markdown: string) => void;
   replaceSelectionWithMarkdown: (markdown: string) => void;
+  replaceRangeWithMarkdown: (from: number, to: number, markdown: string) => void;
   getSelectedText: () => string;
   getHtml: () => string;
   getDoc: () => any;
@@ -82,6 +84,8 @@ export interface EditorRef {
   setTTSHighlight: (range: { from: number; to: number } | null) => void;
   handleFormat: (type: string, attrs?: Record<string, any>) => void;
   getCursorContext: () => string;
+  getSelectedMarkdown: () => string;
+  getSectionMarkdown: (pos?: number) => string;
   scrollToText: (text: string) => void;
   scrollToPos: (pos: number) => void;
   streamMarkdown: (content: string, isNew?: boolean) => void;
@@ -303,8 +307,16 @@ const ProseMirrorEditor = forwardRef<EditorRef, Props>(
     // Stable callback for the embedded AI toolbar — prevents React.memo from
     // re-rendering on every parent render due to a new inline function.
     const handleAIActionWithCustom = useCallback(
-      (action: AIAssistantAction, customInstruction?: string) =>
-        handleAIAction(action, undefined, undefined, undefined, undefined, customInstruction),
+      (action: AIAssistantAction, customInstruction?: string, scope?: AIScope) =>
+        handleAIAction(
+          action,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          customInstruction,
+          scope,
+        ),
       [handleAIAction],
     );
 

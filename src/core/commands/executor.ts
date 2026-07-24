@@ -7,6 +7,7 @@ import {
   setMarkdown,
   appendMarkdown,
   replaceSelectionWithMarkdown,
+  replaceRangeWithMarkdown,
   streamMarkdown,
 } from "../operations/markdown";
 import { applyFormat } from "../operations/format";
@@ -16,6 +17,8 @@ import {
   getTextWithPositions,
   getHeadings,
   getCursorContext,
+  getSelectedMarkdown,
+  getSectionMarkdown,
 } from "../operations/query";
 import { getHtml } from "../operations/html";
 import { applyUndo, applyRedo } from "../operations/history";
@@ -100,6 +103,18 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
           return { inverse };
         }
 
+        case "replaceRangeWithMarkdown": {
+          const { tr, inverse } = replaceRangeWithMarkdown(
+            state,
+            action.from,
+            action.to,
+            action.markdown,
+            core.io,
+          );
+          core.apply(tr);
+          return { inverse };
+        }
+
         case "setMarkdown": {
           const { tr, inverse } = setMarkdown(state, action.content, core.io);
           core.apply(tr);
@@ -133,12 +148,20 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
 
         case "streamMarkdown": {
           if (action.isNew || !core.streamRange) {
-            const sel = state.selection;
-            core.streamRange = { from: sel.from, to: sel.to };
+            // When an explicit `from` is provided (P0.3 fix), use it instead
+            // of the live selection to eliminate the first-chunk drift between
+            // the hook and executor.
+            const from =
+              action.from ??
+              (action.isNew ? state.selection.from : undefined) ??
+              state.selection.from;
+            core.streamRange = { from, to: state.selection.to };
           }
           const parsed = core.io.parse(action.content);
           const { tr, inverse } = streamMarkdown(state, action.content, core.io, core.streamRange);
           // Advance the streaming cursor so the next chunk accumulates.
+          // Use the same parser (`core.io`) that the executor uses (not the
+          // hook's `parseMarkdownDoc`) so both sides agree on the end position.
           core.streamRange = {
             from: core.streamRange.from,
             to: core.streamRange.from + parsed.content.size,
@@ -210,6 +233,12 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
 
         case "getCursorContext":
           return { value: getCursorContext(state) };
+
+        case "getSelectedMarkdown":
+          return { value: getSelectedMarkdown(state) };
+
+        case "getSectionMarkdown":
+          return { value: getSectionMarkdown(state, action.pos) };
 
         default:
           return {};

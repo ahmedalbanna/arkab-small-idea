@@ -4,6 +4,11 @@ import { getEditorRef } from "../editorAccess";
 import type { AppStores } from "../types";
 import { getEmbeddingOptions } from "../../stores/aiStore";
 import { StreamBuffer } from "../../services/streamBuffer";
+import {
+  buildUserPrompt,
+  buildSystemPrompt,
+  type TemplateContext,
+} from "../../services/promptTemplates";
 
 /**
  * Stable, module-level handlers shared by both the `ai` plugin host (chat
@@ -94,7 +99,22 @@ export function applyContent(content: string, method: "append" | "insert" | "rep
       editor?.appendMarkdown(prefix + content);
       break;
     }
-    case "insert":
+    case "insert": {
+      // Insert at cursor position without replacing selection.
+      // Use replaceRangeWithMarkdown with an empty range (from === to) to
+      // insert without deleting anything.
+      const sel = editor?.getSelectedText()
+        ? { from: -1, to: -1 } // signal to use selection-based insert
+        : null;
+      if (sel) {
+        editor?.replaceSelectionWithMarkdown(content);
+      } else {
+        // Fall back to append when no editor access.
+        const prefix = activePage.content.trim() ? "\n\n" : "";
+        editor?.appendMarkdown(prefix + content);
+      }
+      break;
+    }
     case "replace":
       editor?.replaceSelectionWithMarkdown(content);
       break;
@@ -104,7 +124,8 @@ export function applyContent(content: string, method: "append" | "insert" | "rep
       );
       break;
   }
-  ui().setAIAssistant(false);
+  // Don't close the AI assistant panel here — let the user continue their
+  // conversation. They can close it manually or use the Dismiss button.
 }
 
 export async function handleAiAction(actionId: string, customInstruction?: string) {
@@ -114,60 +135,42 @@ export async function handleAiAction(actionId: string, customInstruction?: strin
   if (!editor) return;
 
   const markdown = activePage.content;
-  const selectedText = editor.getSelectedText();
-  const contextText = selectedText || markdown.substring(0, 5000);
+  // Use markdown-preserving selection when available, fall back to plain text.
+  const selectedText =
+    (typeof editor.getSelectedMarkdown === "function"
+      ? editor.getSelectedMarkdown()
+      : editor.getSelectedText()) || "";
+  const contextText = selectedText || markdown || "";
 
-  let prompt: string;
-  if (actionId.startsWith("custom:")) {
-    prompt = actionId.replace("custom:", "");
-  } else {
-    switch (actionId) {
-      case "improve":
-        prompt = `Improve the following text for clarity, flow, and impact:\n\n"${contextText}"`;
-        break;
-      case "summarize":
-        prompt = `Summarize the following text while retaining key points:\n\n"${contextText}"`;
-        break;
-      case "rewrite":
-        prompt = `Rewrite the following text in a more professional and engaging tone:\n\n"${contextText}"`;
-        break;
-      case "expand":
-        prompt = `Expand on the following ideas with more detail and examples:\n\n"${contextText}"`;
-        break;
-      case "generate-outline":
-        prompt = `Generate a structured outline for a document based on this context:\n\n"${contextText}"`;
-        break;
-      case "draft-topic":
-        prompt = `Draft a comprehensive section about this topic:\n\n"${contextText}"`;
-        break;
-      case "fix-grammar":
-        prompt = `Fix the grammar, spelling, and punctuation in the following text:\n\n"${contextText}"`;
-        break;
-      case "complete-text":
-        prompt = `Continue writing based on the following context, maintaining the same style and tone:\n\n"${contextText}"`;
-        break;
-      case "suggest-title":
-        prompt = `Suggest 5 creative and relevant titles for a document with this content:\n\n"${contextText}"`;
-        break;
-      case "shorten":
-        prompt = `Condense the following text to be more concise without losing its meaning:\n\n"${contextText}"`;
-        break;
-      default:
-        return;
-    }
-  }
+  if (!contextText.trim()) return;
 
-  if (customInstruction) {
-    prompt += `\n\nAdditional Instruction: ${customInstruction}`;
-  }
-
+  // Build the user prompt using the template system (shared with inline actions).
   const a = ai();
+  const templateCtx: TemplateContext = {
+    text: contextText,
+    personalInstructions: a.personalInstructions,
+    customInstruction,
+    documentTitle: activePage.title || "Untitled",
+    documentStructure: "",
+    cursorSection: editor.getCursorContext() || "",
+  };
+
+  const userPrompt = buildUserPrompt(actionId, templateCtx, a.promptTemplates);
+  const systemPrompt = buildSystemPrompt(actionId, templateCtx, a.promptTemplates, markdown);
+
+  // Combine system + user into the chat message.
+  const fullPrompt = systemPrompt
+    ? `${systemPrompt}\n\n${userPrompt}`
+    : customInstruction
+      ? `${userPrompt}\n\nAdditional Instruction: ${customInstruction}`
+      : userPrompt;
+
   const aUI = aiUI();
 
-  aUI.setAiPrompt(prompt);
+  aUI.setAiPrompt(fullPrompt);
   const userMessage: ChatMessage = {
     role: "user",
-    parts: [{ text: prompt }],
+    parts: [{ text: fullPrompt }],
   };
   const historyWithUser = [...a.chatHistory, userMessage];
   a.setChatHistory(historyWithUser);

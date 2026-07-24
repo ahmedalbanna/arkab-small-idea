@@ -99,10 +99,18 @@ const scrollToPosSchema = z.object({
   pos: z.number().min(0, "pos must be >= 0"),
 });
 
+const replaceRangeWithMarkdownSchema = z.object({
+  type: z.literal("replaceRangeWithMarkdown"),
+  from: z.number().min(0),
+  to: z.number().min(0),
+  markdown: z.string(),
+});
+
 const streamMarkdownSchema = z.object({
   type: z.literal("streamMarkdown"),
   content: z.string(),
   isNew: z.boolean().optional(),
+  from: z.number().min(0).optional(),
 });
 
 // Undo / Redo
@@ -138,6 +146,11 @@ const getTextWithPositionsSchema = z.object({
 });
 const getHeadingsSchema = z.object({ type: z.literal("getHeadings") });
 const getCursorContextSchema = z.object({ type: z.literal("getCursorContext") });
+const getSelectedMarkdownSchema = z.object({ type: z.literal("getSelectedMarkdown") });
+const getSectionMarkdownSchema = z.object({
+  type: z.literal("getSectionMarkdown"),
+  pos: z.number().min(0).optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Composed discriminated union – order does not matter because the
@@ -152,6 +165,7 @@ export const EditorCommandActionSchema = z.discriminatedUnion("type", [
   insertGallerySchema,
   appendMarkdownSchema,
   replaceSelectionWithMarkdownSchema,
+  replaceRangeWithMarkdownSchema,
   setMarkdownSchema,
   setTTSHighlightSchema,
   scrollToTextSchema,
@@ -168,6 +182,8 @@ export const EditorCommandActionSchema = z.discriminatedUnion("type", [
   getTextWithPositionsSchema,
   getHeadingsSchema,
   getCursorContextSchema,
+  getSelectedMarkdownSchema,
+  getSectionMarkdownSchema,
 ]);
 
 // ---------------------------------------------------------------------------

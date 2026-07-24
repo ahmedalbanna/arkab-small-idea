@@ -46,7 +46,8 @@ export type EditorCommandAction =
   | { type: "setTTSHighlight"; range: { from: number; to: number } | null }
   | { type: "scrollToText"; text: string }
   | { type: "scrollToPos"; pos: number }
-  | { type: "streamMarkdown"; content: string; isNew?: boolean }
+  | { type: "replaceRangeWithMarkdown"; from: number; to: number; markdown: string }
+  | { type: "streamMarkdown"; content: string; isNew?: boolean; from?: number }
   // --- Undo / Redo (delegated to PM native history) ---
   | { type: "undo" }
   | { type: "redo" }
@@ -60,7 +61,9 @@ export type EditorCommandAction =
   | { type: "getDoc" }
   | { type: "getTextWithPositions" }
   | { type: "getHeadings" }
-  | { type: "getCursorContext" };
+  | { type: "getCursorContext" }
+  | { type: "getSelectedMarkdown" }
+  | { type: "getSectionMarkdown"; pos?: number };
 
 /** Result of executing a command on the live editor. */
 export interface EditorCommandResult {
