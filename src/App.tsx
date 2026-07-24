@@ -163,7 +163,11 @@ export default function App() {
           ui.setTTS(false);
           break;
         case "runAIAction":
-          runAiAction(intent.actionId as AIAssistantAction, intent.customInstruction);
+          runAiAction(
+            intent.actionId as AIAssistantAction,
+            intent.customInstruction,
+            intent.editorId,
+          );
           break;
         case "toggleAIAssistant":
           ui.setAIAssistant((prev) => !prev);

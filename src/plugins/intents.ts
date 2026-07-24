@@ -28,8 +28,10 @@ export type PluginIntent =
   | { type: "hideTTS" }
   | { type: "showQuickCommands" }
   | { type: "hideQuickCommands" }
-  /** Run an AI editing action (improve, fix-grammar, rewrite, etc.). */
-  | { type: "runAIAction"; actionId: string; customInstruction?: string };
+  /** Run an AI editing action (improve, fix-grammar, rewrite, etc.).
+   * `editorId` identifies which editor to target; when omitted falls back to
+   * the currently focused page. */
+  | { type: "runAIAction"; actionId: string; customInstruction?: string; editorId?: string };
 
 /** Function that processes a single intent. */
 export type IntentHandler = (intent: PluginIntent) => void;

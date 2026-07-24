@@ -102,11 +102,16 @@ export const aiPlugin: InkPlugin = {
         id,
         label,
         run: (api: CommandAPI) => {
-          api.emitIntent({ type: "runAIAction", actionId: action });
+          api.emitIntent({ type: "runAIAction", actionId: action, editorId: thisEditorId });
           return true;
         },
       });
     }
+
+    // Capture this editor's id at plugin init time. Each LoadPlugins() call
+    // creates fresh instances, so the closures below will always reference the
+    // editor that owns this keymap (fixes: AI actions execute on the wrong editor).
+    const thisEditorId = ctx.editor.editorId;
 
     ctx.registerProsePlugin(() =>
       keymap({
@@ -116,7 +121,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runAiAction("improve");
+            runAiAction("improve", undefined, thisEditorId);
             return true;
           }
           return false;
@@ -125,7 +130,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runAiAction("summarize");
+            runAiAction("summarize", undefined, thisEditorId);
             return true;
           }
           return false;
@@ -134,7 +139,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runAiAction("fix-grammar");
+            runAiAction("fix-grammar", undefined, thisEditorId);
             return true;
           }
           return false;
