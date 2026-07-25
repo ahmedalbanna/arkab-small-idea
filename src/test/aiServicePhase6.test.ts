@@ -60,20 +60,4 @@ describe("aiService — Phase 6 template integration", () => {
     });
     expect(result).toBe("Generated response");
   });
-
-  it("generateContentFromPrompt uses generate template", async () => {
-    const { generateContentFromPrompt } = await import("../services/aiService");
-    const result = await generateContentFromPrompt("Write about AI", "", {});
-    expect(result).toBe("Generated response");
-  });
-
-  it("chatWithAI uses chat template", async () => {
-    const { chatWithAI } = await import("../services/aiService");
-    const result = await chatWithAI(
-      [{ role: "user", parts: [{ text: "Hello" }] }],
-      "document content",
-      {},
-    );
-    expect(result).toBe("Chat response");
-  });
 });

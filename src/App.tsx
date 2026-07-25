@@ -169,9 +169,6 @@ export default function App() {
             intent.editorId,
           );
           break;
-        case "toggleAIAssistant":
-          ui.setAIAssistant((prev) => !prev);
-          break;
       }
     });
     return () => setIntentHandler(null);

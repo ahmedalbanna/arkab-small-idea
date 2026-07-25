@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Sparkles, Search, Command, Headset } from "lucide-react";
+import { Search, Command, Headset } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Z_CLASS } from "../../lib/zIndex";
 import { useUIStore } from "../../stores/uiStore";
@@ -22,22 +22,14 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   toolbarItems = [],
   pluginContext = null,
 }) => {
-  const { showAIAssistant, showSearch, showQuickCommands, setQuickCommands, showTTS, setTTS } =
-    useUIStore();
+  const { showSearch, showQuickCommands, setQuickCommands, showTTS, setTTS } = useUIStore();
 
   const { togglePanel } = useLayout();
 
   const pluginButtons = toolbarItems.filter((t) => (t.show ? t.show() : true));
 
-  // ── Section 1: AI & Tools ──
-  const aiTools = [
-    {
-      id: "ai",
-      icon: Sparkles,
-      active: showAIAssistant,
-      action: () => togglePanel("ai"),
-      title: "AI Assistant",
-    },
+  // ── Section 1: Tools ──
+  const tools = [
     {
       id: "tts",
       icon: Headset,
@@ -97,7 +89,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 
   return (
     <div className={cn("fixed top-8 end-8 flex flex-col gap-3", Z_CLASS.floating)}>
-      {aiTools.map((item, idx) => renderButton(item, idx))}
+      {tools.map((item, idx) => renderButton(item, idx))}
 
       {pluginButtons.length > 0 && <Divider />}
       {pluginButtons.map((item, idx) => {
@@ -110,7 +102,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             animate={{ opacity: active ? 1 : 0.6, x: 0, scale: 1 }}
             whileHover={{ opacity: 1, scale: 1.1, x: -4 }}
             whileTap={{ scale: 0.95 }}
-            transition={{ delay: (aiTools.length + idx) * 0.05, duration: 0.3, ease: "easeOut" }}
+            transition={{ delay: (tools.length + idx) * 0.05, duration: 0.3, ease: "easeOut" }}
             onClick={() => item.onClick(pluginContext as PluginContext)}
             aria-label={item.label}
             className={cn(

@@ -10,10 +10,8 @@ import { getDefaultTemplates } from "../../services/promptTemplates";
 import type { PromptTemplate } from "../../services/promptTemplates";
 
 interface AIProviderSettingsProps {
-  aiSettingsTab: "chat" | "actions" | "semantic" | "embeddings";
-  setAiSettingsTab: React.Dispatch<
-    React.SetStateAction<"chat" | "actions" | "semantic" | "embeddings">
-  >;
+  aiSettingsTab: "actions" | "semantic" | "embeddings";
+  setAiSettingsTab: React.Dispatch<React.SetStateAction<"actions" | "semantic" | "embeddings">>;
 }
 
 export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
@@ -36,8 +34,6 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
     setPromptTemplate,
     resetPromptTemplate,
     resetAllPromptTemplates,
-    showTokenCounts,
-    setShowTokenCounts,
   } = useAIStore();
 
   const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null);
@@ -116,7 +112,7 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar">
               {/* Service Tabs */}
               <div className="flex bg-minimal-sidebar rounded-xl p-1 gap-1">
-                {(["chat", "actions", "semantic", "embeddings"] as const).map((tab) => (
+                {(["actions", "semantic", "embeddings"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setAiSettingsTab(tab)}
@@ -266,24 +262,6 @@ export const AIProviderSettings: React.FC<AIProviderSettingsProps> = ({
                     refreshing the page.
                   </p>
                 </div>
-              </div>
-
-              {/* Token Counts Toggle */}
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-bold text-minimal-muted uppercase tracking-wider">
-                  Token Count Display
-                </h3>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showTokenCounts}
-                    onChange={(e) => setShowTokenCounts(e.target.checked)}
-                    className="h-3.5 w-3.5 rounded border-minimal-border text-minimal-accent focus:ring-minimal-accent"
-                  />
-                  <span className="text-xs text-minimal-text">
-                    Show token counts while generating
-                  </span>
-                </label>
               </div>
 
               {/* Prompt Templates Section */}

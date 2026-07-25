@@ -24,7 +24,6 @@ describe("LayoutContext", () => {
   beforeEach(() => {
     // Reset uiStore to defaults
     useUIStore.setState({
-      showAIAssistant: false,
       showSearch: false,
       showTTS: false,
       showImportModal: false,
@@ -58,16 +57,6 @@ describe("LayoutContext", () => {
       "useLayout must be used within a <LayoutProvider>",
     );
     spy.mockRestore();
-  });
-
-  it("derives activePanel from uiStore — ai panel", () => {
-    useUIStore.setState({ showAIAssistant: true });
-    render(
-      <LayoutProvider>
-        <LayoutConsumer id="ai-test" />
-      </LayoutProvider>,
-    );
-    expect(screen.getByTestId("active-panel").textContent).toBe("ai");
   });
 
   it("derives activePanel from uiStore — search panel", () => {
@@ -142,7 +131,7 @@ describe("LayoutContext", () => {
       layout = useLayout();
       return null;
     }
-    useUIStore.setState({ showAIAssistant: true });
+    useUIStore.setState({ showSearch: true });
     render(
       <LayoutProvider>
         <Action />
@@ -150,7 +139,7 @@ describe("LayoutContext", () => {
     );
 
     layout!.closePanel();
-    expect(useUIStore.getState().showAIAssistant).toBe(false);
+    expect(useUIStore.getState().showSearch).toBe(false);
   });
 
   it("openPanel closes other panels before opening", () => {
@@ -166,9 +155,9 @@ describe("LayoutContext", () => {
       </LayoutProvider>,
     );
 
-    layout!.openPanel("ai");
+    layout!.openPanel("tts");
     expect(useUIStore.getState().showSearch).toBe(false);
-    expect(useUIStore.getState().showAIAssistant).toBe(true);
+    expect(useUIStore.getState().showTTS).toBe(true);
   });
 
   it("togglePanel opens a closed panel and closes others", () => {

@@ -5,15 +5,13 @@ import {
   Italic,
   Heading2,
   Link as LinkIcon,
-  Image as ImageIcon,
-  Sparkles,
-  Quote,
+  Image as ImageIcon, Quote,
   List,
   Table,
   PenTool,
   Cpu,
   Upload,
-  Loader2,
+  Loader2
 } from "lucide-react";
 import { cn, useMediaQuery } from "../../lib/utils";
 import { Z_CLASS } from "../../lib/zIndex";
@@ -125,7 +123,6 @@ export const BottomBar: React.FC<BottomBarProps> = ({
       .join(". ") || `${wordCount} words`;
 
   // ── Mobile: Formatting ──
-  const { setAIAssistant } = useUIStore();
   const activePageId = pages.find((p) => p.id === activeFocusedPageId)?.id ?? null;
   const editorRef = activePageId ? getEditorRef(activePageId) : null;
   const pluginButtons = toolbarItems.filter((t) => (t.show ? t.show() : true));
@@ -200,12 +197,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
               label="Scribble"
             />
             <div className="w-px h-8 bg-minimal-border mx-1 shrink-0" />
-            <ToolbarButton
-              icon={Sparkles}
-              onClick={() => setAIAssistant(true)}
-              label="AI Assistant"
-              highlighted
-            />
+
             {pluginButtons.map((item) => {
               const Icon = item.icon;
               const active = item.isActive ? item.isActive() : false;

@@ -21,7 +21,6 @@ export type PluginIntent =
   | { type: "hideCommandPalette" }
   | { type: "showSearch" }
   | { type: "hideSearch" }
-  | { type: "toggleAIAssistant" }
   | { type: "showShortcuts" }
   | { type: "hideShortcuts" }
   | { type: "showTTS" }

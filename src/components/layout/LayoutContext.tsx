@@ -6,17 +6,13 @@ import { Z_LAYERS } from "../../lib/zIndex";
  * Identifiers for the side panels / overlays the layout system manages.
  * Each maps to a boolean in the existing uiStore.
  */
-export type PanelId = "ai" | "search" | "tts";
+export type PanelId = "search" | "tts";
 
 /** Map each PanelId to its uiStore setter name and boolean getter. */
 const PANEL_MAP: Record<
   PanelId,
   { get: (s: ReturnType<typeof useUIStore.getState>) => boolean; set: (show: boolean) => void }
 > = {
-  ai: {
-    get: (s) => s.showAIAssistant,
-    set: (show) => useUIStore.getState().setAIAssistant(show),
-  },
   search: {
     get: (s) => s.showSearch,
     set: (show) => useUIStore.getState().setSearch(show),
@@ -60,7 +56,7 @@ function useLayoutContextValue(): LayoutContextValue {
       if (PANEL_MAP[id].get(store)) return id;
     }
     return null;
-  }, [store.showAIAssistant, store.showSearch, store.showTTS]);
+  }, [store.showSearch, store.showTTS]);
 
   const isModalOpen = store.showImportModal;
 

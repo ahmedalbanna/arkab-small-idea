@@ -3,7 +3,6 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { idbStorage } from "../lib/idbStorage";
 
 interface UIState {
-  showAIAssistant: boolean;
   showSearch: boolean;
   showMobileMenu: boolean;
   showAiSettings: boolean;
@@ -21,8 +20,6 @@ interface UIState {
   ttsVoiceURI: string | null;
   ttsHighlightRange: { from: number; to: number } | null;
 
-  toggleAIAssistant: () => void;
-  setAIAssistant: (show: boolean | ((prev: boolean) => boolean)) => void;
   setSearch: (show: boolean | ((prev: boolean) => boolean)) => void;
   setMobileMenu: (show: boolean | ((prev: boolean) => boolean)) => void;
   setAiSettings: (show: boolean | ((prev: boolean) => boolean)) => void;
@@ -43,7 +40,6 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      showAIAssistant: false,
       showSearch: false,
       showMobileMenu: false,
       showAiSettings: false,
@@ -61,14 +57,6 @@ export const useUIStore = create<UIState>()(
       ttsVoiceURI: null as string | null,
       ttsHighlightRange: null as { from: number; to: number } | null,
 
-      toggleAIAssistant: () => set((state) => ({ showAIAssistant: !state.showAIAssistant })),
-      setAIAssistant: (showAIAssistant) =>
-        set((state) => ({
-          showAIAssistant:
-            typeof showAIAssistant === "function"
-              ? showAIAssistant(state.showAIAssistant)
-              : showAIAssistant,
-        })),
       setSearch: (showSearch) =>
         set((state) => ({
           showSearch: typeof showSearch === "function" ? showSearch(state.showSearch) : showSearch,
@@ -137,7 +125,6 @@ export const useUIStore = create<UIState>()(
       // modal visibility, indexing status, and TTS highlight range (fixes F4).
       partialize: (state) => ({
         direction: state.direction,
-        showAIAssistant: state.showAIAssistant,
         showSearch: state.showSearch,
         showQuickCommands: state.showQuickCommands,
         showTTS: state.showTTS,

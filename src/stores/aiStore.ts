@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { type ChatMessage } from "../services/aiService";
 import { idbStorage } from "../lib/idbStorage";
-import type { TokenUsageState } from "../services/tokenMonitor";
 import type { TemplateOverrides } from "../services/promptTemplates";
 
 /** Per-model token limits: maps model name → max total tokens. */
@@ -26,11 +24,9 @@ export const DEFAULT_MODEL_TOKEN_LIMITS: ModelTokenLimits = {
 };
 
 interface AIState {
-  chatHistory: ChatMessage[];
   personalInstructions: string;
   selectedModel: string;
   availableModels: string[];
-  isGenerating: boolean;
   ollamaStatus: {
     loading: boolean;
     connected: boolean;
@@ -58,19 +54,11 @@ interface AIState {
     };
   };
 
-  /** Token usage tracking (not persisted — kept in memory only). */
-  tokenUsage: TokenUsageState | null;
-
   /** User-customized prompt template overrides (persisted). */
   promptTemplates: TemplateOverrides;
 
   /** Per-model token limit overrides (persisted). */
   modelTokenLimits: ModelTokenLimits;
-
-  /** Whether to show token counts in the AI assistant UI. */
-  showTokenCounts: boolean;
-
-  setTokenUsage: (usage: TokenUsageState | null) => void;
 
   setServiceProvider: (
     service: keyof AIState["serviceConfigs"],
@@ -82,16 +70,12 @@ interface AIState {
   ) => void;
   setApiKey: (provider: "openai" | "anthropic" | "google", key: string) => void;
   setOllamaHost: (host: string) => void;
-  addMessage: (msg: ChatMessage) => void;
-  setChatHistory: (history: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
   setPersonalInstructions: (instructions: string | ((prev: string) => string)) => void;
   setSelectedModel: (model: string | ((prev: string) => string)) => void;
   setAvailableModels: (models: string[] | ((prev: string[]) => string[])) => void;
-  setGenerating: (isGenerating: boolean | ((prev: boolean) => boolean)) => void;
   setOllamaStatus: (
     status: AIState["ollamaStatus"] | ((prev: AIState["ollamaStatus"]) => AIState["ollamaStatus"]),
   ) => void;
-  clearChatHistory: () => void;
 
   /** Update a prompt template override. */
   setPromptTemplate: (
@@ -107,9 +91,6 @@ interface AIState {
 
   /** Update a per-model token limit. */
   setModelTokenLimit: (model: string, limit: number) => void;
-
-  /** Set whether token counts are shown in AI assistant. */
-  setShowTokenCounts: (show: boolean) => void;
 }
 
 /** Embedding options type shared across the app. */
@@ -135,11 +116,9 @@ export function getEmbeddingOptions(): EmbeddingOptions {
 export const useAIStore = create<AIState>()(
   persist(
     (set) => ({
-      chatHistory: [] as ChatMessage[],
       personalInstructions: "",
       selectedModel: "qwen2.5:0.5b",
       availableModels: [] as string[],
-      isGenerating: false,
       ollamaStatus: {
         loading: false,
         connected: false,
@@ -167,25 +146,9 @@ export const useAIStore = create<AIState>()(
         },
       },
 
-      tokenUsage: null as TokenUsageState | null,
       promptTemplates: {} as TemplateOverrides,
       modelTokenLimits: { ...DEFAULT_MODEL_TOKEN_LIMITS },
-      showTokenCounts: false,
 
-      setTokenUsage: (tokenUsage) => set({ tokenUsage }),
-
-      addMessage: (msg) =>
-        set((state) => ({
-          chatHistory: [...state.chatHistory, msg].slice(-100),
-        })),
-      setChatHistory: (chatHistory) =>
-        set((state) => {
-          const nextHistory =
-            typeof chatHistory === "function" ? chatHistory(state.chatHistory) : chatHistory;
-          return {
-            chatHistory: nextHistory.slice(-100),
-          };
-        }),
       setPersonalInstructions: (personalInstructions) =>
         set((state) => ({
           personalInstructions:
@@ -206,11 +169,6 @@ export const useAIStore = create<AIState>()(
             typeof availableModels === "function"
               ? availableModels(state.availableModels)
               : availableModels,
-        })),
-      setGenerating: (isGenerating) =>
-        set((state) => ({
-          isGenerating:
-            typeof isGenerating === "function" ? isGenerating(state.isGenerating) : isGenerating,
         })),
       setOllamaStatus: (ollamaStatus) =>
         set((state) => ({
@@ -246,7 +204,6 @@ export const useAIStore = create<AIState>()(
             ollama: { ...state.providerConfigs.ollama, host },
           },
         })),
-      clearChatHistory: () => set({ chatHistory: [] }),
 
       setPromptTemplate: (id, overrides) =>
         set((state) => ({
@@ -265,7 +222,6 @@ export const useAIStore = create<AIState>()(
         set((state) => ({
           modelTokenLimits: { ...state.modelTokenLimits, [model]: limit },
         })),
-      setShowTokenCounts: (show) => set({ showTokenCounts: show }),
     }),
     {
       name: "ink-quill-ai-storage",
@@ -273,13 +229,11 @@ export const useAIStore = create<AIState>()(
       partialize: (state) => ({
         personalInstructions: state.personalInstructions,
         selectedModel: state.selectedModel,
-        chatHistory: state.chatHistory,
         provider: state.provider,
         serviceConfigs: state.serviceConfigs,
         providerConfigs: state.providerConfigs,
         promptTemplates: state.promptTemplates,
         modelTokenLimits: state.modelTokenLimits,
-        showTokenCounts: state.showTokenCounts,
         // apiKeys are intentionally excluded: they are kept in memory only
         // so they cannot be exfiltrated from persisted storage (IndexedDB).
       }),

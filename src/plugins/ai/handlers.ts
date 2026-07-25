@@ -1,18 +1,11 @@
-import { chatWithAI, type ChatMessage } from "../../services/aiService";
 import { ragService } from "../../services/ragService";
 import { getEditorRef } from "../editorAccess";
 import type { AppStores } from "../types";
 import { getEmbeddingOptions } from "../../stores/aiStore";
-import { StreamBuffer } from "../../services/streamBuffer";
-import {
-  buildUserPrompt,
-  buildSystemPrompt,
-  type TemplateContext,
-} from "../../services/promptTemplates";
 
 /**
- * Stable, module-level handlers shared by both the `ai` plugin host (chat
- * sidebar, search bar) and the editor tree (slash menu, search highlighting).
+ * Stable, module-level handlers shared by both the `ai` plugin host (search
+ * bar) and the editor tree (slash menu, search highlighting).
  *
  * They intentionally read all mutable state via zustand `getState()` accessors
  * at call time (and reach editors through `getEditorRef`), so the same function
@@ -56,10 +49,6 @@ function aiUI() {
 
 function ui() {
   return stores().ui.getState();
-}
-
-function ai() {
-  return stores().ai.getState();
 }
 
 // ── Exported handlers ──────────────────────────────────────────────────
@@ -112,108 +101,6 @@ export function applyContent(content: string, method: "append" | "insert" | "rep
         `\n\n> **Suggested Edit:**\n> ${content.split("\n").join("\n> ")}\n\n`,
       );
       break;
-  }
-  // Don't close the AI assistant panel here — let the user continue their
-  // conversation. They can close it manually or use the Dismiss button.
-}
-
-export async function handleAiAction(actionId: string, customInstruction?: string) {
-  const activePage = getActivePage();
-  if (!activePage) return;
-  const editor = getEditorRef(activePage.id);
-  if (!editor) return;
-
-  const markdown = activePage.content;
-  // Use markdown-preserving selection when available, fall back to plain text.
-  const selectedText =
-    (typeof editor.getSelectedMarkdown === "function"
-      ? editor.getSelectedMarkdown()
-      : editor.getSelectedText()) || "";
-  const contextText = selectedText || markdown || "";
-
-  if (!contextText.trim()) return;
-
-  // Build the user prompt using the template system (shared with inline actions).
-  const a = ai();
-  const templateCtx: TemplateContext = {
-    text: contextText,
-    personalInstructions: a.personalInstructions,
-    customInstruction,
-    documentTitle: activePage.title || "Untitled",
-    documentStructure: "",
-    cursorSection: editor.getCursorContext() || "",
-  };
-
-  const userPrompt = buildUserPrompt(actionId, templateCtx, a.promptTemplates);
-  const systemPrompt = buildSystemPrompt(actionId, templateCtx, a.promptTemplates, markdown);
-
-  // Combine system + user into the chat message.
-  const fullPrompt = systemPrompt
-    ? `${systemPrompt}\n\n${userPrompt}`
-    : customInstruction
-      ? `${userPrompt}\n\nAdditional Instruction: ${customInstruction}`
-      : userPrompt;
-
-  const aUI = aiUI();
-
-  aUI.setAiPrompt(fullPrompt);
-  const userMessage: ChatMessage = {
-    role: "user",
-    parts: [{ text: fullPrompt }],
-  };
-  const historyWithUser = [...a.chatHistory, userMessage];
-  a.setChatHistory(historyWithUser);
-  aUI.setAiPrompt("");
-  a.setGenerating(true);
-  a.setChatHistory((prev) => [...prev, { role: "model", parts: [{ text: "" }] }]);
-
-  try {
-    const embeddingOptions = getEmbeddingOptions();
-
-    // Build stream buffer for smoother UI updates
-    const streamBuffer = new StreamBuffer({
-      onFlush: (text) => {
-        a.setChatHistory((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (last && last.role === "model") {
-            next[next.length - 1] = {
-              ...last,
-              parts: [{ text }],
-            };
-          }
-          return next;
-        });
-      },
-    });
-
-    await chatWithAI(historyWithUser, markdown, {
-      personalInstructions: a.personalInstructions,
-      model: a.serviceConfigs.chat.model,
-      provider: a.serviceConfigs.chat.provider,
-      apiKeys: a.apiKeys,
-      providerConfigs: a.providerConfigs,
-      templateOverrides: a.promptTemplates,
-      onChunk: (chunk) => {
-        streamBuffer.push(chunk);
-      },
-      cursorContext: editor.getCursorContext() || "",
-      embeddingOptions,
-    });
-    streamBuffer.close();
-  } catch (error) {
-    console.error("AI Action failed:", error);
-    const errorMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
-    a.setChatHistory((prev) => {
-      const next = [...prev];
-      next[next.length - 1] = {
-        role: "model",
-        parts: [{ text: errorMessage }],
-      };
-      return next;
-    });
-  } finally {
-    a.setGenerating(false);
   }
 }
 

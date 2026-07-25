@@ -56,7 +56,6 @@ describe("BottomBar", () => {
       indexedChunks: 5,
       indexedEpisodes: 3,
       isAutoSaving: false,
-      showAIAssistant: false,
       showSearch: false,
       showTTS: false,
       showImportModal: false,
@@ -151,16 +150,6 @@ describe("BottomBar", () => {
     expect(screen.getByLabelText("Insert link")).toBeTruthy();
     expect(screen.getByLabelText("Insert image")).toBeTruthy();
     expect(screen.getByLabelText("Scribble")).toBeTruthy();
-  });
-
-  it("renders AI button in mobile mode", () => {
-    matchMediaMock.mockReturnValue({
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    });
-    render(<BottomBar />);
-    expect(screen.getByLabelText("AI Assistant")).toBeTruthy();
   });
 
   it("renders plugin buttons in mobile mode", () => {

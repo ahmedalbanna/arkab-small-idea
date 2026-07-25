@@ -16,7 +16,7 @@ import type { AIAssistantAction } from "./providers/types";
 
 export interface PromptTemplate {
   /** Matches AIAssistantAction. */
-  id: AIAssistantAction | "chat" | "generate";
+  id: AIAssistantAction;
   /** Human-readable label shown in the settings UI. */
   label: string;
   /** Short description of what this action does. */
@@ -150,25 +150,6 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     userPrompt: "Continue this text:\n\n{text}",
     enabled: true,
     maxOutputTokens: 1024,
-  },
-  {
-    id: "chat",
-    label: "Chat",
-    description: "General conversation with the AI writing partner",
-    systemPrompt: `You are a helpful AI writing partner in Ink & Quill. You help users refine their documents through conversation. {personalInstructionsSegment}`,
-    userPrompt: "{text}",
-    enabled: true,
-    maxOutputTokens: 4096,
-  },
-  {
-    id: "generate",
-    label: "Generate Content",
-    description: "Generate new content from a user prompt",
-    systemPrompt: `You are an expert content creator. Generate high-quality Markdown content based on the user's prompt. If context is provided, ensure your response fits naturally within it. {personalInstructionsSegment}`,
-    userPrompt:
-      "User requested: {text}\nExisting context: {context}\n\nGenerate only the markdown content.",
-    enabled: true,
-    maxOutputTokens: 4096,
   },
 ];
 

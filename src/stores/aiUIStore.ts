@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import type { AIAssistantAction } from "../services/aiService";
 
-export type AISettingsTab = "chat" | "actions" | "semantic" | "embeddings";
-
 export interface SemanticResult {
   text: string;
   score: number;
@@ -53,27 +51,19 @@ export interface SlashMenuState {
 }
 
 /**
- * UI state for editor panels, menus, search, and the AI assistant.
+ * UI state for editor panels, menus, search, and inline AI actions.
  *
  * Domains (all in one store for convenience — they are read together by the
  * layout components that render the panel layer):
  *   - **Editor menus**  – bubble, context, side, slash, command palette, formats
  *   - **Search**        – find/replace text, match tracking, semantic results
- *   - **AI assistant**  – prompt, attached images, settings tab, action handler
+ *   - **Inline AI**     – per-editor action handler bridge
  *   - **Misc toggles**  – shortcut help
  *
  * The name is historical (AI was the first consumer to lift state here). If
  * the store grows further, consider splitting into per-domain stores.
  */
 interface AIUIState {
-  // Chat
-  aiPrompt: string;
-  setAiPrompt: (v: string) => void;
-  chatAttachedImages: string[];
-  setChatAttachedImages: (v: string[]) => void;
-  aiSettingsTab: AISettingsTab;
-  setAiSettingsTab: (v: AISettingsTab) => void;
-
   // Search
   findText: string;
   setFindText: (v: string) => void;
@@ -129,13 +119,6 @@ interface AIUIState {
 }
 
 export const useAIUIStore = create<AIUIState>((set) => ({
-  aiPrompt: "",
-  setAiPrompt: (v) => set({ aiPrompt: v }),
-  chatAttachedImages: [],
-  setChatAttachedImages: (v) => set({ chatAttachedImages: v }),
-  aiSettingsTab: "chat",
-  setAiSettingsTab: (v) => set({ aiSettingsTab: v }),
-
   findText: "",
   setFindText: (v) => set({ findText: v }),
   replaceText: "",

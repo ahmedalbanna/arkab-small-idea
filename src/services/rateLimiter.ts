@@ -105,9 +105,6 @@ export class TokenBucket {
 // Convenience: per-service rate limiters with sensible defaults
 // ---------------------------------------------------------------------------
 
-/** Chat interactions — more generous since they are user-initiated. */
-export const chatBucket = new TokenBucket({ capacity: 20, refillRate: 2, refillIntervalMs: 1000 });
-
 /** AI editing actions (improve, summarize, rewrite) — moderate. */
 export const actionBucket = new TokenBucket({
   capacity: 10,

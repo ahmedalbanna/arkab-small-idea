@@ -10,9 +10,9 @@ import {
 
 describe("promptTemplates", () => {
   describe("getDefaultTemplates", () => {
-    it("returns all 13 templates", () => {
+    it("returns all 11 templates", () => {
       const templates = getDefaultTemplates();
-      expect(templates).toHaveLength(13);
+      expect(templates).toHaveLength(11);
     });
 
     it("includes all AI action types", () => {
@@ -29,8 +29,6 @@ describe("promptTemplates", () => {
       expect(ids).toContain("rewrite");
       expect(ids).toContain("suggest-title");
       expect(ids).toContain("complete-text");
-      expect(ids).toContain("chat");
-      expect(ids).toContain("generate");
     });
 
     it("returns deep copies (mutations don't affect originals)", () => {
@@ -97,14 +95,14 @@ describe("promptTemplates", () => {
     it("includes document structure when documentContext is large enough", () => {
       const doc =
         "# Heading 1\n\nSome content here that is long enough to pass the threshold check for document structure extraction. This paragraph has enough characters to make the total document exceed the 200 character minimum.\n\n## Heading 2\n\nMore content here as well to ensure we have a sufficiently large document for testing purposes.\n\n## Heading 3\n\nFinal section with some additional text.";
-      const result = buildSystemPrompt("chat", { text: "test" }, undefined, doc);
+      const result = buildSystemPrompt("improve", { text: "test" }, undefined, doc);
       expect(result).toContain("DOCUMENT STRUCTURE");
       expect(result).toContain("Heading 1");
       expect(result).toContain("Heading 2");
     });
 
     it("does not include document structure for short documents", () => {
-      const result = buildSystemPrompt("chat", { text: "test" }, undefined, "short");
+      const result = buildSystemPrompt("improve", { text: "test" }, undefined, "short");
       expect(result).not.toContain("DOCUMENT STRUCTURE");
     });
 

@@ -10,7 +10,6 @@ describe("aiStore — Phase 6 additions", () => {
     const state = useAIStore.getState();
     // Clear modelTokenLimits
     state.modelTokenLimits = {};
-    state.setShowTokenCounts(false);
   });
 
   describe("promptTemplates", () => {
@@ -66,15 +65,6 @@ describe("aiStore — Phase 6 additions", () => {
       useAIStore.getState().setModelTokenLimit("gpt-4o", 128000);
       useAIStore.getState().setModelTokenLimit("gpt-4o", 64000);
       expect(useAIStore.getState().modelTokenLimits["gpt-4o"]).toBe(64000);
-    });
-  });
-
-  describe("showTokenCounts", () => {
-    it("setShowTokenCounts updates the value", () => {
-      useAIStore.getState().setShowTokenCounts(true);
-      expect(useAIStore.getState().showTokenCounts).toBe(true);
-      useAIStore.getState().setShowTokenCounts(false);
-      expect(useAIStore.getState().showTokenCounts).toBe(false);
     });
   });
 });
