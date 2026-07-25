@@ -233,6 +233,8 @@ export function useAIStreaming({
             // The executor's streamMarkdown handler manages core.streamRange
             // to accumulate chunks correctly. Pass `streamStart` explicitly as
             // `from` so the executor uses the same origin as the hook (P0.3 fix).
+            // CRITICAL: Pass `editorId` so the command routes to THIS editor's
+            // executor, not the first available one (fixes cross-editor AI bleed).
             const isNew = fullResponse.length === chunk.length;
             bus.dispatch(
               {
@@ -241,7 +243,7 @@ export function useAIStreaming({
                 isNew,
                 from: streamStart,
               },
-              { source: "ai" },
+              { source: "ai", editorId },
             );
 
             // Read the end position from the executor's streamRange, which is
@@ -320,6 +322,7 @@ export function useAIStreaming({
       // Restore original content via bus: use the atomic replaceRangeWithMarkdown
       // (P0.1) instead of setSelection + replaceSelectionWithMarkdown, so the
       // range is self-contained and not subject to stale-selection drift.
+      // CRITICAL: Pass `editorId` to route to THIS editor's executor.
       const restoreTo = aiDraftRef.current?.streamEnd ?? initialDraftState.to;
       bus.dispatch(
         {
@@ -328,7 +331,7 @@ export function useAIStreaming({
           to: restoreTo,
           markdown: initialDraftState.originalText,
         },
-        { source: "ai" },
+        { source: "ai", editorId },
       );
       // Clear the highlight decoration via view (UI-only).
       if (viewRef.current) {
@@ -356,7 +359,7 @@ export function useAIStreaming({
           to: draft.streamEnd,
           markdown: draft.originalText,
         },
-        { source: "ai" },
+        { source: "ai", editorId },
       );
     } else if (decision === "append") {
       // Restore original, then append the draft below it.
@@ -367,9 +370,12 @@ export function useAIStreaming({
           to: draft.streamEnd,
           markdown: draft.originalText,
         },
-        { source: "ai" },
+        { source: "ai", editorId },
       );
-      bus.dispatch({ type: "insertText", before: "\n\n" + draft.content }, { source: "ai" });
+      bus.dispatch(
+        { type: "insertText", before: "\n\n" + draft.content },
+        { source: "ai", editorId },
+      );
     } else if (decision === "retry") {
       // Replace the AI range with the original text, then restart.
       bus.dispatch(
@@ -379,7 +385,7 @@ export function useAIStreaming({
           to: draft.streamEnd,
           markdown: draft.originalText,
         },
-        { source: "ai" },
+        { source: "ai", editorId },
       );
       // clearDeco intentionally NOT set here — decoration stays visible while
       // the retry generates new content.

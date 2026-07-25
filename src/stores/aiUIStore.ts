@@ -103,6 +103,11 @@ interface AIUIState {
   slashMenu: SlashMenuState;
   setSlashMenu: (v: Updatable<SlashMenuState>) => void;
 
+  // Tracks the last editor that was active (focused). Used by runAiAction() to
+  // detect stale editorId references when a page switch races with an AI action.
+  lastActiveEditorId: string | null;
+  setLastActiveEditorId: (id: string | null) => void;
+
   // Inline AI draft executor. The streaming implementation lives in the
   // `useAIStreaming` hook (coupled to the editor's draft state) and is
   // published here so the `ai` plugin's keymap can invoke it without a module
@@ -162,6 +167,9 @@ export const useAIUIStore = create<AIUIState>((set) => ({
   setCommandPaletteOpen: (v) => set({ commandPaletteOpen: v }),
   slashMenu: { x: 0, y: 0, show: false, pos: 0, query: "", editorId: "" },
   setSlashMenu: (v) => set((s) => ({ slashMenu: typeof v === "function" ? v(s.slashMenu) : v })),
+
+  lastActiveEditorId: null,
+  setLastActiveEditorId: (id) => set({ lastActiveEditorId: id }),
 
   aiActionHandlers: {},
   setAiActionHandler: (editorId, handler) =>

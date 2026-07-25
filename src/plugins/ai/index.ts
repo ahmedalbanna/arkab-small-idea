@@ -47,24 +47,43 @@ export function runAiAction(
   action: AIAssistantAction,
   customInstruction?: string,
   editorId?: string,
-): void {
+): boolean {
   const state = useAIUIStore.getState();
-  // When an editorId is explicitly provided, use that editor's handler.
-  if (editorId) {
-    state.aiActionHandlers[editorId]?.(action, customInstruction);
-    return;
+  const targetId = editorId ?? useEditorStore.getState().activeFocusedPageId;
+
+  if (!targetId) {
+    if (import.meta.env.DEV) {
+      console.warn(`[AI] runAiAction("${action}") failed: no active editor`);
+    }
+    return false;
   }
-  // Otherwise, look up the handler for the currently focused page.
-  const focusedId = useEditorStore.getState().activeFocusedPageId;
-  if (focusedId && state.aiActionHandlers[focusedId]) {
-    state.aiActionHandlers[focusedId]?.(action, customInstruction);
-    return;
+
+  const handler = state.aiActionHandlers[targetId];
+  if (!handler) {
+    if (import.meta.env.DEV) {
+      const available = Object.keys(state.aiActionHandlers).filter(
+        (k) => state.aiActionHandlers[k],
+      );
+
+      // Detect stale references caused by rapid page switches.
+      const lastActive = state.lastActiveEditorId;
+      if (lastActive && lastActive !== targetId) {
+        console.warn(
+          `[AI] Page switch detected: attempted to run "${action}" on "${targetId}" ` +
+            `but last active was "${lastActive}". This may indicate a stale reference.`,
+        );
+      }
+
+      console.warn(
+        `[AI] runAiAction("${action}") failed: no handler for editor "${targetId}". ` +
+          `Available editors: ${available.join(", ") || "none"}`,
+      );
+    }
+    return false;
   }
-  // Fallback: use any available handler (backward compat).
-  const handlers = Object.values(state.aiActionHandlers).filter(Boolean) as Array<
-    (action: AIAssistantAction, customInstruction?: string) => void
-  >;
-  handlers[0]?.(action, customInstruction);
+
+  handler(action, customInstruction);
+  return true;
 }
 
 /**
@@ -102,16 +121,17 @@ export const aiPlugin: InkPlugin = {
         id,
         label,
         run: (api: CommandAPI) => {
-          api.emitIntent({ type: "runAIAction", actionId: action, editorId: thisEditorId });
+          // Read editorId at dispatch time rather than at init time to stay
+          // correct across editor rebuilds (HMR / page switches).
+          api.emitIntent({
+            type: "runAIAction",
+            actionId: action,
+            editorId: ctx.editor.editorId,
+          });
           return true;
         },
       });
     }
-
-    // Capture this editor's id at plugin init time. Each LoadPlugins() call
-    // creates fresh instances, so the closures below will always reference the
-    // editor that owns this keymap (fixes: AI actions execute on the wrong editor).
-    const thisEditorId = ctx.editor.editorId;
 
     ctx.registerProsePlugin(() =>
       keymap({
@@ -121,8 +141,9 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runAiAction("improve", undefined, thisEditorId);
-            return true;
+            // Read editorId at dispatch time — not captured at init — so the
+            // keymap stays correct even if the editor was rebuilt (HMR).
+            return runAiAction("improve", undefined, ctx.editor.editorId);
           }
           return false;
         },
@@ -130,8 +151,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runAiAction("summarize", undefined, thisEditorId);
-            return true;
+            return runAiAction("summarize", undefined, ctx.editor.editorId);
           }
           return false;
         },
@@ -139,8 +159,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            runAiAction("fix-grammar", undefined, thisEditorId);
-            return true;
+            return runAiAction("fix-grammar", undefined, ctx.editor.editorId);
           }
           return false;
         },

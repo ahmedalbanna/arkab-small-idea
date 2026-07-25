@@ -55,7 +55,16 @@ export function AIHost() {
   const activePage = useEditorStore(
     (s) => s.pages.find((p) => p.id === s.activeFocusedPageId) || s.pages[0],
   );
+  const activeFocusedPageId = useEditorStore((s) => s.activeFocusedPageId);
   const markdown = activePage?.content || "";
+
+  // Track the last active editor so runAiAction() can detect stale references
+  // when a page switch races with an AI action dispatch.
+  useEffect(() => {
+    if (activeFocusedPageId) {
+      useAIUIStore.getState().setLastActiveEditorId(activeFocusedPageId);
+    }
+  }, [activeFocusedPageId]);
 
   // Search highlighting (regex + semantic via RAG).
   useEffect(() => {
