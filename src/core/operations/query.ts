@@ -122,6 +122,12 @@ export function getSectionMarkdown(state: EditorState, pos?: number): string {
   return editorSerializer.serialize(tempDoc);
 }
 
+/** Return the cursor position (collapsed selection) or `null` when a range is selected. */
+export function getCursorPos(state: EditorState): number | null {
+  const { from, to } = state.selection;
+  return from === to ? from : null;
+}
+
 /** Build the surrounding heading path + current block text for AI context. */
 export function getCursorContext(state: EditorState): string {
   const { $from } = state.selection;

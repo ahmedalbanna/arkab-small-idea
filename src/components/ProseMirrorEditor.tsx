@@ -84,6 +84,7 @@ export interface EditorRef {
   setTTSHighlight: (range: { from: number; to: number } | null) => void;
   handleFormat: (type: string, attrs?: Record<string, any>) => void;
   getCursorContext: () => string;
+  getCursorPos: () => number | null;
   getSelectedMarkdown: () => string;
   getSectionMarkdown: (pos?: number) => string;
   scrollToText: (text: string) => void;

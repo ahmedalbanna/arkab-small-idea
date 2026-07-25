@@ -144,6 +144,7 @@ export function useImperativeEditorApi({
       setTTSHighlight: (range) => dispatch({ type: "setTTSHighlight", range }),
       handleFormat: (type, attrs) => dispatch({ type: "format", format: type, attrs }),
       getCursorContext: () => query<string>({ type: "getCursorContext" }) ?? "",
+      getCursorPos: () => query<number>({ type: "getCursorPos" }),
       getSelectedMarkdown: () => query<string>({ type: "getSelectedMarkdown" }) ?? "",
       getSectionMarkdown: (pos) => query<string>({ type: "getSectionMarkdown", pos }) ?? "",
       scrollToText: (text) => dispatch({ type: "scrollToText", text }),

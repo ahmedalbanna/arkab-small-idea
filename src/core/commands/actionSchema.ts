@@ -146,6 +146,7 @@ const getTextWithPositionsSchema = z.object({
 });
 const getHeadingsSchema = z.object({ type: z.literal("getHeadings") });
 const getCursorContextSchema = z.object({ type: z.literal("getCursorContext") });
+const getCursorPosSchema = z.object({ type: z.literal("getCursorPos") });
 const getSelectedMarkdownSchema = z.object({ type: z.literal("getSelectedMarkdown") });
 const getSectionMarkdownSchema = z.object({
   type: z.literal("getSectionMarkdown"),
@@ -182,6 +183,7 @@ export const EditorCommandActionSchema = z.discriminatedUnion("type", [
   getTextWithPositionsSchema,
   getHeadingsSchema,
   getCursorContextSchema,
+  getCursorPosSchema,
   getSelectedMarkdownSchema,
   getSectionMarkdownSchema,
 ]);

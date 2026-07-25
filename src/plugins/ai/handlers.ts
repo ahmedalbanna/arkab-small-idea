@@ -99,22 +99,11 @@ export function applyContent(content: string, method: "append" | "insert" | "rep
       editor?.appendMarkdown(prefix + content);
       break;
     }
-    case "insert": {
-      // Insert at cursor position without replacing selection.
-      // Use replaceRangeWithMarkdown with an empty range (from === to) to
-      // insert without deleting anything.
-      const sel = editor?.getSelectedText()
-        ? { from: -1, to: -1 } // signal to use selection-based insert
-        : null;
-      if (sel) {
-        editor?.replaceSelectionWithMarkdown(content);
-      } else {
-        // Fall back to append when no editor access.
-        const prefix = activePage.content.trim() ? "\n\n" : "";
-        editor?.appendMarkdown(prefix + content);
-      }
+    case "insert":
+      // Insert content at cursor (ProseMirror semantics: replaces any
+      // active selection at cursor, inserts when cursor is collapsed).
+      editor?.replaceSelectionWithMarkdown(content);
       break;
-    }
     case "replace":
       editor?.replaceSelectionWithMarkdown(content);
       break;

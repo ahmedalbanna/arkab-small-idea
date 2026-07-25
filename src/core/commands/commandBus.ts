@@ -37,9 +37,9 @@ export type EditorCommandAction =
   | { type: "insertText"; before: string; after?: string }
   | { type: "insertImage"; src: string; alt?: string; title?: string }
   | {
-      type: "insertGallery";
-      srcs: string[];
-    }
+    type: "insertGallery";
+    srcs: string[];
+  }
   | { type: "appendMarkdown"; markdown: string }
   | { type: "replaceSelectionWithMarkdown"; markdown: string }
   | { type: "setMarkdown"; content: string }
@@ -62,6 +62,7 @@ export type EditorCommandAction =
   | { type: "getTextWithPositions" }
   | { type: "getHeadings" }
   | { type: "getCursorContext" }
+  | { type: "getCursorPos" }
   | { type: "getSelectedMarkdown" }
   | { type: "getSectionMarkdown"; pos?: number };
 
@@ -200,7 +201,7 @@ export class EditorCommandBus {
         const issues = formatZodIssues(result.error.issues);
         console.warn(
           `[commandBus] Invalid action (${(action as Record<string, unknown>).type as string}):\n` +
-            issues.map((i) => `  ${i.path || "(root)"}: ${i.message}`).join("\n"),
+          issues.map((i) => `  ${i.path || "(root)"}: ${i.message}`).join("\n"),
           action,
         );
         // In strict mode, skip invalid actions instead of forwarding them.
@@ -247,7 +248,7 @@ export class EditorCommandBus {
         const issues = formatZodIssues(result.error.issues);
         console.warn(
           `[commandBus] Invalid query (${(action as Record<string, unknown>).type as string}):\n` +
-            issues.map((i) => `  ${i.path || "(root)"}: ${i.message}`).join("\n"),
+          issues.map((i) => `  ${i.path || "(root)"}: ${i.message}`).join("\n"),
           action,
         );
       }

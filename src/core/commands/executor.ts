@@ -16,9 +16,8 @@ import {
   getDoc,
   getTextWithPositions,
   getHeadings,
-  getCursorContext,
-  getSelectedMarkdown,
-  getSectionMarkdown,
+  getCursorContext, getSelectedMarkdown,
+  getSectionMarkdown
 } from "../operations/query";
 import { getHtml } from "../operations/html";
 import { applyUndo, applyRedo } from "../operations/history";
@@ -234,9 +233,9 @@ export function createHeadlessExecutor(core: CoreEditor): EditorCommandExecutor 
         case "getCursorContext":
           return { value: getCursorContext(state) };
 
+        case "getCursorPos":
         case "getSelectedMarkdown":
           return { value: getSelectedMarkdown(state) };
-
         case "getSectionMarkdown":
           return { value: getSectionMarkdown(state, action.pos) };
 
