@@ -96,14 +96,14 @@ describe("promptTemplates", () => {
       const doc =
         "# Heading 1\n\nSome content here that is long enough to pass the threshold check for document structure extraction. This paragraph has enough characters to make the total document exceed the 200 character minimum.\n\n## Heading 2\n\nMore content here as well to ensure we have a sufficiently large document for testing purposes.\n\n## Heading 3\n\nFinal section with some additional text.";
       const result = buildSystemPrompt("improve", { text: "test" }, undefined, doc);
-      expect(result).toContain("DOCUMENT STRUCTURE");
+      expect(result).toContain("DOCUMENT STRUCTURE (for orientation only)");
       expect(result).toContain("Heading 1");
       expect(result).toContain("Heading 2");
     });
 
     it("does not include document structure for short documents", () => {
       const result = buildSystemPrompt("improve", { text: "test" }, undefined, "short");
-      expect(result).not.toContain("DOCUMENT STRUCTURE");
+      expect(result).not.toContain("DOCUMENT STRUCTURE (for orientation only)");
     });
 
     it("appends custom instruction when not in template", () => {
@@ -119,7 +119,7 @@ describe("promptTemplates", () => {
     it("builds a user prompt with text placeholder filled", () => {
       const result = buildUserPrompt("improve", { text: "Hello world" });
       expect(result).toContain("Hello world");
-      expect(result).toContain("Improve this text");
+      expect(result).toContain("Improve ONLY this exact text");
     });
 
     it("returns raw text for unknown action", () => {

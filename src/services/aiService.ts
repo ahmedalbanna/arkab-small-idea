@@ -125,7 +125,7 @@ export const processAIAction = async (
 
   let finalSystem = systemInstruction;
   if (ragContext) {
-    finalSystem += `\n\n### BROADER DOCUMENT CONTEXT ###\nUse the following relevant document sections to ensure your changes are cohesive with the rest of the work:\n${ragContext}`;
+    finalSystem += `\n\n### REFERENCE CONTEXT (for awareness only) ###\nThe following sections from the document are provided for context awareness only. Do NOT reference or incorporate content from these sections into your response. Only modify the selected text.\n\n${ragContext}`;
   }
 
   if (customInstruction && !systemInstruction.includes("{customInstruction}")) {
