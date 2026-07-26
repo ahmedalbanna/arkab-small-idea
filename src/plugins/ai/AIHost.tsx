@@ -1,33 +1,42 @@
-import React, { useRef, useEffect, useCallback, useState } from "react";
+import React, { useEffect } from "react";
 
 import { SearchBar } from "../../components/overlays/SearchBar";
 import { ShortcutsHelp } from "../../components/overlays/ShortcutsHelp";
 import TTSSpeaker from "../../components/TTSSpeaker";
 import { checkOllamaConnection } from "../../services/aiService";
 import { ragService } from "../../services/ragService";
-import { useAIStore } from "../../stores/aiStore";
-import { useUIStore } from "../../stores/uiStore";
-import { useEditorStore } from "../../stores/editorStore";
-import { useAIUIStore } from "../../stores/aiUIStore";
-import { getEmbeddingOptions } from "../../stores/aiStore";
 import { getEditorRef } from "../editorAccess";
-import {
-  applyContent,
-  handleFindNext,
-  handleReplace,
-  handleReplaceAll,
-  indexActiveDocument,
-} from "./handlers";
+import { usePluginServices } from "../appContext";
+import { handleFindNext, handleReplace, handleReplaceAll } from "./handlers";
+
+/**
+ * Compute embedding options from the ai store state. Inlined here to avoid
+ * importing `getEmbeddingOptions` from the store module directly.
+ */
+function getEmbeddingOptions(stores: any): { provider?: string; apiKey?: string; model?: string } {
+  const state = stores.ai.getState();
+  return {
+    provider: state.serviceConfigs?.embeddings?.provider,
+    apiKey: state.apiKeys?.[state.serviceConfigs?.embeddings?.provider],
+    model: state.serviceConfigs?.embeddings?.model,
+  };
+}
 
 /**
  * Host component for the `ai` plugin. It owns the search UI, TTS, shortcuts help,
  * and the Ollama connection health check. State and shared handlers live in
  * `aiUIStore` / `handlers.ts` so the editor tree can read the same values
  * without prop-drilling.
+ *
+ * Reads stores from PluginContext (via usePluginServices) rather than importing
+ * them directly, keeping the plugin decoupled from specific store modules.
  */
 export function AIHost() {
+  const { pluginContext } = usePluginServices();
+  const stores = pluginContext.stores;
+
   const { serviceConfigs, apiKeys, ollamaStatus, setOllamaStatus, setAvailableModels } =
-    useAIStore();
+    stores.ai();
 
   const {
     findText,
@@ -50,19 +59,20 @@ export function AIHost() {
     setSemanticResults,
     showShortcuts,
     setShowShortcuts,
-  } = useAIUIStore();
+  } = stores.aiUI();
 
-  const activePage = useEditorStore(
-    (s) => s.pages.find((p) => p.id === s.activeFocusedPageId) || s.pages[0],
+  const activePage = stores.editor(
+    (s: any) => s.pages.find((p: any) => p.id === s.activeFocusedPageId) || s.pages[0],
   );
-  const activeFocusedPageId = useEditorStore((s) => s.activeFocusedPageId);
+
+  const activeFocusedPageId = stores.editor((s: any) => s.activeFocusedPageId);
   const markdown = activePage?.content || "";
 
   // Track the last active editor so runAiAction() can detect stale references
   // when a page switch races with an AI action dispatch.
   useEffect(() => {
     if (activeFocusedPageId) {
-      useAIUIStore.getState().setLastActiveEditorId(activeFocusedPageId);
+      stores.aiUI.getState().setLastActiveEditorId(activeFocusedPageId);
     }
   }, [activeFocusedPageId]);
 
@@ -79,7 +89,7 @@ export function AIHost() {
     if (isSemantic) {
       const performSemanticSearch = async () => {
         try {
-          const embeddingOptions = getEmbeddingOptions();
+          const embeddingOptions = getEmbeddingOptions(stores);
           const results = await ragService.searchDetailed(findText, 10, 0.2, embeddingOptions);
           const docMatches = results.filter((r) => r.source === "document");
           setMatchCount(docMatches.length);

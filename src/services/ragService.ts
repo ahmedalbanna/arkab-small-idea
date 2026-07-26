@@ -1,12 +1,29 @@
 import { embeddingService, vectorStore, type Chunk } from "./embeddingService";
 import type { ChatMessage } from "./aiService";
-import { useUIStore } from "../stores/uiStore";
+
+/**
+ * Optional callbacks for UI state updates. Injected from the app/plugin layer
+ * so RagService has no direct dependency on Zustand stores.
+ */
+export interface RagUICallbacks {
+  setIndexing?: (indexing: boolean) => void;
+  setIndexedCounts?: (chunks: number, episodes: number) => void;
+}
 
 export class RagService {
   private lastIndexedContent = "";
   private isIndexing = false;
   private queryCache = new Map<string, number[]>();
   private readonly CACHE_LIMIT = 20;
+  private _uiCallbacks: RagUICallbacks = {};
+
+  /**
+   * Inject UI callbacks for state updates. Accepts partial overrides;
+   * unspecified callbacks are no-ops.
+   */
+  setUICallbacks(cbs: RagUICallbacks): void {
+    this._uiCallbacks = cbs;
+  }
 
   async indexDocument(
     content: string,
@@ -19,7 +36,7 @@ export class RagService {
     if (provider === "pipeline" && !embeddingService.isReady()) return;
 
     this.isIndexing = true;
-    useUIStore.getState().setIndexing(true);
+    this._uiCallbacks.setIndexing?.(true);
     try {
       console.info("Indexing document for RAG...");
       const texts = this.chunkContent(content);
@@ -55,9 +72,7 @@ export class RagService {
       // Update vector store atomically
       await vectorStore.setChunks(updatedChunks);
 
-      useUIStore
-        .getState()
-        .setIndexedCounts(updatedChunks.length, vectorStore.getEpisodes().length);
+      this._uiCallbacks.setIndexedCounts?.(updatedChunks.length, vectorStore.getEpisodes().length);
       this.lastIndexedContent = content;
       console.info(
         `RAG Update: ${updatedChunks.length} chunks total, ${newEmbeddingsCount} newly embedded.`,
@@ -66,7 +81,7 @@ export class RagService {
       console.error("RAG Indexing error:", error);
     } finally {
       this.isIndexing = false;
-      useUIStore.getState().setIndexing(false);
+      this._uiCallbacks.setIndexing?.(false);
     }
   }
 
@@ -154,7 +169,7 @@ export class RagService {
     options?: { provider?: string; apiKey?: string; model?: string },
   ) {
     try {
-      useUIStore.getState().setIndexing(true);
+      this._uiCallbacks.setIndexing?.(true);
       // Summarize conversation into text
       const content = messages.map((m) => `${m.role.toUpperCase()}: ${m.parts[0].text}`).join("\n");
       const text = `Conversation Name: ${name}\n\n${content}`;
@@ -186,14 +201,15 @@ export class RagService {
         await vectorStore.addEpisodes([chunk]);
       }
 
-      useUIStore
-        .getState()
-        .setIndexedCounts(vectorStore.getChunks().length, vectorStore.getEpisodes().length);
+      this._uiCallbacks.setIndexedCounts?.(
+        vectorStore.getChunks().length,
+        vectorStore.getEpisodes().length,
+      );
       console.info(`Indexed conversation ${id} into episodic memory.`);
     } catch (e) {
       console.error("Error indexing conversation:", e);
     } finally {
-      useUIStore.getState().setIndexing(false);
+      this._uiCallbacks.setIndexing?.(false);
     }
   }
 

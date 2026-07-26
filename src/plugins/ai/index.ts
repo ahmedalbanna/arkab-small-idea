@@ -5,10 +5,10 @@ import type { InkPlugin, PluginContext } from "../types";
 import type { CommandAPI } from "../pluginAPI";
 import type { AIAssistantAction, ActionScope } from "../../services/aiService";
 import { AIHost } from "./AIHost";
-import { useAIUIStore } from "../../stores/aiUIStore";
-import { useEditorStore } from "../../stores/editorStore";
 import { setHandlerStores } from "./handlers";
 import { setEditorAccessStores } from "../editorAccess";
+import { runAction, setHandler } from "./aiHandlerRegistry";
+import { ragService } from "../../services/ragService";
 
 /**
  * Selects the block containing the cursor (when the selection is collapsed) so
@@ -33,8 +33,12 @@ export function selectBlock(state: EditorState, dispatch?: (tr: Transaction) => 
  * published here via `setAiActionHandler`. The plugin's keymap invokes it
  * through `runAiAction`, so the AI capability is declared at the plugin level
  * (and removed when the plugin is disabled) while the implementation stays in
- * the hook. Backed by `aiUIStore` — there is deliberately no module-global
- * handler, matching the registry/context pattern used elsewhere.
+ * the hook.
+ *
+ * The handler is stored in a simple module-level registry (`aiHandlerRegistry`)
+ * rather than in a Zustand store, so this plugin has no direct store coupling.
+ *
+ * @deprecated Use `setHandler` from `./aiHandlerRegistry` directly.
  */
 export function setAiActionHandler(
   editorId: string,
@@ -42,51 +46,23 @@ export function setAiActionHandler(
     | ((action: AIAssistantAction, customInstruction?: string, scope?: ActionScope) => void)
     | null,
 ): void {
-  useAIUIStore.getState().setAiActionHandler(editorId, handler);
+  setHandler(editorId, handler as any);
 }
 
+/**
+ * Run an AI action by looking up the registered handler for the given editor.
+ * The caller MUST provide an `editorId` — it is no longer resolved from the
+ * editor store to keep this module store-agnostic.
+ *
+ * @deprecated Use `runAction` from `./aiHandlerRegistry` directly.
+ */
 export function runAiAction(
   action: AIAssistantAction,
   customInstruction?: string,
   editorId?: string,
   scope?: ActionScope,
 ): boolean {
-  const state = useAIUIStore.getState();
-  const targetId = editorId ?? useEditorStore.getState().activeFocusedPageId;
-
-  if (!targetId) {
-    if (import.meta.env.DEV) {
-      console.warn(`[AI] runAiAction("${action}") failed: no active editor`);
-    }
-    return false;
-  }
-
-  const handler = state.aiActionHandlers[targetId];
-  if (!handler) {
-    if (import.meta.env.DEV) {
-      const available = Object.keys(state.aiActionHandlers).filter(
-        (k) => state.aiActionHandlers[k],
-      );
-
-      // Detect stale references caused by rapid page switches.
-      const lastActive = state.lastActiveEditorId;
-      if (lastActive && lastActive !== targetId) {
-        console.warn(
-          `[AI] Page switch detected: attempted to run "${action}" on "${targetId}" ` +
-            `but last active was "${lastActive}". This may indicate a stale reference.`,
-        );
-      }
-
-      console.warn(
-        `[AI] runAiAction("${action}") failed: no handler for editor "${targetId}". ` +
-          `Available editors: ${available.join(", ") || "none"}`,
-      );
-    }
-    return false;
-  }
-
-  handler(action, customInstruction, scope);
-  return true;
+  return runAction(action, customInstruction, editorId, scope as any);
 }
 
 /**
@@ -102,10 +78,25 @@ export const aiPlugin: InkPlugin = {
   id: "ai",
   name: "AI Assistant & Search",
   version: "1.0.0",
+  essential: false,
+  dependencies: ["core"],
   init(ctx: PluginContext) {
     // Inject store access so handlers/editorAccess don't import stores directly
     setHandlerStores(ctx.stores);
     setEditorAccessStores(ctx.stores);
+
+    // Inject UI callbacks into ragService so it doesn't import stores directly.
+    // Guard against missing store (e.g. in test environments) — UI updates are
+    // non-critical and the service still works without them.
+    const uiStore = ctx.stores?.ui;
+    if (uiStore) {
+      const ui = uiStore.getState;
+      ragService.setUICallbacks({
+        setIndexing: (indexing: boolean) => ui().setIndexing(indexing),
+        setIndexedCounts: (chunks: number, episodes: number) =>
+          ui().setIndexedCounts(chunks, episodes),
+      });
+    }
 
     ctx.registerHost(AIHost);
 

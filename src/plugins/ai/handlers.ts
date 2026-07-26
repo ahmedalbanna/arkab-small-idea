@@ -1,7 +1,6 @@
 import { ragService } from "../../services/ragService";
 import { getEditorRef } from "../editorAccess";
 import type { AppStores } from "../types";
-import { getEmbeddingOptions } from "../../stores/aiStore";
 
 /**
  * Stable, module-level handlers shared by both the `ai` plugin host (search
@@ -190,8 +189,11 @@ export function handleReplaceAll() {
 }
 
 /** Index the active document for semantic search before a chat/generate call. */
-export function indexActiveDocument() {
+export function indexActiveDocument(embeddingOptions?: {
+  provider?: string;
+  apiKey?: string;
+  model?: string;
+}) {
   const markdown = getActivePage()?.content || "";
-  const embeddingOptions = getEmbeddingOptions();
   ragService.indexDocument(markdown, embeddingOptions);
 }

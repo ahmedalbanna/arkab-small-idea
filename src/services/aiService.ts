@@ -9,7 +9,6 @@ import { actionBucket } from "./rateLimiter";
 import { buildSystemPrompt, buildUserPrompt } from "./promptTemplates";
 import type { TemplateOverrides } from "./promptTemplates";
 import { estimateTokens, tokenTracker } from "./tokenMonitor";
-import { useAIStore } from "../stores/aiStore";
 
 /**
  * The scope of an AI action — determines which text is sent to the model.
@@ -95,6 +94,8 @@ export interface ExecuteAIActionParams {
   apiKeys?: Record<string, string>;
   /** Provider-specific config overrides. */
   providerConfigs?: Record<string, any>;
+  /** Per-model token limit overrides (from aiStore; absent = use defaults). */
+  modelTokenLimits?: Record<string, number>;
   /** Full document markdown (used for RAG context + structure extraction). */
   documentContext?: string;
   /** Cursor / heading path context. */
@@ -136,6 +137,7 @@ export async function executeAIAction(params: ExecuteAIActionParams): Promise<st
     provider = "ollama",
     apiKeys,
     providerConfigs,
+    modelTokenLimits,
     documentContext = "",
     cursorContext = "",
     onChunk,
@@ -144,6 +146,7 @@ export async function executeAIAction(params: ExecuteAIActionParams): Promise<st
   } = params;
 
   return processAIAction(text, action, {
+    modelTokenLimits,
     personalInstructions,
     model,
     provider,
@@ -171,11 +174,27 @@ export {
 } from "./providers";
 
 /**
- * Get the model's max token limit from the store, falling back to a sensible
- * default if the model is unknown.
+ * Default per-model token limits (used when no limits are passed from the
+ * caller — keeps the function pure when called without store context).
  */
-function getModelMaxTokens(model: string): number {
-  const limits = useAIStore.getState().modelTokenLimits;
+const DEFAULT_MODEL_LIMITS: Record<string, number> = {
+  "gpt-4o": 128000,
+  "gpt-4o-mini": 128000,
+  "gpt-3.5-turbo": 16385,
+  "claude-3-5-sonnet-20240620": 200000,
+  "gemini-1.5-pro": 1048576,
+  "qwen2.5:0.5b": 32768,
+  mistral: 8192,
+  "llama3.2": 8192,
+};
+
+/**
+ * Get the model's max token limit, falling back to a sensible default if the
+ * model is unknown. Accepts optional overrides so callers can inject their own
+ * limits (e.g. from the persisted settings store).
+ */
+function getModelMaxTokens(model: string, modelTokenLimits?: Record<string, number>): number {
+  const limits = modelTokenLimits ?? DEFAULT_MODEL_LIMITS;
   return limits[model] ?? 8192;
 }
 
@@ -215,6 +234,7 @@ export const processAIAction = async (
     apiKeys?: any;
     providerConfigs?: any;
     onChunk?: (chunk: string) => void;
+    modelTokenLimits?: Record<string, number>;
     documentContext?: string;
     cursorContext?: string;
     signal?: AbortSignal;
@@ -232,6 +252,7 @@ export const processAIAction = async (
     provider = "ollama",
     apiKeys,
     providerConfigs,
+    modelTokenLimits,
     onChunk,
     documentContext = "",
     cursorContext = "",
@@ -279,7 +300,7 @@ export const processAIAction = async (
   // -----------------------------------------------------------------------
   // Token budget check and truncation
   // -----------------------------------------------------------------------
-  const maxTokens = getModelMaxTokens(model);
+  const maxTokens = getModelMaxTokens(model, modelTokenLimits);
   const estimatedPromptTokens = estimateTokens(systemInstruction + prompt + ragContext);
 
   let finalPrompt = prompt;

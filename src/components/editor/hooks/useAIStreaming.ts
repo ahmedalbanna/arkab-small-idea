@@ -2,12 +2,8 @@ import { useEffect, useRef, useState, type MutableRefObject, type RefObject } fr
 import type { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { draftHighlightKey } from "../../../lib/draftPlugin";
-import {
-  executeAIAction,
-  type AIAssistantAction,
-  type ActionScope,
-} from "../../../services/aiService";
-import { setAiActionHandler } from "../../../plugins/ai";
+import { executeAIAction, type AIAssistantAction } from "../../../services/aiService";
+import { setHandler } from "../../../plugins/ai/aiHandlerRegistry";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { PluginContext, EditorCommand } from "../../../plugins/types";
 import type { SlashMenuState } from "../../../stores/aiUIStore";
@@ -530,7 +526,7 @@ export function useAIStreaming({
   // eslint-disable-next-line react-hooks/refs
   handleAIActionRef.current = handleAIAction;
   useEffect(() => {
-    setAiActionHandler(editorId, (a, ci, s) => {
+    setHandler(editorId, (a, ci, s) => {
       handleAIActionRef.current(
         a as AIAssistantAction,
         undefined,
@@ -541,7 +537,7 @@ export function useAIStreaming({
         s,
       );
     });
-    return () => setAiActionHandler(editorId, null);
+    return () => setHandler(editorId, null);
   }, [editorId]);
 
   return {
