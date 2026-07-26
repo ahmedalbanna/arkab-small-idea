@@ -10,6 +10,9 @@
 
 import type { AIAssistantAction } from "./providers/types";
 
+/** Mirrors ActionScope from aiService — inlined here to avoid circular imports. */
+type ActionScope = "sel" | "section" | "doc";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -34,6 +37,8 @@ export interface PromptTemplate {
 /** Placeholder values injected at rendering time. */
 export interface TemplateContext {
   text: string;
+  /** Which portion of the document this operation targets. */
+  scope?: ActionScope;
   personalInstructions?: string;
   customInstruction?: string;
   documentTitle?: string;
@@ -44,6 +49,13 @@ export interface TemplateContext {
 /** Map of action → custom template overrides (only customized ones are stored). */
 export type TemplateOverrides = Partial<Record<string, Partial<PromptTemplate>>>;
 
+/** Human-readable labels for each scope, used in prompt templates via {scope}. */
+const SCOPE_LABELS: Record<string, string> = {
+  sel: "the selected text",
+  section: "the current section",
+  doc: "the full document",
+};
+
 // ---------------------------------------------------------------------------
 // Default templates
 // ---------------------------------------------------------------------------
@@ -52,26 +64,48 @@ const DEFAULT_SYSTEM_PREFIX =
   "You are a precise writing assistant in Ink & Quill. You modify ONLY the text provided below.";
 
 /**
- * Universal scope rules appended to every action prompt.
- * These prevent the AI from expanding beyond the selected text boundaries.
+ * Scope rules appended to every action prompt.
+ * The rules are adapted based on the scope so the model knows whether to
+ * modify just the selection, the current section, or the full document.
+ *
+ * Use `{scope}` as a placeholder — it will be replaced with the human-readable
+ * scope label (e.g. "the selected text", "the current section", "the full document").
  */
-const SCOPE_RULES = `
-STRICT SCOPE CONSTRAINTS — These rules are MANDATORY:
+const SCOPE_RULES_BY_SCOPE: Record<string, string> = {
+  sel: `
+SCOPE CONSTRAINTS — These rules are MANDATORY:
 1. Modify ONLY the exact text shown below.
 2. Do NOT add, remove, or modify any text OUTSIDE the provided selection.
 3. Do NOT create new paragraphs, sections, headings, or standalone content blocks.
-4. Return ONLY the modified text — no explanations, no notes, no introductory phrases, no commentary.
+4. Return ONLY the modified text — no explanations, notes, introductory phrases, or commentary.
 5. Preserve the original length approximately — do not significantly expand or shrink unless the action explicitly requires it.
 6. Maintain all original formatting (bold, italic, lists, headings) within the selection.
-7. Do NOT reference or incorporate content from other parts of the document.`;
+7. Do NOT reference or incorporate content from other parts of the document.`,
+  section: `
+SCOPE CONSTRAINTS — These rules are MANDATORY:
+1. Modify ONLY the content within this section (heading boundary).
+2. Do NOT add, remove, or modify any text OUTSIDE the provided section.
+3. You may restructure content within the section but keep the overall heading structure intact.
+4. Return ONLY the modified section content — no explanations, notes, or commentary.
+5. Maintain all original formatting (bold, italic, lists, headings) within the section.
+6. Do NOT incorporate content from other sections of the document.`,
+  doc: `
+SCOPE CONSTRAINTS — These rules are MANDATORY:
+1. You are working with the ENTIRE document shown below.
+2. You may add, remove, or restructure content as needed based on the action.
+3. Return ONLY the complete document — no explanations, notes, introductory phrases, or commentary.
+4. Maintain all original formatting (bold, italic, lists, headings) unless the action explicitly requires changes.
+5. Preserve any metadata, frontmatter, or special formatting at the document level.
+6. Ensure the document remains coherent and well-structured.`,
+};
 
 const DEFAULT_TEMPLATES: PromptTemplate[] = [
   {
     id: "improve",
     label: "Improve Writing",
     description: "Enhance clarity, flow, and impact of selected text",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Improve the quality of the following text while keeping its meaning and general structure. Enhance clarity, flow, and impact. Keep the text within the same boundaries — do not expand or restructure beyond the selection.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Improve ONLY this exact text (do not change anything outside it):\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Improve the quality of the following text while keeping its meaning and general structure. Enhance clarity, flow, and impact. Keep the text within the same boundaries — do not expand or restructure beyond the {scope}.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Improve ONLY {scope} (do not change anything outside it):\n\n{text}",
     enabled: true,
     maxOutputTokens: 2048,
   },
@@ -79,8 +113,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "fix-grammar",
     label: "Fix Grammar",
     description: "Fix grammar, spelling, and punctuation errors",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Fix grammar, spelling, and punctuation errors only. Do not restructure sentences or change word choice unless it fixes a grammatical error. Do not change the meaning.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Fix grammar ONLY in this exact text:\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Fix grammar, spelling, and punctuation errors only. Do not restructure sentences or change word choice unless it fixes a grammatical error. Do not change the meaning.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Fix grammar ONLY in {scope}:\n\n{text}",
     enabled: true,
     maxOutputTokens: 2048,
   },
@@ -88,8 +122,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "shorten",
     label: "Shorten",
     description: "Make text more concise while preserving key info",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Make the following text more concise without losing key information. Condense within the selection boundaries — do not remove content outside the provided text.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Shorten ONLY this exact text:\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Make the following text more concise without losing key information. Condense within the boundaries of {scope} — do not remove content outside the provided text.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Shorten ONLY {scope}:\n\n{text}",
     enabled: true,
     maxOutputTokens: 1024,
   },
@@ -97,8 +131,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "expand",
     label: "Expand",
     description: "Add detail, depth, and richer language",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Expand on the following text with relevant details and richer language. Expand ONLY within the boundaries of the provided text — add detail and depth, but do not create new standalone sections or paragraphs outside the selection.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Expand ONLY this exact text (stay within selection boundaries):\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Expand on the following text with relevant details and richer language. Expand ONLY within the boundaries of {scope} — add detail and depth, but do not create new standalone sections or paragraphs outside {scope}.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Expand ONLY {scope} (stay within boundaries):\n\n{text}",
     enabled: true,
     maxOutputTokens: 4096,
   },
@@ -106,8 +140,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "summarize",
     label: "Summarize",
     description: "Condense to key points or one-sentence summary",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Summarize the following text into a concise one-sentence description or a few key bullet points. Summarize ONLY the provided text — do not include content from outside the selection.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Summarize ONLY this exact text:\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Summarize the following text into a concise one-sentence description or a few key bullet points. Summarize ONLY the provided text — do not include content from outside {scope}.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Summarize ONLY {scope}:\n\n{text}",
     enabled: true,
     maxOutputTokens: 1024,
   },
@@ -115,8 +149,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "generate-outline",
     label: "Generate Outline",
     description: "Create a structural outline from text",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Generate a clear, high-level structural outline for the following text. Use Markdown headings and bullet points. Outline ONLY the provided text — do not add sections from elsewhere in the document.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Generate an outline for ONLY this text:\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Generate a clear, high-level structural outline for the following text. Use Markdown headings and bullet points. Work with the ENTIRE {scope} provided.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Generate an outline for {scope}:\n\n{text}",
     enabled: true,
     maxOutputTokens: 2048,
   },
@@ -124,8 +158,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "expand-outline",
     label: "Expand Outline",
     description: "Turn a Markdown outline into a full draft",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} You are a master writer. Your task is to take a Markdown outline (headings and bullet points) and expand it into a full, detailed, and well-written draft. Use the outline structure as your guide but write in a natural, cohesive prose style. Maintain any existing Markdown formatting like bolding or italics if present in the outline. Expand ONLY the outline content provided.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Convert this outline into a full draft (expand ONLY this content):\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} You are a master writer. Take a Markdown outline (headings and bullet points) and expand it into a full, detailed, well-written draft. Use the outline structure as your guide but write in a natural, cohesive prose style. Work with the ENTIRE {scope} provided.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Convert this outline into a full draft (expand {scope}):\n\n{text}",
     enabled: true,
     maxOutputTokens: 4096,
   },
@@ -133,8 +167,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "draft-topic",
     label: "Draft Topic",
     description: "Write a detailed piece from a topic or snippet",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Take the following topic or snippet and draft a detailed, well-structured, and engaging piece of content around it. Draft content based ONLY on the provided text.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Draft a piece about ONLY this topic:\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Take the following topic or snippet and draft a detailed, well-structured, and engaging piece of content around it. Write based on the ENTIRE {scope} provided.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Draft a piece about {scope}:\n\n{text}",
     enabled: true,
     maxOutputTokens: 4096,
   },
@@ -142,8 +176,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "rewrite",
     label: "Rewrite",
     description: "Rewrite from scratch with better flow and clarity",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Rewrite the following text from scratch while preserving all key information and the core message. Focus on better flow, clearer phrasing, and more engaging language. The output must cover the same points as the input — no more, no less. Stay within the same scope and approximate length.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Rewrite ONLY this exact text completely:\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Rewrite the following text from scratch while preserving all key information and the core message. Focus on better flow, clearer phrasing, and more engaging language. The output must cover the same points as the input — no more, no less. Stay within {scope} and approximate length.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Rewrite ONLY {scope} completely:\n\n{text}",
     enabled: true,
     maxOutputTokens: 4096,
   },
@@ -151,8 +185,8 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "suggest-title",
     label: "Suggest Titles",
     description: "Generate creative title suggestions",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Suggest three punchy and relevant titles for the following text. Return only the three titles as a list — no additional text, no explanations, no numbering prefixes.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
-    userPrompt: "Suggest titles for ONLY this text:\n\n{text}",
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} Suggest three punchy and relevant titles for the following text. Return only the three titles as a list — no additional text, no explanations, no numbering prefixes.\n\n{scopeRules}\n{personalInstructionsSegment}`,
+    userPrompt: "Suggest titles for {scope}:\n\n{text}",
     enabled: true,
     maxOutputTokens: 512,
   },
@@ -160,7 +194,7 @@ const DEFAULT_TEMPLATES: PromptTemplate[] = [
     id: "complete-text",
     label: "Complete Text",
     description: "Continue writing in the same style",
-    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} You are a writing assistant. Based on the provided text context, continue the writing in the same style and tone. Provide a natural continuation of about 1-3 sentences. Do not repeat the input. Continue seamlessly from where the text ends — do not rewrite or modify the provided text itself.\n\n${SCOPE_RULES}\n{personalInstructionsSegment}`,
+    systemPrompt: `${DEFAULT_SYSTEM_PREFIX} You are a writing assistant. Based on the provided text context, continue the writing in the same style and tone. Provide a natural continuation of about 1-3 sentences. Do not repeat the input. Continue seamlessly from where the text ends.\n\n{scopeRules}\n{personalInstructionsSegment}`,
     userPrompt: "Continue this text (add 1-3 sentences after it):\n\n{text}",
     enabled: true,
     maxOutputTokens: 1024,
@@ -252,6 +286,7 @@ export function buildSystemPrompt(
   if (!template || !template.enabled) return "";
 
   const instructionsSegment = buildInstructionsSegment(context.personalInstructions);
+  const resolvedScope = context.scope ?? "sel";
 
   const placeholderValues: Record<string, string> = {
     personalInstructionsSegment: instructionsSegment,
@@ -260,6 +295,8 @@ export function buildSystemPrompt(
     documentTitle: context.documentTitle || "Untitled",
     documentStructure: context.documentStructure || "",
     cursorSection: context.cursorSection || "",
+    scope: SCOPE_LABELS[resolvedScope] ?? SCOPE_LABELS.sel,
+    scopeRules: SCOPE_RULES_BY_SCOPE[resolvedScope] ?? SCOPE_RULES_BY_SCOPE.sel,
   };
 
   let system = fillPlaceholders(template.systemPrompt, placeholderValues);
@@ -295,10 +332,13 @@ export function buildUserPrompt(
   const template = getTemplate(id, overrides);
   if (!template || !template.enabled) return context.text;
 
+  const resolvedScope = context.scope ?? "sel";
+
   const placeholderValues: Record<string, string> = {
     text: context.text,
     customInstruction: context.customInstruction || "",
     context: "", // used by "generate" template
+    scope: SCOPE_LABELS[resolvedScope] ?? SCOPE_LABELS.sel,
   };
 
   return fillPlaceholders(template.userPrompt, placeholderValues);

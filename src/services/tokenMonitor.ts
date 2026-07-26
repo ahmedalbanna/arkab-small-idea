@@ -31,6 +31,8 @@ export interface TokenUsageEntry {
   completionTokens: number;
   /** ISO timestamp of the request. */
   timestamp: string;
+  /** Scope of the AI action (sel / section / doc) — allows tracking per scope type. */
+  scope?: string;
 }
 
 export interface TokenBudget {

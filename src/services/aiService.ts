@@ -8,7 +8,7 @@ import {
 import { actionBucket } from "./rateLimiter";
 import { buildSystemPrompt, buildUserPrompt } from "./promptTemplates";
 import type { TemplateOverrides } from "./promptTemplates";
-import { estimateTokens } from "./tokenMonitor";
+import { estimateTokens, tokenTracker } from "./tokenMonitor";
 import { useAIStore } from "../stores/aiStore";
 
 /**
@@ -18,6 +18,58 @@ import { useAIStore } from "../stores/aiStore";
  * - `"doc"`:     The entire active document.
  */
 export type ActionScope = "sel" | "section" | "doc";
+
+/**
+ * Human-readable labels for each scope, used in user-facing prompt text.
+ */
+export const SCOPE_LABELS: Record<ActionScope, string> = {
+  sel: "the selected text",
+  section: "the current section",
+  doc: "the full document",
+};
+
+// ---------------------------------------------------------------------------
+// Input Validation
+// ---------------------------------------------------------------------------
+
+export interface ValidationResult {
+  valid: boolean;
+  warning?: string;
+  error?: string;
+}
+
+/**
+ * Validate AI action inputs before sending to the provider.
+ * Returns a result with an optional warning or error.
+ * Callers should display the warning to the user and abort on error.
+ */
+export function validateAIActionInput(
+  text: string,
+  action: AIAssistantAction,
+  scope: ActionScope,
+): ValidationResult {
+  if (!text.trim()) {
+    return { valid: false, error: "No text selected or available to process." };
+  }
+
+  if (scope === "doc" && text.length > 50000) {
+    return {
+      valid: true,
+      warning:
+        "The document is very large (>50K characters). This action may be slow and expensive in tokens.",
+    };
+  }
+
+  if (scope === "sel" && text.length > 10000) {
+    return {
+      valid: true,
+      warning:
+        "Your selection is large (>10K characters). The result may take time. Consider using a section-level action instead.",
+    };
+  }
+
+  return { valid: true };
+}
 
 /**
  * Unified parameters for the single entry point `executeAIAction`.
@@ -186,32 +238,47 @@ export const processAIAction = async (
     signal,
     customInstruction,
     templateOverrides,
+    scope = "sel",
   } = options;
 
-  // Build system prompt from templates
+  const scopeLabel = SCOPE_LABELS[scope];
+
+  // Build system prompt from templates (pass scope for scope-aware templates)
   const systemInstruction = buildSystemPrompt(
     action,
-    { text, personalInstructions, customInstruction, cursorSection: cursorContext },
+    { text, personalInstructions, customInstruction, cursorSection: cursorContext, scope },
     templateOverrides,
     documentContext,
   );
 
-  // Build user prompt from templates
-  const prompt = buildUserPrompt(action, { text, customInstruction }, templateOverrides);
+  // Build user prompt from templates (pass scope for {scope} placeholder)
+  const prompt = buildUserPrompt(action, { text, customInstruction, scope }, templateOverrides);
 
-  // Use RAG to get broad document context for the specific selection
+  // -----------------------------------------------------------------------
+  // Scope-optimized RAG retrieval
+  // -----------------------------------------------------------------------
+  // For "doc" scope the full document IS the input — no need for additional
+  // RAG context. For "section" we use lighter context weighting since the
+  // section content already provides good context. For "sel" we use full
+  // RAG to help the model understand the surrounding document.
   let ragContext = "";
-  if (documentContext) {
+  if (scope !== "doc" && documentContext) {
+    const ragWeight = scope === "section" ? 0.6 : 1.0;
+    const cursorWeight = scope === "section" ? 0.3 : 0.5;
+    const maxChunks = scope === "sel" ? 3 : 5;
+
     ragContext = await ragService.getWeightedContext(
       [
-        { text, weight: 1.0 },
-        { text: cursorContext, weight: 0.5 },
+        { text, weight: ragWeight },
+        { text: cursorContext, weight: cursorWeight },
       ],
-      3,
+      maxChunks,
     );
   }
 
-  // Check token budget and truncate if needed
+  // -----------------------------------------------------------------------
+  // Token budget check and truncation
+  // -----------------------------------------------------------------------
   const maxTokens = getModelMaxTokens(model);
   const estimatedPromptTokens = estimateTokens(systemInstruction + prompt + ragContext);
 
@@ -223,7 +290,7 @@ export const processAIAction = async (
 
   let finalSystem = systemInstruction;
   if (ragContext) {
-    finalSystem += `\n\n### REFERENCE CONTEXT (for awareness only) ###\nThe following sections from the document are provided for context awareness only. Do NOT reference or incorporate content from these sections into your response. Only modify the selected text.\n\n${ragContext}`;
+    finalSystem += `\n\n### REFERENCE CONTEXT (for awareness only) ###\nThe following sections from the document are provided for context awareness only. Do NOT incorporate content from these sections into your response. Only modify ${scopeLabel}.\n\n${ragContext}`;
   }
 
   if (customInstruction && !systemInstruction.includes("{customInstruction}")) {
@@ -235,8 +302,56 @@ export const processAIAction = async (
     throw new Error("Rate limited. Please wait a moment before requesting another AI action.");
   }
 
+  // -----------------------------------------------------------------------
+  // Execute the provider call and track token usage
+  // -----------------------------------------------------------------------
   const aiProvider = getProvider(provider, { apiKeys, providerConfigs });
-  return await aiProvider.generate(finalPrompt, finalSystem, model, onChunk, signal);
+
+  let fullResponse = "";
+  const wrappedOnChunk = onChunk
+    ? (chunk: string) => {
+        fullResponse += chunk;
+        onChunk(chunk);
+      }
+    : undefined;
+
+  try {
+    const result = await aiProvider.generate(
+      finalPrompt,
+      finalSystem,
+      model,
+      wrappedOnChunk,
+      signal,
+    );
+
+    // Track token usage per scope type
+    const promptTokens = estimateTokens(finalPrompt + finalSystem);
+    const completionTokens = estimateTokens(fullResponse || result);
+    tokenTracker.reportUsage({
+      provider,
+      model,
+      action: "action",
+      promptTokens,
+      completionTokens,
+      timestamp: new Date().toISOString(),
+      scope,
+    });
+
+    return result;
+  } catch (error) {
+    // Track even failed attempts for monitoring
+    const promptTokens = estimateTokens(finalPrompt + finalSystem);
+    tokenTracker.reportUsage({
+      provider,
+      model,
+      action: "action",
+      promptTokens,
+      completionTokens: 0,
+      timestamp: new Date().toISOString(),
+      scope,
+    });
+    throw error;
+  }
 };
 
 export const checkOllamaConnection = async (

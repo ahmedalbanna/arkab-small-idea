@@ -119,7 +119,7 @@ describe("promptTemplates", () => {
     it("builds a user prompt with text placeholder filled", () => {
       const result = buildUserPrompt("improve", { text: "Hello world" });
       expect(result).toContain("Hello world");
-      expect(result).toContain("Improve ONLY this exact text");
+      expect(result).toContain("Improve ONLY the selected text");
     });
 
     it("returns raw text for unknown action", () => {
