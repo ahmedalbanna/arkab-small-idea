@@ -109,6 +109,11 @@ export function buildPluginContext(
     stores,
     emitIntent,
     schema,
+    // RAG/embedding services are null by default; the `rag` plugin
+    // sets them during its `init` so subsequent plugins can access them.
+    ragService: null,
+    embeddingService: null,
+    vectorStore: null,
     registerProsePlugin(plugin, key) {
       collectors.prosePlugins.push({ plugin, key });
     },

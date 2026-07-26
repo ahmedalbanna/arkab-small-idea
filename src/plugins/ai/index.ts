@@ -8,7 +8,6 @@ import { AIHost } from "./AIHost";
 import { setHandlerStores } from "./handlers";
 import { setEditorAccessStores } from "../editorAccess";
 import { runAction, setHandler } from "./aiHandlerRegistry";
-import { ragService } from "../../services/ragService";
 
 /**
  * Selects the block containing the cursor (when the selection is collapsed) so
@@ -85,18 +84,9 @@ export const aiPlugin: InkPlugin = {
     setHandlerStores(ctx.stores);
     setEditorAccessStores(ctx.stores);
 
-    // Inject UI callbacks into ragService so it doesn't import stores directly.
-    // Guard against missing store (e.g. in test environments) — UI updates are
-    // non-critical and the service still works without them.
-    const uiStore = ctx.stores?.ui;
-    if (uiStore) {
-      const ui = uiStore.getState;
-      ragService.setUICallbacks({
-        setIndexing: (indexing: boolean) => ui().setIndexing(indexing),
-        setIndexedCounts: (chunks: number, episodes: number) =>
-          ui().setIndexedCounts(chunks, episodes),
-      });
-    }
+    // NOTE: RAG service UI callbacks (setIndexing, setIndexedCounts) are now
+    // managed by the `rag` plugin during its init, not here. The AI plugin
+    // only handles AI chat, search, TTS, and shortcuts UI.
 
     ctx.registerHost(AIHost);
 

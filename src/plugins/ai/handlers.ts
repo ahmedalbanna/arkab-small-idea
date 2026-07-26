@@ -1,4 +1,4 @@
-import { ragService } from "../../services/ragService";
+import { getRagServiceSafe } from "../../services/serviceContainer";
 import { getEditorRef } from "../editorAccess";
 import type { AppStores } from "../types";
 
@@ -194,6 +194,8 @@ export function indexActiveDocument(embeddingOptions?: {
   apiKey?: string;
   model?: string;
 }) {
+  const ragService = getRagServiceSafe();
+  if (!ragService) return;
   const markdown = getActivePage()?.content || "";
   ragService.indexDocument(markdown, embeddingOptions);
 }

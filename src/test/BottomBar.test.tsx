@@ -9,6 +9,19 @@ vi.mock("../services/embeddingService", () => {
     embeddingService: {
       subscribe: vi.fn(() => noop),
       loadModel: vi.fn(),
+      getStatus: vi.fn(() => ({ status: "idle", progress: 0 })),
+      isReady: vi.fn(() => false),
+    },
+    vectorStore: {
+      init: vi.fn(() => Promise.resolve()),
+      getChunks: vi.fn(() => []),
+      getEpisodes: vi.fn(() => []),
+      setChunks: vi.fn(() => Promise.resolve()),
+      addChunks: vi.fn(() => Promise.resolve()),
+      addEpisodes: vi.fn(() => Promise.resolve()),
+      search: vi.fn(() => []),
+      searchWithScores: vi.fn(() => []),
+      searchEpisodes: vi.fn(() => []),
     },
     EmbeddingStatus: {} as any,
   };

@@ -22,6 +22,7 @@ import { tablesPlugin } from "./tables";
 import { statusBarPlugin } from "./statusbar";
 import { tocPlugin } from "./toc";
 import { documentPlugin } from "./document";
+import { ragPlugin } from "./rag";
 import { editorUIPlugin } from "./editorUI";
 import { editorCommandsPlugin } from "./editorCommands";
 import { aiPlugin } from "./ai";
@@ -54,6 +55,7 @@ export function buildPluginModules(): InkPlugin[] {
     tablesPlugin,
     statusBarPlugin,
     tocPlugin,
+    ragPlugin,
     documentPlugin,
     editorUIPlugin,
     editorCommandsPlugin,
@@ -99,6 +101,7 @@ if (import.meta.hot && import.meta.env.DEV) {
       "./statusbar",
       "./toc",
       "./document",
+      "./rag",
       "./editorUI",
       "./ai",
       "./collab",

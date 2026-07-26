@@ -28,6 +28,11 @@ const generateBodySchema = z.object({
   stream: z.boolean().optional(),
 });
 
+const embeddingsBodySchema = z.object({
+  model: z.string().optional(),
+  prompt: z.string(),
+});
+
 /** Generic message returned to clients; details are logged server-side only. */
 const GENERIC_ERROR = "Upstream AI service error. Check server logs for details.";
 
@@ -259,6 +264,39 @@ async function startServer() {
       system: data.system,
       stream: data.stream ?? true,
     }));
+  });
+
+  // AI Embeddings proxy (non-streaming — used by EmbeddingService for RAG)
+  app.post("/api/ai/embeddings", async (req, res) => {
+    try {
+      const parsed = embeddingsBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid request body." });
+        return;
+      }
+      const { model, prompt } = parsed.data;
+      const response = await fetch(`${OLLAMA_HOST}/api/embeddings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: model || "nomic-embed-text", prompt }),
+        signal: AbortSignal.timeout(120000),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Ollama embeddings error: ${response.status} - ${errorText}`);
+        res.status(response.status).json({ error: "Ollama Embedding failed." });
+        return;
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("AI Embeddings Error:", error);
+      if (!res.headersSent) {
+        res
+          .status(500)
+          .json({ error: "Upstream AI service error. Check server logs for details." });
+      }
+    }
   });
 
   // ---- Remote provider proxies (optional, require server-side API keys) ----

@@ -1,13 +1,34 @@
-export interface Chunk {
-  text: string;
-  embedding: number[];
-  id: string;
-  hash?: string; // Add hash for incremental indexing
-}
+/**
+ * Embedding generation and vector storage for RAG.
+ *
+ * Provides two main exports:
+ *  - `EmbeddingService` / `embeddingService` — generates embeddings via Web
+ *    Worker (Xenova Transformers pipeline) or remote providers.
+ *  - `VectorStore` / `vectorStore` — persists Chunks in IndexedDB and
+ *    performs cosine-similarity search.
+ *
+ * Both implement the interfaces from `src/abstractions/storage.ts` so
+ * consumers can depend on abstractions rather than concrete implementations.
+ */
 
-export type EmbeddingStatus = "idle" | "loading" | "ready" | "error";
+import type {
+  Chunk,
+  EmbeddingStatus,
+  EmbeddingProgress,
+  SearchResult,
+  IEmbeddingService,
+  IVectorStore,
+  EmbeddingOptions,
+} from "../abstractions/storage";
 
-class EmbeddingService {
+// ── Re-export shared types for backward compatibility ───────────────────
+export type { Chunk, EmbeddingStatus, EmbeddingProgress, SearchResult, EmbeddingOptions };
+
+// =========================================================================
+// EmbeddingService
+// =========================================================================
+
+class EmbeddingService implements IEmbeddingService {
   private worker: Worker | null = null;
   private pendingRequests = new Map<string, (embedding: number[]) => void>();
   private status: EmbeddingStatus = "idle";
@@ -30,7 +51,6 @@ class EmbeddingService {
         const { type, embedding, id, error, progress: progressData } = event.data;
 
         if (type === "worker-ready") {
-          // Worker is alive, but model not loaded
           console.info("Embedding worker ready");
         } else if (type === "progress") {
           if (progressData.status === "progress" && progressData.progress !== undefined) {
@@ -63,7 +83,7 @@ class EmbeddingService {
     this.listeners.forEach((l) => l(this.status, this.progress));
   }
 
-  subscribe(callback: (status: EmbeddingStatus, progress: number) => void) {
+  subscribe(callback: (status: EmbeddingStatus, progress: number) => void): () => void {
     this.listeners.add(callback);
     callback(this.status, this.progress);
     return () => {
@@ -71,15 +91,15 @@ class EmbeddingService {
     };
   }
 
-  getStatus() {
+  getStatus(): EmbeddingProgress {
     return { status: this.status, progress: this.progress };
   }
 
-  isReady() {
+  isReady(): boolean {
     return this.status === "ready";
   }
 
-  async loadModel() {
+  async loadModel(): Promise<Promise<void> | null | undefined> {
     if (this.status === "ready" || this.status === "loading") return this.readyPromise;
 
     this.status = "loading";
@@ -92,21 +112,14 @@ class EmbeddingService {
     return this.readyPromise;
   }
 
-  async init() {
+  async init(): Promise<void> {
     if (this.status === "idle") {
-      // If someone calls init but it's idle, we don't want to hang forever.
-      // We'll just return a rejected promise or similar.
-      // Actually, standard behavior for RAG was to auto-load.
-      // With manual load, we should probably throw if not ready.
       throw new Error("Embedding model not loaded. Please load it from the footer.");
     }
     return this.readyPromise;
   }
 
-  async generateEmbedding(
-    text: string,
-    options?: { provider?: string; apiKey?: string; model?: string },
-  ): Promise<number[]> {
+  async generateEmbedding(text: string, options?: EmbeddingOptions): Promise<number[]> {
     const { provider = "pipeline", apiKey, model } = options || {};
 
     if (provider === "google") {
@@ -181,6 +194,10 @@ class EmbeddingService {
     });
   }
 
+  async generateEmbeddings(texts: string[], options?: EmbeddingOptions): Promise<number[][]> {
+    return Promise.all(texts.map((t) => this.generateEmbedding(t, options)));
+  }
+
   cosineSimilarity(v1: number[], v2: number[]): number {
     let dotProduct = 0;
     let norm1 = 0;
@@ -197,14 +214,27 @@ class EmbeddingService {
 
 export const embeddingService = new EmbeddingService();
 
-export class VectorStore {
+// =========================================================================
+// VectorStore
+// =========================================================================
+
+export interface VectorStoreOptions {
+  /** IndexedDB database name. Defaults to "ink-quill-rag". */
+  dbName?: string;
+}
+
+class VectorStore implements IVectorStore {
   private chunks: Chunk[] = [];
-  private dbName = "ink-quill-rag";
+  private dbName: string;
   private storeName = "chunks";
   private episodesStoreName = "episodes";
   private db: IDBDatabase | null = null;
   private isInitialized = false;
   private episodes: Chunk[] = [];
+
+  constructor(options?: VectorStoreOptions) {
+    this.dbName = options?.dbName ?? "ink-quill-rag";
+  }
 
   async init() {
     if (this.isInitialized) return;
@@ -231,8 +261,8 @@ export class VectorStore {
             .catch(reject);
         };
 
-        request.onupgradeneeded = (event: any) => {
-          const db = event.target.result;
+        request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+          const db = (event.target as IDBOpenDBRequest).result;
           if (!db.objectStoreNames.contains(this.storeName)) {
             db.createObjectStore(this.storeName, { keyPath: "id" });
           }
@@ -242,8 +272,6 @@ export class VectorStore {
         };
       });
     } catch (error) {
-      // IndexedDB failed to open (quota, private mode, corruption) — keep
-      // the vector store functional in-memory rather than crashing.
       console.warn("VectorStore: IndexedDB unavailable, using in-memory storage.", error);
       this.db = null;
       this.isInitialized = true;
@@ -354,7 +382,7 @@ export class VectorStore {
     limit = 5,
     threshold = 0.3,
     targetChunks = this.chunks,
-  ): { chunk: Chunk; score: number }[] {
+  ): SearchResult[] {
     return targetChunks
       .map((chunk) => ({
         chunk,

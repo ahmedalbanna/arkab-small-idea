@@ -8,7 +8,7 @@ export const searchPlugin: InkPlugin = {
   name: "Search",
   version: "1.0.0",
   init(ctx) {
-    ctx.registerProsePlugin(createSearchPlugin(), searchPluginKey);
+    ctx.registerProsePlugin(createSearchPlugin(ctx.ragService), searchPluginKey);
   },
 };
 

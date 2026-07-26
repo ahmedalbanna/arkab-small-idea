@@ -5,21 +5,26 @@ import {
   Italic,
   Heading2,
   Link as LinkIcon,
-  Image as ImageIcon, Quote,
+  Image as ImageIcon,
+  Quote,
   List,
   Table,
   PenTool,
   Cpu,
   Upload,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  RefreshCw,
+  Globe,
+  Wifi,
 } from "lucide-react";
 import { cn, useMediaQuery } from "../../lib/utils";
 import { Z_CLASS } from "../../lib/zIndex";
 import { useAIStore } from "../../stores/aiStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useEditorStore } from "../../stores/editorStore";
-import type { EmbeddingStatus } from "../../services/embeddingService";
-import { embeddingService } from "../../services/embeddingService";
+import type { EmbeddingStatus } from "../../abstractions/storage";
+import { getEmbeddingServiceSafe } from "../../services/serviceContainer";
 import { getEditorRef } from "../../plugins/editorAccess";
 import { insertText } from "../../plugins/ai/handlers";
 import { AISettingsPopover } from "../ai/AISettingsPopover";
@@ -91,9 +96,17 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   // ── Desktop: Stats ──
-  const { ollamaStatus, provider } = useAIStore();
+  const { ollamaStatus, provider, serviceConfigs } = useAIStore();
   const { isIndexing, indexedChunks, indexedEpisodes, isAutoSaving } = useUIStore();
   const { pages, activeFocusedPageId } = useEditorStore();
+
+  // ── Embedding provider info ─────────────────────────────────────────
+  const embeddingProvider = serviceConfigs?.embeddings?.provider ?? "pipeline";
+  const embeddingModel = serviceConfigs?.embeddings?.model ?? "";
+  const isApiEmbedding =
+    embeddingProvider === "google" ||
+    embeddingProvider === "openai" ||
+    embeddingProvider === "ollama";
 
   const activePage = pages.find((p) => p.id === activeFocusedPageId) || pages[0];
   const markdown = activePage?.content || "";
@@ -106,7 +119,9 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   const [embeddingProgress, setEmbeddingProgress] = useState(0);
 
   useEffect(() => {
-    return embeddingService.subscribe((status, progress) => {
+    const svc = getEmbeddingServiceSafe();
+    if (!svc) return;
+    return svc.subscribe((status, progress) => {
       setEmbeddingStatus(status);
       setEmbeddingProgress(progress);
     });
@@ -327,39 +342,108 @@ export const BottomBar: React.FC<BottomBarProps> = ({
                   </div>
                 )}
 
-                {embeddingStatus === "idle" && (
-                  <button
-                    onClick={() => embeddingService.loadModel()}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-minimal-accent/10 text-minimal-accent border border-minimal-accent/20 hover:bg-minimal-accent text-[9px] hover:text-white font-bold tracking-widest transition-all group scale-100 hover:scale-105 active:scale-95"
-                    title="Start Downloading Vector Embedding Model"
+                {embeddingStatus === "error" && (
+                  <div
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-sm border border-red-500/20 bg-red-500/5 text-red-500"
+                    title="Embedding model failed to load"
                   >
-                    <Upload className="w-3 h-3 rotate-180" />
-                    <span>LOAD VECTOR AI</span>
-                  </button>
-                )}
-                {embeddingStatus === "loading" && (
-                  <div className="flex items-center gap-3 px-3 py-1 rounded-sm bg-minimal-sidebar border border-minimal-border">
-                    <div className="w-16 h-1 bg-minimal-border rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-minimal-accent"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${embeddingProgress}%` }}
-                      />
-                    </div>
-                    <span className="text-[9px] font-bold text-minimal-accent">
-                      {Math.round(embeddingProgress)}%
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    <span className="text-[9px] font-bold tracking-widest uppercase">
+                      Model Error
                     </span>
+                    <button
+                      onClick={() => {
+                        const svc = getEmbeddingServiceSafe();
+                        svc?.loadModel();
+                      }}
+                      className="ml-1 p-0.5 rounded hover:bg-red-500/10 transition-colors"
+                      title="Retry loading"
+                    >
+                      <RefreshCw className="w-2.5 h-2.5" />
+                    </button>
                   </div>
                 )}
-                {embeddingStatus === "ready" && (
+
+                {embeddingStatus === "idle" && !isApiEmbedding && (
+                  <button
+                    onClick={() => {
+                      const svc = getEmbeddingServiceSafe();
+                      svc?.loadModel();
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-minimal-accent/10 text-minimal-accent border border-minimal-accent/20 hover:bg-minimal-accent text-[9px] hover:text-white font-bold tracking-widest transition-all group scale-100 hover:scale-105 active:scale-95"
+                    title={`Download local embedding model (${embeddingModel || "Xenova/all-MiniLM-L6-v2"})`}
+                  >
+                    <Upload className="w-3 h-3 rotate-180" />
+                    <span>LOAD LOCAL MODEL</span>
+                  </button>
+                )}
+
+                {embeddingStatus === "loading" && (
+                  <div className="flex items-center gap-3 px-3 py-1 rounded-sm bg-minimal-sidebar border border-minimal-border">
+                    <Loader2 className="w-3 h-3 text-minimal-accent animate-spin shrink-0" />
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-bold opacity-40 leading-none mb-0.5 tracking-tighter">
+                        LOADING EMBEDDING MODEL
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1 bg-minimal-border rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-minimal-accent"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${embeddingProgress}%` }}
+                          />
+                        </div>
+                        <span className="text-[9px] font-bold text-minimal-accent">
+                          {Math.round(embeddingProgress)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {embeddingStatus === "ready" && !isApiEmbedding && (
                   <div
                     className="flex items-center gap-1.5 px-2 py-1 rounded-sm border border-emerald-500/20 bg-emerald-500/5 text-emerald-600"
-                    title="Vector Engine Ready"
+                    title="Local embedding pipeline ready"
                   >
                     <SparklesIcon className="w-3 h-3 shrink-0" />
                     <span className="text-[9px] font-bold tracking-widest uppercase">
-                      Semantic AI Ready
+                      Pipeline Ready
                     </span>
+                  </div>
+                )}
+
+                {isApiEmbedding && (
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 px-2 py-1 rounded-sm border transition-all",
+                      embeddingStatus === "error"
+                        ? "border-red-500/20 bg-red-500/5 text-red-500"
+                        : "border-blue-500/20 bg-blue-500/5 text-blue-600",
+                    )}
+                    title={`Embedding provider: ${embeddingProvider.toUpperCase()}${embeddingModel ? ` | Model: ${embeddingModel}` : ""}`}
+                  >
+                    {embeddingStatus === "error" ? (
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                    ) : (
+                      <Wifi className="w-3 h-3 shrink-0" />
+                    )}
+                    <span className="text-[9px] font-bold tracking-widest uppercase">
+                      {embeddingProvider} Embeddings
+                    </span>
+                    {embeddingStatus === "error" && (
+                      <span className="text-[8px] ml-1 opacity-70">ERR</span>
+                    )}
+                  </div>
+                )}
+
+                {!getEmbeddingServiceSafe() && (
+                  <div
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-sm border border-minimal-border bg-minimal-sidebar text-minimal-muted/50"
+                    title="RAG & embedding services not available (rag plugin disabled)"
+                  >
+                    <Globe className="w-3 h-3 shrink-0" />
+                    <span className="text-[9px] font-bold tracking-widest uppercase">RAG Off</span>
                   </div>
                 )}
               </div>

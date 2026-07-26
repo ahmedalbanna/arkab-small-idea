@@ -1,4 +1,4 @@
-import { ragService } from "./ragService";
+import { getRagServiceSafe } from "./serviceContainer";
 import {
   type AIAssistantAction,
   type ChatMessage,
@@ -288,13 +288,16 @@ export const processAIAction = async (
     const cursorWeight = scope === "section" ? 0.3 : 0.5;
     const maxChunks = scope === "sel" ? 3 : 5;
 
-    ragContext = await ragService.getWeightedContext(
-      [
-        { text, weight: ragWeight },
-        { text: cursorContext, weight: cursorWeight },
-      ],
-      maxChunks,
-    );
+    const ragSvc = getRagServiceSafe();
+    if (ragSvc) {
+      ragContext = await ragSvc.getWeightedContext(
+        [
+          { text, weight: ragWeight },
+          { text: cursorContext, weight: cursorWeight },
+        ],
+        maxChunks,
+      );
+    }
   }
 
   // -----------------------------------------------------------------------

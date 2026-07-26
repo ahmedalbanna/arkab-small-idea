@@ -4,7 +4,7 @@ import { SearchBar } from "../../components/overlays/SearchBar";
 import { ShortcutsHelp } from "../../components/overlays/ShortcutsHelp";
 import TTSSpeaker from "../../components/TTSSpeaker";
 import { checkOllamaConnection } from "../../services/aiService";
-import { ragService } from "../../services/ragService";
+import { getRagService } from "../../services/serviceContainer";
 import { getEditorRef } from "../editorAccess";
 import { usePluginServices } from "../appContext";
 import { handleFindNext, handleReplace, handleReplaceAll } from "./handlers";
@@ -90,7 +90,8 @@ export function AIHost() {
       const performSemanticSearch = async () => {
         try {
           const embeddingOptions = getEmbeddingOptions(stores);
-          const results = await ragService.searchDetailed(findText, 10, 0.2, embeddingOptions);
+          const rag = getRagService();
+          const results = await rag.searchDetailed(findText, 10, 0.2, embeddingOptions);
           const docMatches = results.filter((r) => r.source === "document");
           setMatchCount(docMatches.length);
           setSemanticResults(results);

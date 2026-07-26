@@ -1,4 +1,4 @@
-import { embeddingService } from "./embeddingService";
+import { getEmbeddingService } from "./serviceContainer";
 import { getProvider } from "./aiService";
 
 export interface SemanticCluster {
@@ -26,15 +26,17 @@ export class SemanticService {
     const paragraphs = markdown.split(/\n\n+/).filter((p) => p.trim().length > 20);
     if (paragraphs.length < 2) return [];
 
+    const svc = getEmbeddingService();
+
     // Check if local model is needed
-    if (provider === "pipeline" && !embeddingService.isReady()) {
-      await embeddingService.loadModel();
+    if (provider === "pipeline" && !svc.isReady()) {
+      await svc.loadModel();
     }
 
     // 2. Get embeddings for each paragraph
     const embeddings = await Promise.all(
       paragraphs.map((p) =>
-        embeddingService.generateEmbedding(p, {
+        svc.generateEmbedding(p, {
           provider,
           apiKey: apiKeys[provider as keyof typeof apiKeys],
           model: provider === "google" ? "text-embedding-004" : undefined,
@@ -59,7 +61,7 @@ export class SemanticService {
       for (let j = i + 1; j < embeddings.length; j++) {
         if (usedIndices.has(j)) continue;
 
-        const similarity = embeddingService.cosineSimilarity(embeddings[i], embeddings[j]);
+        const similarity = svc.cosineSimilarity(embeddings[i], embeddings[j]);
         if (similarity > 0.75) {
           currentCluster.paragraphs.push(paragraphs[j]);
           currentCluster.indices.push(j);

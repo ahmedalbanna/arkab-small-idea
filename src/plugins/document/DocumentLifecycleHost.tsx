@@ -1,63 +1,82 @@
 import { useEffect } from "react";
-import { useEditorStore } from "../../stores/editorStore";
-import { getEmbeddingOptions } from "../../stores/aiStore";
-import { useUIStore } from "../../stores/uiStore";
-import { ragService } from "../../services/ragService";
-import { vectorStore } from "../../services/embeddingService";
+import { usePluginServices } from "../appContext";
 
 /**
  * App-level lifecycle effects previously owned by `App.tsx`:
- *  - initialize the vector store and sync its indexed counts,
  *  - auto-snapshot the active document every 5 minutes,
- *  - debounced RAG indexing of the active document,
+ *  - debounced RAG indexing of the active document (when RAG is enabled),
  *  - snapshot on page unload.
  *
- * The host owns this state itself and reads the active document from the
- * editor store, so `App.tsx` no longer needs these effects.
+ * Reads stores and services from `PluginContext` via `usePluginServices()`
+ * instead of importing concrete modules directly, keeping this host
+ * decoupled from specific store/service implementations.
+ *
+ * The RAG plugin (`src/plugins/rag/`) owns vector-store initialisation;
+ * this host only uses the RAG service for indexing when available.
  */
 export function DocumentLifecycleHost(): null {
-  const { pages, activeFocusedPageId, addSnapshot } = useEditorStore();
+  const { pluginContext } = usePluginServices();
+
+  // ── Access stores through context ──────────────────────────────────
+  const editorStore = pluginContext.stores?.editor;
+  const aiStore = pluginContext.stores?.ai;
+
+  const { pages, activeFocusedPageId } = editorStore?.getState() ?? {
+    pages: [],
+    activeFocusedPageId: null,
+  };
 
   const activePage = pages.find((p) => p.id === activeFocusedPageId) || pages[0];
   const markdown = activePage?.content || "";
 
-  // Initialize the vector store and sync its indexed counts into the UI store.
-  useEffect(() => {
-    vectorStore.init().then(() => {
-      useUIStore
-        .getState()
-        .setIndexedCounts(vectorStore.getChunks().length, vectorStore.getEpisodes().length);
-    });
-  }, []);
+  // ── RAG service (may be null if rag plugin is disabled) ─────────────
+  const ragService = pluginContext.ragService;
 
-  // Auto-snapshot every 5 minutes.
+  // ── Auto-snapshot every 5 minutes ──────────────────────────────────
   useEffect(() => {
+    if (!activePage || !editorStore) return;
+    const addSnapshot = editorStore.getState().addSnapshot;
+
     const interval = setInterval(
       () => {
-        if (activePage) addSnapshot(activePage.id, markdown);
+        addSnapshot(activePage.id, activePage.content || "");
       },
       5 * 60 * 1000,
     );
-    return () => clearInterval(interval);
-  }, [activePage, markdown, addSnapshot]);
 
-  // Debounced RAG indexing of the active document.
+    return () => clearInterval(interval);
+  }, [activePage, editorStore]);
+
+  // ── Debounced RAG indexing ─────────────────────────────────────────
   useEffect(() => {
+    if (!ragService || !aiStore) return;
+
     const timeout = setTimeout(() => {
-      const embeddingOptions = getEmbeddingOptions();
+      // Read embedding options from the AI store at call time
+      const state = aiStore.getState();
+      const embeddingOptions = {
+        provider: state.serviceConfigs?.embeddings?.provider,
+        apiKey: state.apiKeys?.[state.serviceConfigs?.embeddings?.provider as string],
+        model: state.serviceConfigs?.embeddings?.model,
+      };
       ragService.indexDocument(markdown, embeddingOptions);
     }, 5000);
-    return () => clearTimeout(timeout);
-  }, [markdown]);
 
-  // Snapshot when the document is about to unload.
+    return () => clearTimeout(timeout);
+  }, [markdown, ragService, aiStore]);
+
+  // ── Snapshot on page unload ────────────────────────────────────────
   useEffect(() => {
+    if (!activePage || !editorStore) return;
+
     const handleBeforeUnload = () => {
-      if (activePage) addSnapshot(activePage.id, markdown);
+      const addSnapshot = editorStore.getState().addSnapshot;
+      addSnapshot(activePage.id, activePage.content || "");
     };
+
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [activePage, markdown, addSnapshot]);
+  }, [activePage, editorStore]);
 
   return null;
 }

@@ -2,7 +2,7 @@ import type { Node } from "prosemirror-model";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
 import { cn } from "./utils";
-import { ragService } from "../services/ragService";
+import type { IRAGService } from "../abstractions/storage";
 
 export const searchPluginKey = new PluginKey("search");
 
@@ -21,6 +21,11 @@ class SearchIndex {
   private isIndexing = false;
   private semanticMatches: { start: number; end: number; score: number }[] = [];
   private lastSemanticQuery = "";
+  private _ragService: IRAGService | null;
+
+  constructor(ragService?: IRAGService | null) {
+    this._ragService = ragService ?? null;
+  }
 
   update(doc: Node, version: number) {
     if (version === this.docVersion || this.isIndexing) return;
@@ -124,7 +129,12 @@ class SearchIndex {
         return [];
       }
 
-      const results = await ragService.searchDetailed(query, 10, 0.2, options.embeddingOptions); // threshold 0.2 for broader discovery
+      const ragSvc = this._ragService || null;
+      if (!ragSvc) {
+        this.semanticMatches = [];
+        return [];
+      }
+      const results = await ragSvc.searchDetailed(query, 10, 0.2, options.embeddingOptions); // threshold 0.2 for broader discovery
 
       const fullText = doc.textContent;
       const matches: { start: number; end: number; score: number }[] = [];
@@ -155,8 +165,8 @@ class SearchIndex {
   }
 }
 
-export const createSearchPlugin = () => {
-  const searchIndex = new SearchIndex();
+export const createSearchPlugin = (ragService?: IRAGService | null) => {
+  const searchIndex = new SearchIndex(ragService);
   let editorView: any = null;
 
   return new Plugin({

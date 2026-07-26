@@ -19,6 +19,7 @@ import type { useUIStore } from "../stores/uiStore";
 import type { useAIStore } from "../stores/aiStore";
 import type { useAIUIStore } from "../stores/aiUIStore";
 import type { useSettingsStore } from "../stores/settingsStore";
+import type { IEmbeddingService, IRAGService, IVectorStore } from "../abstractions/storage";
 
 export type LucideIcon = ComponentType<{ className?: string }>;
 
@@ -132,6 +133,22 @@ export interface PluginContext {
   /** The editor's command bus — the single typed command language for the editor. */
   commandBus: EditorCommandBus;
   stores: AppStores;
+  /**
+   * RAG (Retrieval-Augmented Generation) service for indexing documents
+   * and retrieving semantically relevant context. Available when the `rag`
+   * plugin is enabled; may be `null` if RAG is disabled.
+   */
+  ragService: IRAGService | null;
+  /**
+   * Embedding service for generating text vectors. Available when the `rag`
+   * plugin is enabled; may be `null` if RAG is disabled.
+   */
+  embeddingService: IEmbeddingService | null;
+  /**
+   * Vector store for persisting and searching embedding chunks. Available
+   * when the `rag` plugin is enabled; may be `null` if RAG is disabled.
+   */
+  vectorStore: IVectorStore | null;
   /**
    * Emit a UI intent to the app shell. Plugins should use this instead of
    * calling store setters directly, keeping the plugin store-agnostic.

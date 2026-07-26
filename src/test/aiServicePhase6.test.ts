@@ -1,13 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-// Mock the dependencies that aiService uses
-vi.mock("../services/ragService", () => ({
-  ragService: {
+// Mock the service container before importing aiService
+vi.mock("../services/serviceContainer", () => ({
+  getRagServiceSafe: vi.fn().mockReturnValue({
     getWeightedContext: vi.fn().mockResolvedValue(""),
     getGlobalSummary: vi.fn().mockResolvedValue(""),
-    estimateTokens: vi.fn().mockReturnValue(10),
-    trimToTokens: vi.fn().mockImplementation((text: string) => text),
-  },
+  }),
 }));
 
 // Mock the providers module to return a mock provider
