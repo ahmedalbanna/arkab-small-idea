@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AIAssistantAction } from "../services/aiService";
+import type { AIAssistantAction, ActionScope } from "../services/aiService";
 
 export interface SemanticResult {
   text: string;
@@ -113,13 +113,18 @@ interface AIUIState {
   // published here so the `ai` plugin's keymap can invoke it without a module
   // global. `null` when no editor is mounted.
   // Now keyed by editorId so each editor has its own handler (fixes R1/R2).
+  // The handler now accepts an optional scope parameter so that every entry
+  // path (keymap, palette, toolbar, bubble menu, context menu) converges on
+  // the same signature. See `executeAIAction` in aiService.ts.
   aiActionHandlers: Record<
     string,
-    ((action: AIAssistantAction, customInstruction?: string) => void) | null
+    ((action: AIAssistantAction, customInstruction?: string, scope?: ActionScope) => void) | null
   >;
   setAiActionHandler: (
     editorId: string,
-    handler: ((action: AIAssistantAction, customInstruction?: string) => void) | null,
+    handler:
+      | ((action: AIAssistantAction, customInstruction?: string, scope?: ActionScope) => void)
+      | null,
   ) => void;
 }
 

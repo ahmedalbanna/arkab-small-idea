@@ -11,6 +11,102 @@ import type { TemplateOverrides } from "./promptTemplates";
 import { estimateTokens } from "./tokenMonitor";
 import { useAIStore } from "../stores/aiStore";
 
+/**
+ * The scope of an AI action — determines which text is sent to the model.
+ * - `"sel"`:     The current user selection (or collapsed block).
+ * - `"section"`: The heading-bounded section the cursor is in.
+ * - `"doc"`:     The entire active document.
+ */
+export type ActionScope = "sel" | "section" | "doc";
+
+/**
+ * Unified parameters for the single entry point `executeAIAction`.
+ * All AI action paths (keymaps, command palette, toolbar, bubble menu, context
+ * menu) converge here.
+ */
+export interface ExecuteAIActionParams {
+  /** The text content to operate on. */
+  text: string;
+  /** The action to perform (improve, fix-grammar, rewrite, etc.). */
+  action: AIAssistantAction;
+  /** Which portion of the document this text represents. */
+  scope: ActionScope;
+  /** Optional user instruction appended to the prompt. */
+  customInstruction?: string;
+  /** Free-form personal instructions from the user's settings. */
+  personalInstructions?: string;
+  /** AI model identifier (e.g. "mistral", "gpt-4"). */
+  model?: string;
+  /** Provider name (e.g. "ollama", "openai", "anthropic", "gemini"). */
+  provider?: string;
+  /** API keys keyed by provider. */
+  apiKeys?: Record<string, string>;
+  /** Provider-specific config overrides. */
+  providerConfigs?: Record<string, any>;
+  /** Full document markdown (used for RAG context + structure extraction). */
+  documentContext?: string;
+  /** Cursor / heading path context. */
+  cursorContext?: string;
+  /** Called incrementally with each streamed token. */
+  onChunk?: (chunk: string) => void;
+  /** Abort signal to cancel the request. */
+  signal?: AbortSignal;
+  /** Prompt template overrides. */
+  templateOverrides?: TemplateOverrides;
+}
+
+/**
+ * SINGLE UNIFIED ENTRY POINT for all AI editing actions.
+ *
+ * All five entry paths (keyboard shortcuts, command palette, floating toolbar,
+ * bubble menu, context menu) converge here. Previously each path built its own
+ * parameter set with subtle differences in scope handling; this function
+ * provides a consistent contract:
+ *
+ *  1. Build the system + user prompts via promptTemplates.
+ *  2. Retrieve optional RAG context for awareness.
+ *  3. Enforce token budget (truncate if needed).
+ *  4. Apply client-side rate limiting.
+ *  5. Call the configured AI provider with streaming support.
+ *  6. Return the full response text.
+ *
+ * @returns The complete AI-generated text.
+ * @throws If rate-limited (Error), aborted (AbortError), or provider fails.
+ */
+export async function executeAIAction(params: ExecuteAIActionParams): Promise<string> {
+  const {
+    text,
+    action,
+    scope,
+    customInstruction,
+    personalInstructions = "",
+    model = "mistral",
+    provider = "ollama",
+    apiKeys,
+    providerConfigs,
+    documentContext = "",
+    cursorContext = "",
+    onChunk,
+    signal,
+    templateOverrides,
+  } = params;
+
+  return processAIAction(text, action, {
+    personalInstructions,
+    model,
+    provider,
+    apiKeys,
+    providerConfigs,
+    onChunk,
+    documentContext,
+    cursorContext,
+    signal,
+    customInstruction,
+    templateOverrides,
+    scope,
+  });
+}
+
 // Re-export everything from providers for backward compatibility
 export type { AIAssistantAction, ChatMessage, AIProvider };
 export {
@@ -74,6 +170,8 @@ export const processAIAction = async (
     customInstruction?: string;
     /** Prompt template overrides. */
     templateOverrides?: TemplateOverrides;
+    /** Scope of the action (sel / section / doc). */
+    scope?: ActionScope;
   },
 ): Promise<string> => {
   const {

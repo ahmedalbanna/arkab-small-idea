@@ -167,6 +167,7 @@ export default function App() {
             intent.actionId as AIAssistantAction,
             intent.customInstruction,
             intent.editorId,
+            intent.scope,
           );
           break;
       }

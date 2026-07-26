@@ -2,7 +2,11 @@ import { useEffect, useRef, useState, type MutableRefObject, type RefObject } fr
 import type { Node } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { draftHighlightKey } from "../../../lib/draftPlugin";
-import { processAIAction, type AIAssistantAction } from "../../../services/aiService";
+import {
+  executeAIAction,
+  type AIAssistantAction,
+  type ActionScope,
+} from "../../../services/aiService";
 import { setAiActionHandler } from "../../../plugins/ai";
 import { editorSerializer } from "./useMarkdownSerializer";
 import type { PluginContext, EditorCommand } from "../../../plugins/types";
@@ -218,13 +222,19 @@ export function useAIStreaming({
       const streamStart = from;
       let streamEnd = to;
 
-      await processAIAction(selectedText, retryAction ?? action, {
+      await executeAIAction({
+        text: selectedText,
+        action: retryAction ?? action,
+        scope: effectiveScope,
+        customInstruction,
         personalInstructions: latestProps.current.personalInstructions,
         model: latestProps.current.selectedModel,
         provider: latestProps.current.provider as any,
         apiKeys: latestProps.current.apiKeys,
         providerConfigs: latestProps.current.providerConfigs,
         signal: abortController.signal,
+        documentContext: fullDoc,
+        cursorContext,
         onChunk: (chunk) => {
           fullResponse += chunk;
 
@@ -283,9 +293,6 @@ export function useAIStreaming({
             );
           }
         },
-        documentContext: fullDoc,
-        cursorContext: cursorContext,
-        customInstruction,
       });
 
       if (viewRef.current) {
@@ -523,7 +530,7 @@ export function useAIStreaming({
   // eslint-disable-next-line react-hooks/refs
   handleAIActionRef.current = handleAIAction;
   useEffect(() => {
-    setAiActionHandler(editorId, (a, ci) =>
+    setAiActionHandler(editorId, (a, ci, s) => {
       handleAIActionRef.current(
         a as AIAssistantAction,
         undefined,
@@ -531,8 +538,9 @@ export function useAIStreaming({
         undefined,
         undefined,
         ci,
-      ),
-    );
+        s,
+      );
+    });
     return () => setAiActionHandler(editorId, null);
   }, [editorId]);
 

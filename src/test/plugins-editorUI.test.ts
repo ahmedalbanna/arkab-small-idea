@@ -206,7 +206,7 @@ describe("inline draft bridge", () => {
     const handler = vi.fn();
     setAiActionHandler("test-editor", handler);
     runAiAction("improve", undefined, "test-editor");
-    expect(handler).toHaveBeenCalledWith("improve", undefined);
+    expect(handler).toHaveBeenCalledWith("improve", undefined, undefined); // action, customInstruction, scope
 
     setAiActionHandler("test-editor", null);
     runAiAction("summarize", undefined, "test-editor");

@@ -37,43 +37,46 @@ interface AIFloatingToolbarProps {
   embedded?: boolean;
 }
 
-const QUICK_ACTIONS: {
+/**
+ * Single source of truth for all AI action definitions.
+ * Each entry carries its scope explicitly so that every invocation path
+ * (compact toolbar, expanded panel, bubble menu) sends the same signal.
+ *
+ * Groups:
+ *   - "quick":   Shown in the compact row (most common actions).
+ *   - "editing": Shown in the expanded "Editing" section.
+ *   - "structure": Shown in the expanded "Structure" section.
+ */
+interface AIActionDef {
   id: AIAssistantAction;
   label: string;
   icon: React.FC<{ className?: string }>;
-}[] = [
-  { id: "improve", label: "Improve", icon: Zap },
-  { id: "fix-grammar", label: "Fix Grammar", icon: CheckCheck },
-  { id: "summarize", label: "Summarize", icon: FileText },
-  { id: "expand", label: "Expand", icon: Maximize2 },
-  { id: "rewrite", label: "Rewrite", icon: RotateCcw },
-];
+  scope: AIScope;
+  group: "quick" | "editing" | "structure";
+}
 
-const EDITING_ACTIONS: {
-  id: AIAssistantAction;
-  label: string;
-  icon: React.FC<{ className?: string }>;
-  scope: string;
-}[] = [
-  { id: "improve", label: "Improve", icon: Wand2, scope: "sel" },
-  { id: "fix-grammar", label: "Fix Grammar", icon: CheckCheck, scope: "sel" },
-  { id: "shorten", label: "Shorten", icon: Minimize2, scope: "sel" },
-  { id: "expand", label: "Expand", icon: Maximize2, scope: "sel" },
-  { id: "rewrite", label: "Rewrite", icon: RotateCcw, scope: "sel" },
-  { id: "complete-text", label: "Continue", icon: ArrowRight, scope: "sel" },
-];
+const AI_ACTION_DEFS: AIActionDef[] = [
+  // Quick actions (compact row — selection scope by default)
+  { id: "improve", label: "Improve", icon: Zap, scope: "sel", group: "quick" },
+  { id: "fix-grammar", label: "Fix Grammar", icon: CheckCheck, scope: "sel", group: "quick" },
+  { id: "summarize", label: "Summarize", icon: FileText, scope: "sel", group: "quick" },
+  { id: "expand", label: "Expand", icon: Maximize2, scope: "sel", group: "quick" },
+  { id: "rewrite", label: "Rewrite", icon: RotateCcw, scope: "sel", group: "quick" },
 
-const STRUCTURE_ACTIONS: {
-  id: AIAssistantAction;
-  label: string;
-  icon: React.FC<{ className?: string }>;
-  scope: string;
-}[] = [
-  { id: "generate-outline", label: "Outline", icon: Layout, scope: "doc" },
-  { id: "expand-outline", label: "Expand Outline", icon: Zap, scope: "doc" },
-  { id: "draft-topic", label: "Draft Topic", icon: ArrowRight, scope: "doc" },
-  { id: "summarize", label: "Summarize", icon: FileText, scope: "sel" },
-  { id: "suggest-title", label: "Titles", icon: Heading, scope: "doc" },
+  // Editing actions (expanded panel)
+  { id: "improve", label: "Improve", icon: Wand2, scope: "sel", group: "editing" },
+  { id: "fix-grammar", label: "Fix Grammar", icon: CheckCheck, scope: "sel", group: "editing" },
+  { id: "shorten", label: "Shorten", icon: Minimize2, scope: "sel", group: "editing" },
+  { id: "expand", label: "Expand", icon: Maximize2, scope: "sel", group: "editing" },
+  { id: "rewrite", label: "Rewrite", icon: RotateCcw, scope: "sel", group: "editing" },
+  { id: "complete-text", label: "Continue", icon: ArrowRight, scope: "sel", group: "editing" },
+
+  // Structure actions (expanded panel — doc scope)
+  { id: "generate-outline", label: "Outline", icon: Layout, scope: "doc", group: "structure" },
+  { id: "expand-outline", label: "Expand Outline", icon: Zap, scope: "doc", group: "structure" },
+  { id: "draft-topic", label: "Draft Topic", icon: ArrowRight, scope: "doc", group: "structure" },
+  { id: "summarize", label: "Summarize", icon: FileText, scope: "sel", group: "structure" },
+  { id: "suggest-title", label: "Titles", icon: Heading, scope: "doc", group: "structure" },
 ];
 
 export const AIFloatingToolbar = memo(
@@ -196,14 +199,14 @@ export const AIFloatingToolbar = memo(
         <div
           className={cn("flex items-center gap-0.5 p-1", direction === "rtl" && "flex-row-reverse")}
         >
-          {/* Quick action icons */}
-          {QUICK_ACTIONS.map((action) => (
+          {/* Quick action icons (always pass scope explicitly) */}
+          {AI_ACTION_DEFS.filter((a) => a.group === "quick").map((action) => (
             <button
-              key={action.id}
-              onClick={() => onAction(action.id)}
+              key={`quick-${action.id}`}
+              onClick={() => onAction(action.id, undefined, action.scope)}
               disabled={isProcessingAI}
               className="p-1.5 hover:bg-minimal-accent/20 text-minimal-accent rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              title={action.label}
+              title={`${action.label} [${action.scope}]`}
             >
               <action.icon className="w-3.5 h-3.5" />
             </button>
@@ -275,10 +278,10 @@ export const AIFloatingToolbar = memo(
                   Editing
                 </div>
                 <div className="grid grid-cols-2 gap-1">
-                  {EDITING_ACTIONS.map((item) => (
+                  {AI_ACTION_DEFS.filter((a) => a.group === "editing").map((item) => (
                     <button
-                      key={item.id}
-                      onClick={() => handleAction(item.id, item.scope as AIScope)}
+                      key={`editing-${item.id}`}
+                      onClick={() => handleAction(item.id, item.scope)}
                       disabled={isProcessingAI}
                       className="flex items-center gap-1.5 p-1.5 hover:bg-minimal-sidebar rounded-lg text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed group/pop"
                     >
@@ -298,10 +301,10 @@ export const AIFloatingToolbar = memo(
                   Structure
                 </div>
                 <div className="grid grid-cols-2 gap-1">
-                  {STRUCTURE_ACTIONS.map((item) => (
+                  {AI_ACTION_DEFS.filter((a) => a.group === "structure").map((item) => (
                     <button
-                      key={item.id}
-                      onClick={() => handleAction(item.id, item.scope as AIScope)}
+                      key={`structure-${item.id}`}
+                      onClick={() => handleAction(item.id, item.scope)}
                       disabled={isProcessingAI}
                       className="flex items-center gap-1.5 p-1.5 hover:bg-minimal-sidebar rounded-lg text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed group/pop"
                     >

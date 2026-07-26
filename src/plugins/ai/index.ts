@@ -3,7 +3,7 @@ import { TextSelection } from "prosemirror-state";
 import type { EditorState, Transaction } from "prosemirror-state";
 import type { InkPlugin, PluginContext } from "../types";
 import type { CommandAPI } from "../pluginAPI";
-import type { AIAssistantAction } from "../../services/aiService";
+import type { AIAssistantAction, ActionScope } from "../../services/aiService";
 import { AIHost } from "./AIHost";
 import { useAIUIStore } from "../../stores/aiUIStore";
 import { useEditorStore } from "../../stores/editorStore";
@@ -38,7 +38,9 @@ export function selectBlock(state: EditorState, dispatch?: (tr: Transaction) => 
  */
 export function setAiActionHandler(
   editorId: string,
-  handler: ((action: AIAssistantAction, customInstruction?: string) => void) | null,
+  handler:
+    | ((action: AIAssistantAction, customInstruction?: string, scope?: ActionScope) => void)
+    | null,
 ): void {
   useAIUIStore.getState().setAiActionHandler(editorId, handler);
 }
@@ -47,6 +49,7 @@ export function runAiAction(
   action: AIAssistantAction,
   customInstruction?: string,
   editorId?: string,
+  scope?: ActionScope,
 ): boolean {
   const state = useAIUIStore.getState();
   const targetId = editorId ?? useEditorStore.getState().activeFocusedPageId;
@@ -82,7 +85,7 @@ export function runAiAction(
     return false;
   }
 
-  handler(action, customInstruction);
+  handler(action, customInstruction, scope);
   return true;
 }
 
@@ -143,7 +146,7 @@ export const aiPlugin: InkPlugin = {
           if (text.trim()) {
             // Read editorId at dispatch time — not captured at init — so the
             // keymap stays correct even if the editor was rebuilt (HMR).
-            return runAiAction("improve", undefined, ctx.editor.editorId);
+            return runAiAction("improve", undefined, ctx.editor.editorId, "sel");
           }
           return false;
         },
@@ -151,7 +154,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            return runAiAction("summarize", undefined, ctx.editor.editorId);
+            return runAiAction("summarize", undefined, ctx.editor.editorId, "sel");
           }
           return false;
         },
@@ -159,7 +162,7 @@ export const aiPlugin: InkPlugin = {
           const { from, to } = state.selection;
           const text = state.doc.textBetween(from, to, " ");
           if (text.trim()) {
-            return runAiAction("fix-grammar", undefined, ctx.editor.editorId);
+            return runAiAction("fix-grammar", undefined, ctx.editor.editorId, "sel");
           }
           return false;
         },

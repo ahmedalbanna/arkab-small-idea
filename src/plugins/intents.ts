@@ -1,3 +1,5 @@
+import type { ActionScope } from "../services/aiService";
+
 /**
  * Plugin Intent System
  *
@@ -30,7 +32,13 @@ export type PluginIntent =
   /** Run an AI editing action (improve, fix-grammar, rewrite, etc.).
    * `editorId` identifies which editor to target; when omitted falls back to
    * the currently focused page. */
-  | { type: "runAIAction"; actionId: string; customInstruction?: string; editorId?: string };
+  | {
+      type: "runAIAction";
+      actionId: string;
+      customInstruction?: string;
+      editorId?: string;
+      scope?: ActionScope;
+    };
 
 /** Function that processes a single intent. */
 export type IntentHandler = (intent: PluginIntent) => void;
