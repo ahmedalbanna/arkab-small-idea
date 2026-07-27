@@ -200,7 +200,7 @@ let collabHandle: import("./server/collab-server").CollabServerHandle | null = n
 async function startServer() {
   const app = express();
   const API_ONLY = process.argv.includes("--api-only");
-  const PORT = API_ONLY ? 3009 : 3008;
+  const PORT = API_ONLY ? 3010 : 3008;
 
   app.use(express.json({ limit: "10mb" }));
 

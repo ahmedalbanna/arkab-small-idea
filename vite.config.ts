@@ -53,7 +53,7 @@ export default defineConfig(() => {
       // Proxy API requests to the Express server when running vite standalone.
       proxy: {
         "/api": {
-          target: "http://localhost:3009",
+          target: "http://localhost:3010",
           changeOrigin: true,
         },
       },

@@ -9,6 +9,7 @@ import { actionBucket } from "./rateLimiter";
 import { buildSystemPrompt, buildUserPrompt } from "./promptTemplates";
 import type { TemplateOverrides } from "./promptTemplates";
 import { estimateTokens, tokenTracker } from "./tokenMonitor";
+import { buildSmartContext, assembleContextString } from "./smartContextBuilder";
 
 /**
  * The scope of an AI action — determines which text is sent to the model.
@@ -276,45 +277,48 @@ export const processAIAction = async (
   const prompt = buildUserPrompt(action, { text, customInstruction, scope }, templateOverrides);
 
   // -----------------------------------------------------------------------
-  // Scope-optimized RAG retrieval
+  // Smart context assembly (three-layer: summary + section + RAG chunks)
   // -----------------------------------------------------------------------
-  // For "doc" scope the full document IS the input — no need for additional
-  // RAG context. For "section" we use lighter context weighting since the
-  // section content already provides good context. For "sel" we use full
-  // RAG to help the model understand the surrounding document.
-  let ragContext = "";
-  if (scope !== "doc" && documentContext) {
-    const ragWeight = scope === "section" ? 0.6 : 1.0;
-    const cursorWeight = scope === "section" ? 0.3 : 0.5;
-    const maxChunks = scope === "sel" ? 3 : 5;
+  const maxTokens = getModelMaxTokens(model, modelTokenLimits);
+  const estimatedPromptTokens = estimateTokens(systemInstruction + prompt);
 
+  let finalSystem = systemInstruction;
+  let finalPrompt = prompt;
+
+  if (scope !== "doc" && documentContext) {
     const ragSvc = getRagServiceSafe();
-    if (ragSvc) {
-      ragContext = await ragSvc.getWeightedContext(
-        [
-          { text, weight: ragWeight },
-          { text: cursorContext, weight: cursorWeight },
-        ],
-        maxChunks,
-      );
+
+    const smartContext = await buildSmartContext({
+      documentContent: documentContext,
+      sectionContent: "",
+      actionText: text,
+      cursorContext,
+      modelMaxTokens: maxTokens,
+      estimatedPromptTokens,
+      ragService: ragSvc,
+      actionTokenLimit: getModelMaxTokens(model, modelTokenLimits),
+    });
+
+    // Assemble the context string and append to system prompt
+    const contextString = assembleContextString(smartContext);
+    if (contextString) {
+      finalSystem += `\n\n### DOCUMENT CONTEXT ###\n${contextString}`;
+    }
+
+    // Append warning for huge documents
+    if (smartContext.warning) {
+      finalSystem += `\n\n⚠️ ${smartContext.warning}`;
     }
   }
 
   // -----------------------------------------------------------------------
   // Token budget check and truncation
   // -----------------------------------------------------------------------
-  const maxTokens = getModelMaxTokens(model, modelTokenLimits);
-  const estimatedPromptTokens = estimateTokens(systemInstruction + prompt + ragContext);
+  const estimatedTotalTokens = estimateTokens(finalSystem + finalPrompt);
 
-  let finalPrompt = prompt;
-  if (estimatedPromptTokens > maxTokens * 0.8) {
+  if (estimatedTotalTokens > maxTokens * 0.8) {
     // Truncate the user text to fit
-    finalPrompt = truncateToTokenBudget(prompt, maxTokens, 1024);
-  }
-
-  let finalSystem = systemInstruction;
-  if (ragContext) {
-    finalSystem += `\n\n### REFERENCE CONTEXT (for awareness only) ###\nThe following sections from the document are provided for context awareness only. Do NOT incorporate content from these sections into your response. Only modify ${scopeLabel}.\n\n${ragContext}`;
+    finalPrompt = truncateToTokenBudget(finalPrompt, maxTokens, 1024);
   }
 
   if (customInstruction && !systemInstruction.includes("{customInstruction}")) {

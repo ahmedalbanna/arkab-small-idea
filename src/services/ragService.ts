@@ -22,6 +22,7 @@ import type {
   DetailedSearchResult,
 } from "../abstractions/storage";
 import type { ChatMessage } from "./aiService";
+import { documentIndexCache } from "./documentIndexCache";
 
 export type { RagUICallbacks, EmbeddingOptions, DetailedSearchResult };
 
@@ -52,7 +53,7 @@ export class RagService implements IRAGService {
   }
 
   async indexDocument(content: string, options?: EmbeddingOptions) {
-    if (content === this.lastIndexedContent || this._isIndexing) return;
+    if (this._isIndexing) return;
 
     // Only wait for local model if we are using pipeline
     const provider = options?.provider || "pipeline";
@@ -61,37 +62,60 @@ export class RagService implements IRAGService {
     this._isIndexing = true;
     this._uiCallbacks.setIndexing?.(true);
     try {
-      console.info("Indexing document for RAG...");
-      const texts = this.chunkContent(content);
-
-      const chunksWithHashes = texts.map((text) => ({
-        text,
-        hash: this.simpleHash(text),
-      }));
-
+      // ── Smart chunking with incremental support ────────────────────
       const existingChunks = this.vectorStore.getChunks();
       const existingHashMap = new Map(existingChunks.map((c) => [c.hash, c]));
+      const knownHashes = new Set(existingHashMap.keys());
 
+      const { texts, hashes, newTexts } = this.smartChunkContent(content, knownHashes);
+
+      if (newTexts.length === 0 && texts.length === existingChunks.length) {
+        // Nothing changed — skip indexing entirely
+        console.info("RAG: Content unchanged, skipping indexing.");
+        documentIndexCache.markIndexed("__active__", content, hashes);
+        return;
+      }
+
+      console.info(
+        `Indexing document for RAG: ${texts.length} chunks total, ${newTexts.length} new.`,
+      );
+
+      // ── Parallel embedding with batch support ──────────────────────
+      const newEmbeddings: number[][] = [];
+      if (newTexts.length > 0) {
+        const BATCH_SIZE = 5;
+        // Process in batches to avoid overwhelming the worker/API
+        for (let i = 0; i < newTexts.length; i += BATCH_SIZE) {
+          const batch = newTexts.slice(i, i + BATCH_SIZE);
+          const embeddings = await this.embeddingService.generateEmbeddings(batch, options);
+          newEmbeddings.push(...embeddings);
+        }
+      }
+
+      // ── Assemble the updated chunks list ───────────────────────────
       const updatedChunks: Chunk[] = [];
-      let newEmbeddingsCount = 0;
+      let newIdx = 0;
 
-      for (const item of chunksWithHashes) {
-        const existing = existingHashMap.get(item.hash);
+      for (let i = 0; i < texts.length; i++) {
+        const hash = hashes[i];
+        const existing = existingHashMap.get(hash);
         if (existing) {
           updatedChunks.push(existing);
         } else {
-          const embedding = await this.embeddingService.generateEmbedding(item.text, options);
           updatedChunks.push({
-            text: item.text,
-            embedding,
+            text: texts[i],
+            embedding: newEmbeddings[newIdx],
             id: Math.random().toString(36).substring(7),
-            hash: item.hash,
+            hash,
           });
-          newEmbeddingsCount++;
+          newIdx++;
         }
       }
 
       await this.vectorStore.setChunks(updatedChunks);
+
+      // ── Update session cache ───────────────────────────────────────
+      documentIndexCache.markIndexed("__active__", content, hashes);
 
       this._uiCallbacks.setIndexedCounts?.(
         updatedChunks.length,
@@ -99,7 +123,7 @@ export class RagService implements IRAGService {
       );
       this.lastIndexedContent = content;
       console.info(
-        `RAG Update: ${updatedChunks.length} chunks total, ${newEmbeddingsCount} newly embedded.`,
+        `RAG Update: ${updatedChunks.length} chunks total, ${newTexts.length} newly embedded.`,
       );
     } catch (error) {
       console.error("RAG Indexing error:", error);
@@ -119,9 +143,23 @@ export class RagService implements IRAGService {
     return hash.toString(36);
   }
 
-  private chunkContent(content: string): string[] {
-    const CHUNK_SIZE = 1200;
-    const CHUNK_OVERLAP = 200;
+  /**
+   * Smart chunking that adapts chunk size based on document length.
+   * Smaller docs get smaller chunks for denser retrieval, larger docs get
+   * slightly larger chunks to reduce the total number of chunks.
+   *
+   * Also accepts an optional set of known hashes — when provided, only new
+   * (unseen) chunks are returned for embedding, enabling incremental indexing.
+   */
+  private smartChunkContent(
+    content: string,
+    knownHashes?: Set<string>,
+  ): { texts: string[]; hashes: string[]; newTexts: string[]; newHashes: string[] } {
+    const lineCount = content.split("\n").length;
+
+    // Adapt chunk size based on document size
+    const CHUNK_SIZE = lineCount > 500 ? 1500 : lineCount > 200 ? 1200 : 800;
+    const CHUNK_OVERLAP = lineCount > 500 ? 300 : 200;
 
     const paragraphs = content.split(/\n\n+/);
     const chunks: string[] = [];
@@ -136,7 +174,7 @@ export class RagService implements IRAGService {
           chunks.push(currentChunk.trim());
           currentChunk = "";
         }
-        const subChunks = p.match(new RegExp(`.{1,${CHUNK_SIZE}}(\\s|$)`, "g")) || [p];
+        const subChunks = p.match(RegExp(`.{1,${CHUNK_SIZE}}(\\s|$)`, "g")) || [p];
         chunks.push(...subChunks.map((s) => s.trim()).filter((s) => s.length > 10));
         continue;
       }
@@ -154,7 +192,33 @@ export class RagService implements IRAGService {
       chunks.push(currentChunk.trim());
     }
 
-    return chunks;
+    // Compute hashes and separate new vs known
+    const allHashes = chunks.map((c) => this.simpleHash(c));
+    const newIndices: number[] = [];
+    const newTexts: string[] = [];
+    const newHashes: string[] = [];
+
+    if (knownHashes) {
+      for (let i = 0; i < chunks.length; i++) {
+        if (!knownHashes.has(allHashes[i])) {
+          newIndices.push(i);
+          newTexts.push(chunks[i]);
+          newHashes.push(allHashes[i]);
+        }
+      }
+    }
+
+    return {
+      texts: chunks,
+      hashes: allHashes,
+      newTexts: knownHashes ? newTexts : chunks,
+      newHashes: knownHashes ? newHashes : allHashes,
+    };
+  }
+
+  /** @deprecated Use `smartChunkContent` instead. Kept for backward compatibility. */
+  private chunkContent(content: string): string[] {
+    return this.smartChunkContent(content).texts;
   }
 
   estimateTokens(text: string): number {
